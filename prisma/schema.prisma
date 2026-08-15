@@ -1,0 +1,67 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                  String   @id @default(cuid())
+  email               String   @unique
+  passwordHash        String
+
+  nombres             String
+  apellidos           String
+  cedula              String   @unique
+  celular             String
+  direccionResidencia String
+  codigoFicha         String
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  companyProfile        CompanyProfile?
+  concertacionFuncion   ConcertacionFuncion?
+}
+
+model CompanyProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  empresaPatrocinadora String // Empresa patrocinadora
+  direccionEmpresa     String // Dirección de la empresa
+
+  nombreCoformador     String // Nombre del coformador
+  cargoCoformador      String // Cargo del coformador
+  correoCoformador     String // Correo del coformador
+  celularCoformador    String // Celular del coformador
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Primer micro proceso de la etapa productiva: concertación de funciones.
+// Cada aprendiz agenda una única fecha/franja; se valida que no choque con la de otro aprendiz.
+model ConcertacionFuncion {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fecha      DateTime // Fecha de la cita (solo la parte de fecha es relevante)
+  horaInicio String // Hora de inicio de la franja, formato "HH:mm"
+  horaFin    String // Hora de fin de la franja, formato "HH:mm"
+
+  videollamadaUrl String? // Enlace real de la videollamada (Google Meet, o Jitsi si no hay integración con Google Calendar)
+  googleEventId   String? // Id del evento en Google Calendar, para poder actualizarlo al reagendar
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([fecha])
+}
