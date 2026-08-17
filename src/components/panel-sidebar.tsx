@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import type { ProcesoStep } from "@/lib/etapa-productiva-steps";
 
 const roleLabel: Record<string, string> = {
@@ -13,7 +14,7 @@ export function PanelSidebar({ steps, role }: { steps: ProcesoStep[]; role: stri
   const pathname = usePathname();
 
   const navClass =
-    "flex w-full shrink-0 flex-col gap-1 overflow-x-auto border-b border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:min-h-full sm:w-72 sm:overflow-visible sm:border-b-0 sm:border-r";
+    "flex w-full shrink-0 flex-col gap-1 overflow-x-auto border-b border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:sticky sm:top-0 sm:h-screen sm:w-72 sm:overflow-y-auto sm:border-b-0 sm:border-r";
 
   if (role !== "APRENDIZ") {
     return (
@@ -24,6 +25,7 @@ export function PanelSidebar({ steps, role }: { steps: ProcesoStep[]; role: stri
         <p className="px-3 text-sm text-zinc-500 dark:text-zinc-400">
           Tu panel de seguimiento estará disponible en la siguiente fase del proyecto.
         </p>
+        <ExitProcessButton />
       </nav>
     );
   }
@@ -75,7 +77,23 @@ export function PanelSidebar({ steps, role }: { steps: ProcesoStep[]; role: stri
           </Link>
         );
       })}
+
+      <ExitProcessButton />
     </nav>
+  );
+}
+
+function ExitProcessButton() {
+  return (
+    <div className="mt-3 flex flex-col gap-1 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+      <button
+        type="button"
+        onClick={() => signOut({ callbackUrl: "/login" })}
+        className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+      >
+        ← Salir del proceso
+      </button>
+    </div>
   );
 }
 
