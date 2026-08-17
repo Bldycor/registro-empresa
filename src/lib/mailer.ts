@@ -55,6 +55,64 @@ function parseStartAndDuration(fecha: string, horaInicio: string, horaFin: strin
   };
 }
 
+const roleLabel: Record<string, string> = {
+  APRENDIZ: "Aprendiz",
+  INSTRUCTOR: "Instructor",
+  COORDINADOR: "Coordinador",
+};
+
+// Notificación de bienvenida al registrarse: confirma la creación de la cuenta y
+// recuerda las credenciales de acceso (usuario = correo, y la contraseña elegida).
+// OJO seguridad: enviar la contraseña en texto plano por correo no es la práctica
+// más segura (el correo no es un canal cifrado ni controlado por nosotros); se
+// implementa así porque fue un requerimiento explícito. Si más adelante se quiere
+// reforzar esto, lo ideal sería reemplazarlo por un enlace de "activa tu cuenta /
+// crea tu contraseña" de un solo uso, sin transmitir la contraseña real.
+export async function sendWelcomeEmail({
+  nombres,
+  email,
+  password,
+  role,
+}: {
+  nombres: string;
+  email: string;
+  password: string;
+  role: string;
+}) {
+  const from = process.env.EMAIL_FROM || "no-responder@registro-empresa.local";
+  const rolLegible = roleLabel[role] ?? role;
+  const loginUrl = process.env.APP_URL
+    ? `${process.env.APP_URL.replace(/\/$/, "")}/login`
+    : "/login";
+
+  const transporter = await getTransporter();
+
+  const info = await transporter.sendMail({
+    from,
+    to: email,
+    subject: "Bienvenido a Registro Empresa — tu cuenta fue creada",
+    text: `Hola ${nombres},\n\nTu cuenta en Registro Empresa (SENA - Etapa Productiva) fue creada correctamente como ${rolLegible}.\n\nUsuario (correo): ${email}\nContraseña: ${password}\n\nIngresa en: ${loginUrl}\n\nPor seguridad, te recomendamos cambiar esta contraseña luego de tu primer ingreso.`,
+    html: `
+      <p>Hola ${nombres},</p>
+      <p>Tu cuenta en <strong>Registro Empresa</strong> (SENA - Etapa Productiva) fue creada correctamente como <strong>${rolLegible}</strong>.</p>
+      <ul>
+        <li><strong>Usuario (correo):</strong> ${email}</li>
+        <li><strong>Contraseña:</strong> ${password}</li>
+      </ul>
+      <p><a href="${loginUrl}">Ingresar a la plataforma</a></p>
+      <p>Por seguridad, te recomendamos cambiar esta contraseña luego de tu primer ingreso.</p>
+    `,
+  });
+
+  if (usingTestAccount) {
+    console.log(
+      `[mailer] Cuenta de prueba (Ethereal) — vista previa del correo de bienvenida: ${nodemailer.getTestMessageUrl(info)}`
+    );
+  }
+
+  return { info };
+}
+
 export async function sendCitacionEmail({
   concertacionId,
   aprendizNombre,

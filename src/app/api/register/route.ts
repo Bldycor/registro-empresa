@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { RegisterSchema } from "@/lib/validations";
+import { sendWelcomeEmail } from "@/lib/mailer";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -68,6 +69,15 @@ export async function POST(request: Request) {
       { error: { _root: ["Ocurrió un error al crear la cuenta. Inténtalo de nuevo."] } },
       { status: 500 }
     );
+  }
+
+  // El correo de bienvenida no debe bloquear el registro: si el envío falla (SMTP
+  // caído, etc.), la cuenta ya quedó creada y el usuario puede iniciar sesión igual;
+  // solo dejamos el error en el log del servidor para poder revisarlo.
+  try {
+    await sendWelcomeEmail({ nombres, email, password, role });
+  } catch (error) {
+    console.error("[api/register] No se pudo enviar el correo de bienvenida:", error);
   }
 
   return NextResponse.json({ success: true }, { status: 201 });

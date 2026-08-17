@@ -1,7 +1,7 @@
 # Plan de Implementación
 ## registro-empresa — de lo construido al alcance validado
 
-**Fecha:** 16 de agosto de 2026
+**Fecha:** 17 de agosto de 2026
 **Referencia funcional:** `docs/REQUISITOS-FUNCIONALES.md` (validado, sin puntos pendientes)
 
 Este documento traduce el documento de requisitos ya validado en pasos de código concretos, comparando contra lo que ya existe en el repositorio. Está pensado para trabajarse con Claude Code **una fase a la vez**.
@@ -10,6 +10,7 @@ Este documento traduce el documento de requisitos ya validado en pasos de códig
 
 - **Fase 0 (modelo de datos): COMPLETA en la base local.** `prisma/schema.prisma` extendido de forma aditiva (sin romper `ConcertacionFuncion` = Evaluación 1, ya en uso): nuevos enums `Role`, `EstadoAprendiz`, `Calificacion`, `EstadoEvidencia`; nuevos campos en `User` (`role`, `estado`, `fechaInicioEtapaProductiva`, `instructorId`); nuevos modelos `Evaluacion` (evaluaciones 2 y 3), `Bitacora` y `CertificacionEmpresario`. Migración `20260816231953_fase0_roles_bitacoras_evaluaciones` aplicada a la base local y cliente de Prisma regenerado (v7.9.1). Backup del esquema anterior en `prisma/schema.prisma.bak-fase0`.
   - **Neon (producción): sincronizada.** Se limpiaron las tablas originales (creadas antes de usar el sistema de migraciones, sin historial) y se aplicó la migración completa vía `prisma migrate deploy`. Ambos entornos (local y Neon) están ahora en el mismo estado de esquema.
+- **Correo de bienvenida al registrarse: COMPLETO.** `POST /api/register` ahora envía un correo (`sendWelcomeEmail` en `src/lib/mailer.ts`) confirmando la creación de la cuenta, con el usuario (correo) y la contraseña elegida, y el enlace de login. El envío no bloquea el registro: si falla (SMTP caído, etc.) la cuenta queda creada igual y solo se registra el error en el log del servidor. Verificado en vivo (registro de prueba + confirmación de entrega del correo).
 - Fase 1 (roles y asignación instructor↔aprendiz): siguiente en la fila.
 - Fases 2-6: pendientes.
 
@@ -21,9 +22,13 @@ Este documento traduce el documento de requisitos ya validado en pasos de códig
 - Perfil de empresa (`CompanyProfile`) con datos del coformador.
 - Primer micro-proceso: **Concertación de funciones** (`ConcertacionFuncion`) — agenda fecha/hora, genera reunión (Google Meet vía Calendar, o Jitsi de respaldo), guarda `googleEventId`, valida choques de horario.
 - Envío de correo de citación (`src/lib/mailer.ts`) al agendar la concertación.
+- Envío de correo de bienvenida (`sendWelcomeEmail`) al registrarse, con usuario y contraseña de acceso.
 - Panel autenticado del aprendiz (`/formulario/(panel)`) con página de "etapa-productiva" y "actualizar" datos.
+- Botón de salida del proceso en el menú lateral del panel (`PanelSidebar`), con menú fijo (sticky) al hacer scroll.
 
-Esto cubre, en el lenguaje del documento de requisitos: inscripción (3.1, parcial), Evaluación 1 / Concertación (3.2 y 3.3, primera reunión oficial).
+Esto cubre, en el lenguaje del documento de requisitos: inscripción (3.1, parcial — ya incluye la notificación de creación de cuenta), Evaluación 1 / Concertación (3.2 y 3.3, primera reunión oficial).
+
+> **Nota de seguridad pendiente:** el correo de bienvenida envía la contraseña en texto plano (requerimiento explícito). El correo no es un canal cifrado que controlemos, así que a futuro conviene reemplazarlo por un enlace de "activa tu cuenta / crea tu contraseña" de un solo uso, sin transmitir la contraseña real.
 
 ## Qué falta frente al documento de requisitos validado
 
@@ -36,7 +41,7 @@ Esto cubre, en el lenguaje del documento de requisitos: inscripción (3.1, parci
 7. **Certificación del empresario** (carta de terminación, evidencia de cierre) — no existe.
 8. **Control de evaluaciones por aprendiz** (vista consolidada, sección 3.4) — no existe.
 9. **Módulo de consultas y reportes** (sección 3.5: filtros, métricas, exportación PDF/Excel, acceso por rol) — no existe.
-10. **Notificaciones de incumplimiento** (alertas + correo a aprendiz y coformador) — hoy solo hay correo de citación al agendar; falta la lógica de alertas por vencimiento.
+10. **Notificaciones de incumplimiento** (alertas + correo a aprendiz y coformador) — hoy solo hay correo de citación al agendar y correo de bienvenida al registrarse; falta la lógica de alertas por vencimiento.
 11. Subida de evidencias con **plantilla descargable o firma cargada en la app** — no existe aún el manejo de archivos/firmas.
 
 ## Fases sugeridas
