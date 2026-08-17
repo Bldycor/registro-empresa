@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const recienRegistrado = searchParams.get("registrado") === "1";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -37,9 +40,22 @@ export default function LoginPage() {
   return (
     <div className="flex flex-1 items-center justify-center bg-zinc-50 px-4 dark:bg-black">
       <div className="w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <h1 className="mb-6 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        <h1 className="mb-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Iniciar sesión
         </h1>
+
+        {recienRegistrado && (
+          <div className="mb-6 rounded-md border border-green-200 bg-green-50 p-3 dark:border-green-900 dark:bg-green-900/20">
+            <p className="text-sm font-medium text-green-700 dark:text-green-400">
+              ✓ Cuenta creada correctamente.
+            </p>
+            <p className="mt-0.5 text-sm text-green-700 dark:text-green-400">
+              Ingresa con tu correo y contraseña para continuar.
+            </p>
+          </div>
+        )}
+
+        {!recienRegistrado && <div className="mb-6" />}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
@@ -89,5 +105,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

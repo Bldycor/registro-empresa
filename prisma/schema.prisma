@@ -10,6 +10,33 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  APRENDIZ
+  INSTRUCTOR
+  COORDINADOR
+}
+
+enum EstadoAprendiz {
+  ACTIVO
+  CERTIFICADO
+}
+
+// Convención institucional de calificación de evaluaciones (ver docs/REQUISITOS-FUNCIONALES.md, 3.4).
+enum Calificacion {
+  A // Evaluación correcta (aprobada).
+  D // Con errores en el diligenciamiento; requiere corrección y reenvío.
+  P // Pendiente de subir, por demora en el tiempo de entrega.
+}
+
+// Estado de una evidencia (bitácora o certificación) frente a su fecha límite.
+enum EstadoEvidencia {
+  PENDIENTE
+  SUBIDA_A_TIEMPO
+  SUBIDA_CON_ATRASO
+  APROBADA
+  RECHAZADA
+}
+
 model User {
   id                  String   @id @default(cuid())
   email               String   @unique
@@ -20,13 +47,36 @@ model User {
   cedula              String   @unique
   celular             String
   direccionResidencia String
-  codigoFicha         String
+  // Código de ficha SENA. Solo aplica a aprendices; instructores y coordinadores se registran sin ficha.
+  codigoFicha         String?
 
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  // Rol dentro del sistema, elegido por el usuario en el formulario de registro
+  // (Aprendiz / Instructor / Coordinador). Por defecto APRENDIZ si no se envía.
+  role   Role           @default(APRENDIZ)
+  // Estado del aprendiz durante/después de la Etapa Productiva. El paso a CERTIFICADO es manual
+  // (lo actualiza el aprendiz o el instructor), la certificación de estudio se emite fuera del sistema.
+  estado EstadoAprendiz @default(ACTIVO)
 
-  companyProfile        CompanyProfile?
-  concertacionFuncion   ConcertacionFuncion?
+  // Fecha de inicio de la Etapa Productiva: dispara el cálculo de todos los plazos posteriores
+  // (concertación a los 15 días, bitácoras cada 15 días, evaluaciones de seguimiento, cierre).
+  fechaInicioEtapaProductiva DateTime?
+
+  // Instructor asignado (autorelación). Un instructor puede tener muchos aprendices asignados;
+  // un aprendiz tiene a lo sumo un instructor asignado.
+  instructorId String?
+  instructor   User?   @relation("InstructorAprendices", fields: [instructorId], references: [id])
+  aprendices   User[]  @relation("InstructorAprendices")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  companyProfile          CompanyProfile?
+  // Evaluación 1 (Concertación de funciones). Se mantiene como modelo propio por ser el que ya
+  // está construido y en producción; las evaluaciones 2 y 3 viven en el modelo `Evaluacion`.
+  concertacionFuncion     ConcertacionFuncion?
+  evaluaciones            Evaluacion[]
+  bitacoras               Bitacora[]
+  certificacionEmpresario CertificacionEmpresario?
 }
 
 model CompanyProfile {
@@ -46,7 +96,7 @@ model CompanyProfile {
   updatedAt DateTime @updatedAt
 }
 
-// Primer micro proceso de la etapa productiva: concertación de funciones.
+// Primer micro proceso de la etapa productiva: concertación de funciones (= Evaluación 1).
 // Cada aprendiz agenda una única fecha/franja; se valida que no choque con la de otro aprendiz.
 model ConcertacionFuncion {
   id     String @id @default(cuid())
@@ -60,8 +110,75 @@ model ConcertacionFuncion {
   videollamadaUrl String? // Enlace real de la videollamada (Google Meet, o Jitsi si no hay integración con Google Calendar)
   googleEventId   String? // Id del evento en Google Calendar, para poder actualizarlo al reagendar
 
+  // Calificación institucional A/D/P de esta evaluación (nulo hasta que el instructor la califique).
+  calificacion  Calificacion?
+  observaciones String? // Observaciones del instructor al calificar
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([fecha])
+}
+
+// Evaluaciones 2 y 3 (seguimiento): misma mecánica de reunión + calificación que ConcertacionFuncion,
+// pero puede haber hasta dos por aprendiz (numero 2 y 3), por eso no es 1:1 con User.
+model Evaluacion {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 2 = evaluación de seguimiento a los ~2 meses; 3 = evaluación de cierre (10-15 días antes de terminar).
+  numero Int
+
+  fecha      DateTime?
+  horaInicio String?
+  horaFin    String?
+
+  videollamadaUrl String?
+  googleEventId   String?
+
+  calificacion  Calificacion?
+  observaciones String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, numero])
+  @@index([fecha])
+}
+
+// Bitácora quincenal (formato institucional GFPI-F-147). ~12 por aprendiz durante los 6 meses.
+model Bitacora {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  numero       Int // Secuencia 1-12
+  fechaLimite  DateTime // Calculada desde fechaInicioEtapaProductiva + 15 días * numero
+  fechaEntrega DateTime?
+  archivoUrl   String? // Plantilla diligenciada subida por el aprendiz (o generada con firma en la app)
+
+  estado        EstadoEvidencia @default(PENDIENTE)
+  observaciones String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, numero])
+  @@index([fechaLimite])
+}
+
+// Evidencia de cierre: carta de terminación del contrato de aprendizaje a satisfacción de la
+// empresa. Requisito para poder emitir la Evaluación 3 (evaluación final).
+model CertificacionEmpresario {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  archivoUrl String?
+  fecha      DateTime?
+  estado     EstadoEvidencia @default(PENDIENTE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

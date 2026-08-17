@@ -14,8 +14,17 @@ export async function POST(request: Request) {
     );
   }
 
-  const { nombres, apellidos, cedula, email, celular, direccionResidencia, codigoFicha, password } =
-    parsed.data;
+  const {
+    nombres,
+    apellidos,
+    cedula,
+    email,
+    celular,
+    direccionResidencia,
+    role,
+    codigoFicha,
+    password,
+  } = parsed.data;
 
   const existingUser = await prisma.user.findFirst({
     where: { OR: [{ email }, { cedula }] },
@@ -38,18 +47,28 @@ export async function POST(request: Request) {
 
   const passwordHash = await bcrypt.hash(password, 10);
 
-  await prisma.user.create({
-    data: {
-      nombres,
-      apellidos,
-      cedula,
-      email,
-      celular,
-      direccionResidencia,
-      codigoFicha,
-      passwordHash,
-    },
-  });
+  try {
+    await prisma.user.create({
+      data: {
+        nombres,
+        apellidos,
+        cedula,
+        email,
+        celular,
+        direccionResidencia,
+        role,
+        // Solo los aprendices tienen código de ficha; para instructor/coordinador queda en null.
+        codigoFicha: role === "APRENDIZ" ? codigoFicha : null,
+        passwordHash,
+      },
+    });
+  } catch (error) {
+    console.error("[api/register] Error al crear el usuario:", error);
+    return NextResponse.json(
+      { error: { _root: ["Ocurrió un error al crear la cuenta. Inténtalo de nuevo."] } },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json({ success: true }, { status: 201 });
 }

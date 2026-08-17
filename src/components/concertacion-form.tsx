@@ -141,19 +141,38 @@ export function ConcertacionForm({
         </div>
 
         {saved && (
-          <p className="mt-4 text-sm text-green-600">
-            Cita confirmada. Se envió una invitación de videoconferencia por correo al
-            aprendiz, al coformador y a bcoba@sena.edu.co.
-          </p>
+          <div className="mt-4 rounded-md border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-900/20">
+            <p className="text-sm font-medium text-green-700 dark:text-green-400">
+              ✓ Proceso completado: concertación de funciones confirmada.
+            </p>
+            <p className="mt-1 text-sm text-green-700 dark:text-green-400">
+              Se envió una invitación de videoconferencia por correo al aprendiz, al
+              coformador y a bcoba@sena.edu.co.
+            </p>
+          </div>
         )}
 
-        <button
-          type="button"
-          onClick={() => setEditando(true)}
-          className="mt-6 rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-        >
-          Actualizar cita
-        </button>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => setEditando(true)}
+            className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            Actualizar cita
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              // Igual que en el formulario de empresa: refresh además de push para que el
+              // menú lateral (layout compartido) muestre este paso como completado de una vez.
+              router.push("/formulario/actualizar");
+              router.refresh();
+            }}
+            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            Ir al panel de datos →
+          </button>
+        </div>
       </div>
     );
   }

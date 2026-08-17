@@ -1,10 +1,6 @@
-import { PanelSidebar } from "@/components/panel-sidebar";
-
+// El menú de navegación entre procesos ahora vive en el layout externo
+// (src/app/formulario/layout.tsx) para que aparezca en todas las pantallas del flujo,
+// incluida la de creación del perfil de empresa. Este layout queda como simple passthrough.
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex flex-1 flex-col sm:flex-row">
-      <PanelSidebar />
-      <div className="flex flex-1 flex-col">{children}</div>
-    </div>
-  );
+  return <>{children}</>;
 }

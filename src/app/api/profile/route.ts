@@ -22,7 +22,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   }
 
-  const body = await request.json();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "El cuerpo de la solicitud no es un JSON válido." },
+      { status: 400 }
+    );
+  }
+
   const parsed = ProfileSchema.safeParse(body);
 
   if (!parsed.success) {
@@ -32,11 +41,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const profile = await prisma.companyProfile.upsert({
-    where: { userId: session.user.id },
-    update: parsed.data,
-    create: { ...parsed.data, userId: session.user.id },
-  });
+  try {
+    const profile = await prisma.companyProfile.upsert({
+      where: { userId: session.user.id },
+      update: parsed.data,
+      create: { ...parsed.data, userId: session.user.id },
+    });
 
-  return NextResponse.json({ profile }, { status: 200 });
+    return NextResponse.json({ profile }, { status: 200 });
+  } catch (error) {
+    console.error("[api/profile] Error al guardar el perfil de empresa:", error);
+    return NextResponse.json(
+      { error: "Ocurrió un error al guardar la información. Inténtalo de nuevo." },
+      { status: 500 }
+    );
+  }
 }

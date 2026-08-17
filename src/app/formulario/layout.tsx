@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
 import { LogoutButton } from "@/components/logout-button";
+import { PanelSidebar } from "@/components/panel-sidebar";
+import { buildFase0Steps, type ProcesoStep } from "@/lib/etapa-productiva-steps";
 
 export default async function FormularioLayout({
   children,
@@ -9,8 +12,38 @@ export default async function FormularioLayout({
 }) {
   const session = await auth();
 
-  if (!session?.user) {
+  if (!session?.user?.id) {
     redirect("/login");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true },
+  });
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  // El menú de pasos (Datos de empresa → Concertación) solo aplica al proceso del Aprendiz.
+  // Instructor/Coordinador todavía no tienen procesos propios en Fase 0 (llegan en la siguiente fase).
+  let steps: ProcesoStep[] = [];
+  if (user.role === "APRENDIZ") {
+    const [profile, concertacion] = await Promise.all([
+      prisma.companyProfile.findUnique({
+        where: { userId: session.user.id },
+        select: { id: true },
+      }),
+      prisma.concertacionFuncion.findUnique({
+        where: { userId: session.user.id },
+        select: { id: true },
+      }),
+    ]);
+
+    steps = buildFase0Steps({
+      profileCompleto: Boolean(profile),
+      concertacionCompleta: Boolean(concertacion),
+    });
   }
 
   return (
@@ -21,7 +54,10 @@ export default async function FormularioLayout({
         </span>
         <LogoutButton />
       </header>
-      <main className="flex flex-1 flex-col">{children}</main>
+      <div className="flex flex-1 flex-col sm:flex-row">
+        <PanelSidebar steps={steps} role={user.role} />
+        <main className="flex flex-1 flex-col">{children}</main>
+      </div>
     </div>
   );
 }

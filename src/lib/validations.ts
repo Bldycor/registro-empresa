@@ -1,16 +1,32 @@
 import { z } from "zod";
 import { toMinutes } from "@/lib/time";
 
-export const RegisterSchema = z.object({
-  nombres: z.string().trim().min(2, "Ingresa tus nombres."),
-  apellidos: z.string().trim().min(2, "Ingresa tus apellidos."),
-  cedula: z.string().trim().min(5, "Ingresa un número de cédula válido."),
-  email: z.string().trim().email("Ingresa un correo válido."),
-  celular: z.string().trim().min(7, "Ingresa un número de celular válido."),
-  direccionResidencia: z.string().trim().min(5, "Ingresa tu dirección de residencia."),
-  codigoFicha: z.string().trim().min(1, "Ingresa el código de ficha."),
-  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
-});
+// Roles disponibles para autoregistro. Coincide con el enum `Role` de prisma/schema.prisma.
+export const RegisterRoles = ["APRENDIZ", "INSTRUCTOR", "COORDINADOR"] as const;
+export type RegisterRole = (typeof RegisterRoles)[number];
+
+export const RegisterSchema = z
+  .object({
+    nombres: z.string().trim().min(2, "Ingresa tus nombres."),
+    apellidos: z.string().trim().min(2, "Ingresa tus apellidos."),
+    cedula: z.string().trim().min(5, "Ingresa un número de cédula válido."),
+    email: z.string().trim().email("Ingresa un correo válido."),
+    celular: z.string().trim().min(7, "Ingresa un número de celular válido."),
+    direccionResidencia: z.string().trim().min(5, "Ingresa tu dirección de residencia."),
+    role: z.enum(RegisterRoles, {
+      message: "Selecciona el tipo de usuario.",
+    }),
+    // Solo obligatorio para Aprendiz; se valida condicionalmente abajo.
+    codigoFicha: z.string().trim().optional(),
+    password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
+  })
+  .refine(
+    (data) => data.role !== "APRENDIZ" || (data.codigoFicha && data.codigoFicha.length > 0),
+    {
+      message: "Ingresa el código de ficha.",
+      path: ["codigoFicha"],
+    }
+  );
 
 export const ProfileSchema = z.object({
   empresaPatrocinadora: z.string().trim().min(2, "Ingresa el nombre de la empresa patrocinadora."),

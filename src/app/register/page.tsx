@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+type Role = "APRENDIZ" | "INSTRUCTOR" | "COORDINADOR";
+
 type FormFields = {
   nombres: string;
   apellidos: string;
@@ -11,6 +13,7 @@ type FormFields = {
   email: string;
   celular: string;
   direccionResidencia: string;
+  role: Role;
   codigoFicha: string;
   password: string;
 };
@@ -22,9 +25,28 @@ const initialState: FormFields = {
   email: "",
   celular: "",
   direccionResidencia: "",
+  role: "APRENDIZ",
   codigoFicha: "",
   password: "",
 };
+
+const roleOptions: { value: Role; label: string; description: string }[] = [
+  {
+    value: "APRENDIZ",
+    label: "Aprendiz",
+    description: "Vas a realizar tu Etapa Productiva en una empresa.",
+  },
+  {
+    value: "INSTRUCTOR",
+    label: "Instructor",
+    description: "Haces seguimiento y evalúas a los aprendices de tu ficha.",
+  },
+  {
+    value: "COORDINADOR",
+    label: "Coordinador",
+    description: "Consultas informes y métricas de todas las fichas.",
+  },
+];
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -32,7 +54,7 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(false);
 
-  function update<K extends keyof FormFields>(key: K, value: string) {
+  function update<K extends keyof FormFields>(key: K, value: FormFields[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -55,20 +77,49 @@ export default function RegisterPage() {
       return;
     }
 
-    router.push("/login");
+    router.push("/login?registrado=1");
   }
 
   return (
     <div className="flex flex-1 items-center justify-center bg-zinc-50 px-4 py-10 dark:bg-black">
       <div className="w-full max-w-xl rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <h1 className="mb-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Crear cuenta de aprendiz
+          Crear cuenta
         </h1>
         <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
           Completa tus datos personales para registrarte.
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <Field label="Tipo de usuario" error={errors.role?.[0]}>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {roleOptions.map((option) => (
+                <label
+                  key={option.value}
+                  className={`flex cursor-pointer flex-col gap-1 rounded-md border px-3 py-2 text-sm ${
+                    form.role === option.value
+                      ? "border-zinc-900 bg-zinc-100 dark:border-zinc-50 dark:bg-zinc-800"
+                      : "border-zinc-300 dark:border-zinc-700"
+                  }`}
+                >
+                  <span className="flex items-center gap-2 font-medium text-zinc-800 dark:text-zinc-200">
+                    <input
+                      type="radio"
+                      name="role"
+                      value={option.value}
+                      checked={form.role === option.value}
+                      onChange={() => update("role", option.value)}
+                    />
+                    {option.label}
+                  </span>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    {option.description}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </Field>
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Nombres" error={errors.nombres?.[0]}>
               <input
@@ -126,14 +177,16 @@ export default function RegisterPage() {
             />
           </Field>
 
-          <Field label="Código de ficha" error={errors.codigoFicha?.[0]}>
-            <input
-              required
-              value={form.codigoFicha}
-              onChange={(e) => update("codigoFicha", e.target.value)}
-              className={inputClass}
-            />
-          </Field>
+          {form.role === "APRENDIZ" && (
+            <Field label="Código de ficha" error={errors.codigoFicha?.[0]}>
+              <input
+                required
+                value={form.codigoFicha}
+                onChange={(e) => update("codigoFicha", e.target.value)}
+                className={inputClass}
+              />
+            </Field>
+          )}
 
           <Field label="Contraseña" error={errors.password?.[0]}>
             <input
