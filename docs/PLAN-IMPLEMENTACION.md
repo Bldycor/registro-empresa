@@ -1,7 +1,7 @@
 # Plan de Implementación
 ## registro-empresa — de lo construido al alcance validado
 
-**Fecha:** 17 de agosto de 2026
+**Fecha:** 17 de agosto de 2026 (última actualización: 18 de agosto de 2026)
 **Referencia funcional:** `docs/REQUISITOS-FUNCIONALES.md` (validado, sin puntos pendientes)
 
 Este documento traduce el documento de requisitos ya validado en pasos de código concretos, comparando contra lo que ya existe en el repositorio. Está pensado para trabajarse con Claude Code **una fase a la vez**.
@@ -17,12 +17,18 @@ Este documento traduce el documento de requisitos ya validado en pasos de códig
   - **Registro de aprendiz:** el campo de ficha pasó de texto libre a una lista desplegable (`GET /api/fichas`, público) poblada con las fichas precargadas por el coordinador; si el aprendiz no encuentra su ficha, no puede registrarse con un código inventado (evita fichas "fantasma").
   - **Autorización:** helpers centralizados `requireUser`/`requireApiUser`/`getSessionUser` (`src/lib/auth-guards.ts`) — el rol se valida siempre contra la base de datos en cada request, no se confía en el JWT de sesión.
   - Verificado en vivo de punta a punta: registro de aprendiz de prueba seleccionando ficha del desplegable → login como coordinador (carga masiva + asignación de instructor) → login como instructor (se confirma que el aprendiz recién registrado aparece con "Evaluable" en la ficha asignada, y "Solo consulta" en las demás).
-  - Pendiente de este cierre de fase: `npm run lint` y una pasada limpia de `npx tsc --noEmit` / `npm run build` (no se pudieron correr en este entorno por límite de tiempo del sandbox; quedan para correr en el entorno del usuario antes o junto con el commit).
+  - Cierre de fase (lint/build/commit/push): ver bullet "Cierre de este ciclo de trabajo" más abajo.
 - **Login por cédula + recuperación de contraseña: COMPLETO en la base local y en Neon (producción).** El dato de ingreso principal pasó de correo a **cédula** (`src/auth.ts`, `cedula` ya era único en `User`) — el correo se conserva como dato de contacto y como canal de recuperación. Nuevo modelo `PasswordResetToken` (token de un solo uso, expira en 1 hora) vía migración `20260818004842_password_reset_tokens`, aplicada a Neon con `prisma migrate deploy`. Flujo: `/login` → enlace "¿Olvidaste tu contraseña?" → `/forgot-password` (el usuario ingresa su cédula; la respuesta es siempre genérica, exista o no la cédula, para no revelar qué cédulas están registradas) → si existe, se envía un correo con el enlace al correo *registrado en la cuenta* (`sendPasswordResetEmail` en `src/lib/mailer.ts`) → `/reset-password?token=...` para definir la nueva contraseña (rechaza tokens inválidos, ya usados o expirados).
   - De paso se corrigió un bug real preexistente de Fase 1: `/formulario/actualizar` (y `GET`/`PATCH /api/account`) seguían consultando el campo `codigoFicha`, eliminado en la migración de Fase 1 — quedaba roto desde entonces porque ningún flujo de prueba anterior había llegado a ejercitar esa página. Ahora usa la relación `ficha.codigo`.
   - Verificado en vivo de punta a punta con llamadas directas a la API (no solo por UI, para descartar problemas de automatización del navegador): `POST /api/auth/forgot-password` → correo real recibido con el enlace correcto → `POST /api/auth/reset-password` con el token real (200) → `POST /api/auth/callback/credentials` con cédula + contraseña nueva → sesión iniciada correctamente. También se confirmó el rechazo correcto de enlaces sin token, con token inventado, y con token ya usado.
-  - Pendiente igual que Fase 1: `npm run lint` / `npx tsc --noEmit` / `npm run build` completos en el entorno del usuario antes del commit. Además, confirmar que `APP_URL` esté configurada en Vercel para `ep.mkdirection.com` (en local se agregó a `.env.local`); sin ella el enlace de recuperación en producción saldría relativo/roto.
-- Fases 2-6: pendientes.
+- **Mejora de UX en el panel de fichas del coordinador: COMPLETA.** Cada ficha en `/formulario/coordinador/fichas` ahora tiene una flecha desplegable que muestra los aprendices asignados (nombre, cédula, estado) antes de elegir el instructor — evita asignar "a ciegas". Requirió exponer `aprendices` en el `select` de `GET /api/coordinador/fichas` y en la carga inicial de la página.
+- **Cierre de este ciclo de trabajo (Fase 1 + login por cédula/recuperación + mejora de UX de fichas): COMPLETO end-to-end.**
+  - `npm run lint`: 0 errores (1 warning preexistente en `concertacion-form.tsx`, no relacionado con estos cambios).
+  - `npm run build`: compiló limpio, TypeScript en verde, las 20 rutas generadas (incluye `/api/auth/forgot-password`, `/api/auth/reset-password`, `/forgot-password`, `/reset-password`, `/api/coordinador/*`).
+  - Variable `APP_URL=https://ep.mkdirection.com` configurada en Vercel (Production) y confirmada tras redeploy.
+  - Commit `0963bb7` ("Agregar roles/fichas (aprendiz-instructor), login por cedula y recuperacion de contrasena") empujado a `main` en GitHub; Vercel disparó el deployment de producción con el código actualizado.
+  - Autoevaluación de código (17-18 ago): revisión línea por línea de `auth.ts`, `auth-guards.ts`, las rutas de `forgot-password`/`reset-password`, `register`, `fichas` (pública y de coordinador/instructor), `validations.ts`, `mailer.ts` y `schema.prisma` — todo consistente entre sí (schema ↔ selects de Prisma ↔ tipos de TypeScript ↔ validaciones Zod), sin referencias colgantes al viejo campo `codigoFicha` ni al viejo campo directo `User.instructorId` de Fase 0 (reemplazado correctamente por `Ficha.instructorId`). Sin hallazgos nuevos.
+- Fases 2-6: pendientes. **Próxima fase sugerida: Fase 2 — Bitácoras** (ver detalle abajo).
 
 ---
 
@@ -43,8 +49,8 @@ Esto cubre, en el lenguaje del documento de requisitos: inscripción (3.1, parci
 ## Qué falta frente al documento de requisitos validado
 
 1. ~~**Roles de usuario** — hoy `User` no distingue aprendiz/instructor/coordinador. No hay instructor asignado a un aprendiz.~~ **Resuelto en Fase 1** (ver arriba: modelo `Ficha`, asignación instructor↔ficha, autorización por rol).
-2. **Estado del aprendiz** (`Activo` / `Certificado`) — no existe el campo.
-3. **Fecha de inicio de Etapa Productiva** — no hay un campo explícito que dispare los cálculos de plazos (bitácoras cada 15 días, evaluaciones, etc.). Actualmente solo existe la fecha de la reunión de concertación.
+2. **Estado del aprendiz** (`Activo` / `Certificado`) — el campo (`User.estado`, enum `EstadoAprendiz`) ya existe desde Fase 0 y por defecto queda en `ACTIVO`, pero todavía no hay ningún endpoint/UI para pasarlo a `CERTIFICADO` (eso depende de que todas las evidencias queden en `A`, ver Fase 4).
+3. **Fecha de inicio de Etapa Productiva** — el campo (`User.fechaInicioEtapaProductiva`) ya existe desde Fase 0, pero nada lo diligencia todavía ni lo usa para calcular plazos. Actualmente solo existe la fecha de la reunión de concertación. Se debe definir quién la registra (¿coordinador al precargar? ¿automática al confirmar la concertación?) y usarla en Fase 2 para las 12 fechas límite de bitácoras.
 4. **Bitácoras** (cada 15 días, ~12 en total, formato `GFPI-F-147`) — no existe el modelo.
 5. **Evaluación 2 y 3** (seguimiento, a los ~2 meses y al cierre) — solo existe la Evaluación 1 (Concertación). Falta generalizar el patrón de `ConcertacionFuncion` a las 3 evaluaciones con formato `GFPI-F-023_V06` y convención de calificación **A/D/P**.
 6. **Reunión de cierre** (10-15 días antes de terminar) y **reunión extra a solicitud** — hoy solo hay una reunión (la de concertación); falta generalizar "Reunión" como concepto reutilizable con cancelación/reprogramación notificada a las partes.
