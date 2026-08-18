@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { CompanyProfileForm } from "@/components/company-profile-form";
-import { RolePlaceholderPanel } from "@/components/role-placeholder-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -17,14 +16,12 @@ export default async function FormularioPage() {
   if (!user) redirect("/login");
 
   // El proceso de "información de la empresa" solo aplica a Aprendices. Instructor/Coordinador
-  // aún no tienen su panel construido (llega en la siguiente fase); se les muestra un aviso claro
-  // en lugar del formulario de empresa, que no les corresponde.
-  if (user.role !== "APRENDIZ") {
-    return (
-      <div className="flex flex-1 justify-center px-4 py-10">
-        <RolePlaceholderPanel role={user.role} />
-      </div>
-    );
+  // tienen su propio panel (Fase 1): aprendices en consulta / gestión de fichas.
+  if (user.role === "INSTRUCTOR") {
+    redirect("/formulario/instructor/aprendices");
+  }
+  if (user.role === "COORDINADOR") {
+    redirect("/formulario/coordinador/fichas");
   }
 
   const profile = await prisma.companyProfile.findUnique({

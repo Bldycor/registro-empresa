@@ -16,15 +16,16 @@ export const RegisterSchema = z
     role: z.enum(RegisterRoles, {
       message: "Selecciona el tipo de usuario.",
     }),
-    // Solo obligatorio para Aprendiz; se valida condicionalmente abajo.
-    codigoFicha: z.string().trim().optional(),
+    // Solo obligatorio para Aprendiz; se valida condicionalmente abajo. Referencia a una Ficha
+    // ya precargada por el coordinador (ver modelo Ficha) — ya no es texto libre.
+    fichaId: z.string().trim().optional(),
     password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
   })
   .refine(
-    (data) => data.role !== "APRENDIZ" || (data.codigoFicha && data.codigoFicha.length > 0),
+    (data) => data.role !== "APRENDIZ" || (data.fichaId && data.fichaId.length > 0),
     {
-      message: "Ingresa el código de ficha.",
-      path: ["codigoFicha"],
+      message: "Selecciona tu ficha.",
+      path: ["fichaId"],
     }
   );
 
@@ -46,6 +47,27 @@ export const PersonalUpdateSchema = z.object({
 });
 
 export type PersonalUpdateInput = z.infer<typeof PersonalUpdateSchema>;
+
+// Recuperación de contraseña: el usuario se identifica con su cédula (dato de ingreso principal),
+// el enlace de restablecimiento se envía al correo que tiene registrado en la cuenta.
+export const ForgotPasswordSchema = z.object({
+  cedula: z.string().trim().min(5, "Ingresa un número de cédula válido."),
+});
+
+export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
+
+export const ResetPasswordSchema = z
+  .object({
+    token: z.string().trim().min(1, "Enlace inválido."),
+    password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
+    confirmPassword: z.string().min(8, "Confirma tu nueva contraseña."),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Las contraseñas no coinciden.",
+    path: ["confirmPassword"],
+  });
+
+export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
 
 const todayDateString = () => new Date().toISOString().slice(0, 10);
 

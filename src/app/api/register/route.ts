@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     celular,
     direccionResidencia,
     role,
-    codigoFicha,
+    fichaId,
     password,
   } = parsed.data;
 
@@ -46,6 +46,19 @@ export async function POST(request: Request) {
     );
   }
 
+  // La ficha debe existir de antemano (la precarga el coordinador académico). Si el aprendiz
+  // manda un fichaId que ya no existe (p. ej. la seleccionó y alguien la borró justo después),
+  // rechazamos el registro en vez de crear una ficha nueva sin control.
+  if (role === "APRENDIZ") {
+    const ficha = await prisma.ficha.findUnique({ where: { id: fichaId } });
+    if (!ficha) {
+      return NextResponse.json(
+        { error: { fichaId: ["La ficha seleccionada ya no está disponible. Actualiza la página e inténtalo de nuevo."] } },
+        { status: 400 }
+      );
+    }
+  }
+
   const passwordHash = await bcrypt.hash(password, 10);
 
   try {
@@ -58,8 +71,8 @@ export async function POST(request: Request) {
         celular,
         direccionResidencia,
         role,
-        // Solo los aprendices tienen código de ficha; para instructor/coordinador queda en null.
-        codigoFicha: role === "APRENDIZ" ? codigoFicha : null,
+        // Solo los aprendices tienen ficha; para instructor/coordinador queda en null.
+        fichaId: role === "APRENDIZ" ? fichaId : null,
         passwordHash,
       },
     });
@@ -75,7 +88,7 @@ export async function POST(request: Request) {
   // caído, etc.), la cuenta ya quedó creada y el usuario puede iniciar sesión igual;
   // solo dejamos el error en el log del servidor para poder revisarlo.
   try {
-    await sendWelcomeEmail({ nombres, email, password, role });
+    await sendWelcomeEmail({ nombres, email, cedula, password, role });
   } catch (error) {
     console.error("[api/register] No se pudo enviar el correo de bienvenida:", error);
   }

@@ -71,11 +71,13 @@ const roleLabel: Record<string, string> = {
 export async function sendWelcomeEmail({
   nombres,
   email,
+  cedula,
   password,
   role,
 }: {
   nombres: string;
   email: string;
+  cedula: string;
   password: string;
   role: string;
 }) {
@@ -91,16 +93,16 @@ export async function sendWelcomeEmail({
     from,
     to: email,
     subject: "Bienvenido a Registro Empresa — tu cuenta fue creada",
-    text: `Hola ${nombres},\n\nTu cuenta en Registro Empresa (SENA - Etapa Productiva) fue creada correctamente como ${rolLegible}.\n\nUsuario (correo): ${email}\nContraseña: ${password}\n\nIngresa en: ${loginUrl}\n\nPor seguridad, te recomendamos cambiar esta contraseña luego de tu primer ingreso.`,
+    text: `Hola ${nombres},\n\nTu cuenta en Registro Empresa (SENA - Etapa Productiva) fue creada correctamente como ${rolLegible}.\n\nUsuario (cédula): ${cedula}\nContraseña: ${password}\n\nIngresa en: ${loginUrl}\n\nPor seguridad, te recomendamos cambiar esta contraseña luego de tu primer ingreso. Si alguna vez la olvidas, puedes recuperarla desde el enlace "¿Olvidaste tu contraseña?" en la pantalla de inicio de sesión.`,
     html: `
       <p>Hola ${nombres},</p>
       <p>Tu cuenta en <strong>Registro Empresa</strong> (SENA - Etapa Productiva) fue creada correctamente como <strong>${rolLegible}</strong>.</p>
       <ul>
-        <li><strong>Usuario (correo):</strong> ${email}</li>
+        <li><strong>Usuario (cédula):</strong> ${cedula}</li>
         <li><strong>Contraseña:</strong> ${password}</li>
       </ul>
       <p><a href="${loginUrl}">Ingresar a la plataforma</a></p>
-      <p>Por seguridad, te recomendamos cambiar esta contraseña luego de tu primer ingreso.</p>
+      <p>Por seguridad, te recomendamos cambiar esta contraseña luego de tu primer ingreso. Si alguna vez la olvidas, puedes recuperarla desde el enlace "¿Olvidaste tu contraseña?" en la pantalla de inicio de sesión.</p>
     `,
   });
 
@@ -195,4 +197,44 @@ export async function sendCitacionEmail({
   }
 
   return { info, videollamadaUrl };
+}
+
+// Enlace de recuperación de contraseña (flujo "olvidé mi contraseña"). El usuario se identifica
+// con su cédula, pero el enlace se envía al correo registrado en la cuenta — es el único canal
+// que confirma que quien pide el cambio es el dueño real de la cuenta. El enlace expira pronto
+// (ver expiresAt del token) y solo sirve una vez.
+export async function sendPasswordResetEmail({
+  nombres,
+  email,
+  resetUrl,
+}: {
+  nombres: string;
+  email: string;
+  resetUrl: string;
+}) {
+  const from = process.env.EMAIL_FROM || "no-responder@registro-empresa.local";
+
+  const transporter = await getTransporter();
+
+  const info = await transporter.sendMail({
+    from,
+    to: email,
+    subject: "Recupera tu contraseña — Registro Empresa",
+    text: `Hola ${nombres},\n\nRecibimos una solicitud para restablecer tu contraseña en Registro Empresa (SENA - Etapa Productiva).\n\nCrea una nueva contraseña aquí: ${resetUrl}\n\nEste enlace es válido por 1 hora y solo se puede usar una vez. Si no solicitaste este cambio, puedes ignorar este correo — tu contraseña actual sigue siendo válida.`,
+    html: `
+      <p>Hola ${nombres},</p>
+      <p>Recibimos una solicitud para restablecer tu contraseña en <strong>Registro Empresa</strong> (SENA - Etapa Productiva).</p>
+      <p><a href="${resetUrl}">Crear una nueva contraseña</a></p>
+      <p>Este enlace es válido por 1 hora y solo se puede usar una vez.</p>
+      <p>Si no solicitaste este cambio, puedes ignorar este correo — tu contraseña actual sigue siendo válida.</p>
+    `,
+  });
+
+  if (usingTestAccount) {
+    console.log(
+      `[mailer] Cuenta de prueba (Ethereal) — vista previa del correo de recuperación: ${nodemailer.getTestMessageUrl(info)}`
+    );
+  }
+
+  return { info };
 }

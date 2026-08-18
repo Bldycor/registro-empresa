@@ -18,10 +18,10 @@ export default async function ActualizarPage() {
         nombres: true,
         apellidos: true,
         cedula: true,
-        codigoFicha: true,
         email: true,
         celular: true,
         direccionResidencia: true,
+        ficha: { select: { codigo: true } },
       },
     }),
   ]);
@@ -36,7 +36,17 @@ export default async function ActualizarPage() {
 
   return (
     <div className="flex flex-1 flex-col items-center gap-8 px-4 py-10">
-      <PersonalDataForm initialData={user} />
+      <PersonalDataForm
+        initialData={{
+          nombres: user.nombres,
+          apellidos: user.apellidos,
+          cedula: user.cedula,
+          email: user.email,
+          celular: user.celular,
+          direccionResidencia: user.direccionResidencia,
+          codigoFicha: user.ficha?.codigo ?? "Sin ficha asignada",
+        }}
+      />
       <CompanyProfileForm
         mode="update"
         defaultValues={{

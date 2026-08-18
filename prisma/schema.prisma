@@ -47,8 +47,6 @@ model User {
   cedula              String   @unique
   celular             String
   direccionResidencia String
-  // Código de ficha SENA. Solo aplica a aprendices; instructores y coordinadores se registran sin ficha.
-  codigoFicha         String?
 
   // Rol dentro del sistema, elegido por el usuario en el formulario de registro
   // (Aprendiz / Instructor / Coordinador). Por defecto APRENDIZ si no se envía.
@@ -61,11 +59,15 @@ model User {
   // (concertación a los 15 días, bitácoras cada 15 días, evaluaciones de seguimiento, cierre).
   fechaInicioEtapaProductiva DateTime?
 
-  // Instructor asignado (autorelación). Un instructor puede tener muchos aprendices asignados;
-  // un aprendiz tiene a lo sumo un instructor asignado.
-  instructorId String?
-  instructor   User?   @relation("InstructorAprendices", fields: [instructorId], references: [id])
-  aprendices   User[]  @relation("InstructorAprendices")
+  // Ficha SENA a la que pertenece (solo aprendices). La ficha debe existir de antemano — la
+  // precarga el coordinador académico — y de ahí se deriva quién puede evaluar al aprendiz
+  // (Ficha.instructorId), en vez de asignarse directo por aprendiz.
+  fichaId String?
+  ficha   Ficha?  @relation("FichaAprendices", fields: [fichaId], references: [id])
+
+  // Fichas donde este usuario (rol INSTRUCTOR) está autorizado para evaluar. Un instructor puede
+  // tener varias fichas; cada ficha tiene a lo sumo un instructor (ver modelo Ficha).
+  fichasAsignadas Ficha[] @relation("InstructorFichas")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -77,6 +79,25 @@ model User {
   evaluaciones            Evaluacion[]
   bitacoras               Bitacora[]
   certificacionEmpresario CertificacionEmpresario?
+  passwordResetTokens     PasswordResetToken[]
+}
+
+// Ficha SENA. La precarga el coordinador académico (carga masiva por código) antes de que los
+// aprendices se registren con ella. Cada ficha tiene a lo sumo un instructor autorizado para
+// evaluar a sus aprendices (instructorId); puede quedar sin asignar mientras tanto, sin que eso
+// bloquee al aprendiz para usar el resto de la aplicación.
+model Ficha {
+  id       String  @id @default(cuid())
+  codigo   String  @unique
+  programa String?
+
+  instructorId String?
+  instructor   User?   @relation("InstructorFichas", fields: [instructorId], references: [id])
+
+  aprendices User[] @relation("FichaAprendices")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model CompanyProfile {
@@ -181,4 +202,22 @@ model CertificacionEmpresario {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Token de un solo uso para el flujo de "olvidé mi contraseña". El usuario se identifica con su
+// cédula (dato de ingreso principal), pero el enlace de recuperación se envía al correo que tiene
+// registrado — es el único canal que tenemos para confirmar que quien pide el cambio es el dueño
+// de la cuenta. Expira a la hora de generado y solo puede usarse una vez (usedAt).
+model PasswordResetToken {
+  id     String @id @default(cuid())
+  token  String @unique
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

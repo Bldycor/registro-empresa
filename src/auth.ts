@@ -9,16 +9,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: {
-        email: { label: "Correo", type: "email" },
+        // Dato de ingreso principal: la cédula (es constante, a diferencia del correo que puede
+        // cambiar). El correo se sigue guardando como dato de contacto y como canal para la
+        // recuperación de contraseña.
+        cedula: { label: "Cédula", type: "text" },
         password: { label: "Contraseña", type: "password" },
       },
       authorize: async (credentials) => {
-        const email = credentials?.email as string | undefined;
+        const cedula = credentials?.cedula as string | undefined;
         const password = credentials?.password as string | undefined;
 
-        if (!email || !password) return null;
+        if (!cedula || !password) return null;
 
-        const user = await prisma.user.findUnique({ where: { email } });
+        const user = await prisma.user.findUnique({ where: { cedula } });
         if (!user) return null;
 
         const passwordMatches = await bcrypt.compare(password, user.passwordHash);

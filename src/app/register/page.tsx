@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 type Role = "APRENDIZ" | "INSTRUCTOR" | "COORDINADOR";
+
+type Ficha = { id: string; codigo: string };
 
 type FormFields = {
   nombres: string;
@@ -14,7 +16,7 @@ type FormFields = {
   celular: string;
   direccionResidencia: string;
   role: Role;
-  codigoFicha: string;
+  fichaId: string;
   password: string;
 };
 
@@ -26,7 +28,7 @@ const initialState: FormFields = {
   celular: "",
   direccionResidencia: "",
   role: "APRENDIZ",
-  codigoFicha: "",
+  fichaId: "",
   password: "",
 };
 
@@ -53,6 +55,14 @@ export default function RegisterPage() {
   const [form, setForm] = useState<FormFields>(initialState);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(false);
+  const [fichas, setFichas] = useState<Ficha[] | null>(null);
+
+  useEffect(() => {
+    fetch("/api/fichas")
+      .then((res) => res.json())
+      .then((data) => setFichas(data.fichas ?? []))
+      .catch(() => setFichas([]));
+  }, []);
 
   function update<K extends keyof FormFields>(key: K, value: FormFields[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -178,13 +188,31 @@ export default function RegisterPage() {
           </Field>
 
           {form.role === "APRENDIZ" && (
-            <Field label="Código de ficha" error={errors.codigoFicha?.[0]}>
-              <input
-                required
-                value={form.codigoFicha}
-                onChange={(e) => update("codigoFicha", e.target.value)}
-                className={inputClass}
-              />
+            <Field label="Ficha" error={errors.fichaId?.[0]}>
+              {fichas === null ? (
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">Cargando fichas...</p>
+              ) : fichas.length === 0 ? (
+                <p className="text-sm text-amber-600 dark:text-amber-500">
+                  Todavía no hay fichas cargadas. Pídele al coordinador académico que registre tu
+                  ficha antes de crear tu cuenta.
+                </p>
+              ) : (
+                <select
+                  required
+                  value={form.fichaId}
+                  onChange={(e) => update("fichaId", e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="" disabled>
+                    Selecciona tu ficha
+                  </option>
+                  {fichas.map((ficha) => (
+                    <option key={ficha.id} value={ficha.id}>
+                      {ficha.codigo}
+                    </option>
+                  ))}
+                </select>
+              )}
             </Field>
           )}
 
