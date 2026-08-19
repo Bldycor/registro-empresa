@@ -12,7 +12,10 @@ const roleLabel: Record<string, string> = {
 
 const roleNav: Record<string, { href: string; label: string }[]> = {
   INSTRUCTOR: [{ href: "/formulario/instructor/aprendices", label: "Aprendices" }],
-  COORDINADOR: [{ href: "/formulario/coordinador/fichas", label: "Fichas" }],
+  COORDINADOR: [
+    { href: "/formulario/coordinador/fichas", label: "Fichas" },
+    { href: "/formulario/coordinador/instructores", label: "Instructores" },
+  ],
 };
 
 export function PanelSidebar({ steps, role }: { steps: ProcesoStep[]; role: string }) {

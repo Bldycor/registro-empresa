@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ComunaValues, comunaLabel } from "@/lib/validations";
-
-type Ficha = { id: string; codigo: string };
+import { ComunaValues, comunaLabel, CoordinacionValues, coordinacionLabel } from "@/lib/validations";
 
 type FormFields = {
   nombres: string;
@@ -15,7 +13,7 @@ type FormFields = {
   celular: string;
   direccionResidencia: string;
   comuna: string;
-  fichaId: string;
+  coordinacion: string;
   password: string;
 };
 
@@ -27,23 +25,15 @@ const initialState: FormFields = {
   celular: "",
   direccionResidencia: "",
   comuna: "",
-  fichaId: "",
+  coordinacion: "",
   password: "",
 };
 
-export default function RegisterPage() {
+export default function RegisterCoordinadorPage() {
   const router = useRouter();
   const [form, setForm] = useState<FormFields>(initialState);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(false);
-  const [fichas, setFichas] = useState<Ficha[] | null>(null);
-
-  useEffect(() => {
-    fetch("/api/fichas")
-      .then((res) => res.json())
-      .then((data) => setFichas(data.fichas ?? []))
-      .catch(() => setFichas([]));
-  }, []);
 
   function update<K extends keyof FormFields>(key: K, value: FormFields[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -54,7 +44,7 @@ export default function RegisterPage() {
     setErrors({});
     setLoading(true);
 
-    const res = await fetch("/api/register", {
+    const res = await fetch("/api/register-coordinador", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
@@ -75,10 +65,10 @@ export default function RegisterPage() {
     <div className="flex flex-1 items-center justify-center bg-zinc-50 px-4 py-10 dark:bg-black">
       <div className="w-full max-w-xl rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <h1 className="mb-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Crear cuenta de aprendiz
+          Crear cuenta de coordinador
         </h1>
         <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
-          Completa tus datos personales para registrarte y comenzar tu Etapa Productiva.
+          Consultas informes y métricas de todas las fichas, y administras instructores.
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -159,31 +149,22 @@ export default function RegisterPage() {
             </Field>
           </div>
 
-          <Field label="Ficha" error={errors.fichaId?.[0]}>
-            {fichas === null ? (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">Cargando fichas...</p>
-            ) : fichas.length === 0 ? (
-              <p className="text-sm text-amber-600 dark:text-amber-500">
-                Todavía no hay fichas cargadas. Pídele al coordinador académico que registre tu
-                ficha antes de crear tu cuenta.
-              </p>
-            ) : (
-              <select
-                required
-                value={form.fichaId}
-                onChange={(e) => update("fichaId", e.target.value)}
-                className={inputClass}
-              >
-                <option value="" disabled>
-                  Selecciona tu ficha
+          <Field label="Coordinación" error={errors.coordinacion?.[0]}>
+            <select
+              required
+              value={form.coordinacion}
+              onChange={(e) => update("coordinacion", e.target.value)}
+              className={inputClass}
+            >
+              <option value="" disabled>
+                Selecciona la coordinación
+              </option>
+              {CoordinacionValues.map((coordinacion) => (
+                <option key={coordinacion} value={coordinacion}>
+                  {coordinacionLabel[coordinacion]}
                 </option>
-                {fichas.map((ficha) => (
-                  <option key={ficha.id} value={ficha.id}>
-                    {ficha.codigo}
-                  </option>
-                ))}
-              </select>
-            )}
+              ))}
+            </select>
           </Field>
 
           <Field label="Contraseña" error={errors.password?.[0]}>
@@ -212,11 +193,11 @@ export default function RegisterPage() {
           </Link>
         </p>
         <p className="mt-2 text-center text-xs text-zinc-400 dark:text-zinc-500">
-          ¿Eres coordinador del programa?{" "}
-          <Link href="/register-coordinador" className="underline">
+          ¿Eres aprendiz?{" "}
+          <Link href="/register" className="underline">
             Regístrate aquí
           </Link>
-          . Las cuentas de instructor las crea el coordinador desde su panel.
+          .
         </p>
       </div>
     </div>

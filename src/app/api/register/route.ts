@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { RegisterSchema } from "@/lib/validations";
+import { RegisterAprendizSchema } from "@/lib/validations";
 import { sendWelcomeEmail } from "@/lib/mailer";
 
+// Registro público de Aprendiz. Instructor y Coordinador ya no pasan por aquí: el Coordinador
+// se autoregistra en /api/register-coordinador, y el Instructor lo crea el Coordinador desde
+// su panel (/api/coordinador/instructores).
 export async function POST(request: Request) {
   const body = await request.json();
-  const parsed = RegisterSchema.safeParse(body);
+  const parsed = RegisterAprendizSchema.safeParse(body);
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -15,17 +18,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const {
-    nombres,
-    apellidos,
-    cedula,
-    email,
-    celular,
-    direccionResidencia,
-    role,
-    fichaId,
-    password,
-  } = parsed.data;
+  const { nombres, apellidos, cedula, email, celular, direccionResidencia, comuna, fichaId, password } =
+    parsed.data;
 
   const existingUser = await prisma.user.findFirst({
     where: { OR: [{ email }, { cedula }] },
@@ -49,14 +43,12 @@ export async function POST(request: Request) {
   // La ficha debe existir de antemano (la precarga el coordinador académico). Si el aprendiz
   // manda un fichaId que ya no existe (p. ej. la seleccionó y alguien la borró justo después),
   // rechazamos el registro en vez de crear una ficha nueva sin control.
-  if (role === "APRENDIZ") {
-    const ficha = await prisma.ficha.findUnique({ where: { id: fichaId } });
-    if (!ficha) {
-      return NextResponse.json(
-        { error: { fichaId: ["La ficha seleccionada ya no está disponible. Actualiza la página e inténtalo de nuevo."] } },
-        { status: 400 }
-      );
-    }
+  const ficha = await prisma.ficha.findUnique({ where: { id: fichaId } });
+  if (!ficha) {
+    return NextResponse.json(
+      { error: { fichaId: ["La ficha seleccionada ya no está disponible. Actualiza la página e inténtalo de nuevo."] } },
+      { status: 400 }
+    );
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
@@ -70,9 +62,9 @@ export async function POST(request: Request) {
         email,
         celular,
         direccionResidencia,
-        role,
-        // Solo los aprendices tienen ficha; para instructor/coordinador queda en null.
-        fichaId: role === "APRENDIZ" ? fichaId : null,
+        comuna,
+        role: "APRENDIZ",
+        fichaId,
         passwordHash,
       },
     });
@@ -88,7 +80,7 @@ export async function POST(request: Request) {
   // caído, etc.), la cuenta ya quedó creada y el usuario puede iniciar sesión igual;
   // solo dejamos el error en el log del servidor para poder revisarlo.
   try {
-    await sendWelcomeEmail({ nombres, email, cedula, password, role });
+    await sendWelcomeEmail({ nombres, email, cedula, password, role: "APRENDIZ" });
   } catch (error) {
     console.error("[api/register] No se pudo enviar el correo de bienvenida:", error);
   }

@@ -21,6 +21,61 @@ enum EstadoAprendiz {
   CERTIFICADO
 }
 
+// Las 16 comunas oficiales de Medellín, para el campo de ubicación de residencia
+// (reemplaza el antiguo campo de "barrio" en texto libre).
+enum Comuna {
+  POPULAR
+  SANTA_CRUZ
+  MANRIQUE
+  ARANJUEZ
+  CASTILLA
+  DOCE_DE_OCTUBRE
+  ROBLEDO
+  VILLA_HERMOSA
+  BUENOS_AIRES
+  LA_CANDELARIA
+  LAURELES_ESTADIO
+  LA_AMERICA
+  SAN_JAVIER
+  EL_POBLADO
+  GUAYABAL
+  BELEN
+}
+
+// Área/departamento del SENA al que pertenece un Instructor o Coordinador.
+enum Coordinacion {
+  CONTABILIDAD_FINANZAS
+  COMERCIO_VENTAS
+  GESTION_ADMINISTRATIVA_DOCUMENTAL
+}
+
+// Estado institucional de la ficha (columna "ESTADO" del control de fichas). Son dos hitos
+// distintos, no sinónimos:
+// - TERMINADA: la ficha ya venció su plazo límite para iniciar Etapa Productiva
+//   (columna "Limite para Iniciar EP" / fechaLimiteIniciarEP) sin haberla iniciado.
+// - TERMINADA_POR_FECHA: la ficha ya cumplió su fecha de fin de formación
+//   (columna "FECHA DE FIN DE FORMACIÓN" / fechaFinFormacion).
+enum EstadoFicha {
+  EN_EJECUCION
+  TERMINADA
+  TERMINADA_POR_FECHA
+}
+
+enum NivelFormacion {
+  TECNICO
+  TECNOLOGO
+  AUXILIAR
+}
+
+enum Jornada {
+  MANANA
+  TARDE
+  NOCHE
+  MIXTA
+  VIRTUAL
+  TARDE_NOCHE
+}
+
 // Convención institucional de calificación de evaluaciones (ver docs/REQUISITOS-FUNCIONALES.md, 3.4).
 enum Calificacion {
   A // Evaluación correcta (aprobada).
@@ -47,9 +102,13 @@ model User {
   cedula              String   @unique
   celular             String
   direccionResidencia String
+  // Comuna de Medellín donde reside. Nullable solo por compatibilidad con cuentas creadas antes
+  // de este campo; el formulario de registro lo exige siempre para cuentas nuevas.
+  comuna              Comuna?
 
-  // Rol dentro del sistema, elegido por el usuario en el formulario de registro
-  // (Aprendiz / Instructor / Coordinador). Por defecto APRENDIZ si no se envía.
+  // Rol dentro del sistema. Ya no se elige libremente en un único formulario: el Aprendiz se
+  // autoregistra en /register, el Coordinador se autoregistra en /register-coordinador, y el
+  // Instructor lo crea el Coordinador desde su panel (nunca se autoregistra).
   role   Role           @default(APRENDIZ)
   // Estado del aprendiz durante/después de la Etapa Productiva. El paso a CERTIFICADO es manual
   // (lo actualiza el aprendiz o el instructor), la certificación de estudio se emite fuera del sistema.
@@ -68,6 +127,9 @@ model User {
   // Fichas donde este usuario (rol INSTRUCTOR) está autorizado para evaluar. Un instructor puede
   // tener varias fichas; cada ficha tiene a lo sumo un instructor (ver modelo Ficha).
   fichasAsignadas Ficha[] @relation("InstructorFichas")
+
+  // Área/departamento del SENA. Solo aplica a Instructor y Coordinador (null en Aprendiz).
+  coordinacion Coordinacion?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -90,6 +152,26 @@ model Ficha {
   id       String  @id @default(cuid())
   codigo   String  @unique
   programa String?
+
+  // Datos de gestión institucional de la ficha, migrados desde la hoja de cálculo de control
+  // que usaban los instructores (ver docs/PLAN-IMPLEMENTACION.md). Todos nullable porque una
+  // ficha puede precargarse solo con su código antes de tener el resto de la información.
+  estado         EstadoFicha?
+  nivelFormacion NivelFormacion?
+  jornada        Jornada?
+
+  // Fecha de inicio de la ficha (apertura académica).
+  fechaInicioFicha DateTime?
+  // Fecha institucional de inicio de la Etapa Productiva para TODOS los aprendices de esta
+  // ficha (a diferencia de `User.fechaInicioEtapaProductiva`, que hoy no la diligencia nadie —
+  // ver Fase 2 en el plan de implementación; esta fecha viene precargada por ficha desde el
+  // control institucional, no la ingresa cada aprendiz).
+  fechaInicioProductiva DateTime?
+  fechaFinFormacion     DateTime?
+  // Fecha límite para que los aprendices de esta ficha inicien su Etapa Productiva. En la hoja
+  // de control se calcula como (vigencia del acuerdo 007 o 009, el que aplique) - 180 días; acá
+  // se importa el valor ya calculado, sin modelar las columnas de vigencia de acuerdo.
+  fechaLimiteIniciarEP DateTime?
 
   instructorId String?
   instructor   User?   @relation("InstructorFichas", fields: [instructorId], references: [id])
