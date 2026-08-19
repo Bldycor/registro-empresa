@@ -1,7 +1,7 @@
 # Plan de Implementación
 ## registro-empresa — de lo construido al alcance validado
 
-**Fecha:** 17 de agosto de 2026 (última actualización: 18 de agosto de 2026)
+**Fecha:** 17 de agosto de 2026 (última actualización: 18 de agosto de 2026, tarde)
 **Referencia funcional:** `docs/REQUISITOS-FUNCIONALES.md` (validado, sin puntos pendientes)
 
 Este documento traduce el documento de requisitos ya validado en pasos de código concretos, comparando contra lo que ya existe en el repositorio. Está pensado para trabajarse con Claude Code **una fase a la vez**.
@@ -28,7 +28,27 @@ Este documento traduce el documento de requisitos ya validado en pasos de códig
   - Variable `APP_URL=https://ep.mkdirection.com` configurada en Vercel (Production) y confirmada tras redeploy.
   - Commit `0963bb7` ("Agregar roles/fichas (aprendiz-instructor), login por cedula y recuperacion de contrasena") empujado a `main` en GitHub; Vercel disparó el deployment de producción con el código actualizado.
   - Autoevaluación de código (17-18 ago): revisión línea por línea de `auth.ts`, `auth-guards.ts`, las rutas de `forgot-password`/`reset-password`, `register`, `fichas` (pública y de coordinador/instructor), `validations.ts`, `mailer.ts` y `schema.prisma` — todo consistente entre sí (schema ↔ selects de Prisma ↔ tipos de TypeScript ↔ validaciones Zod), sin referencias colgantes al viejo campo `codigoFicha` ni al viejo campo directo `User.instructorId` de Fase 0 (reemplazado correctamente por `Ficha.instructorId`). Sin hallazgos nuevos.
-- Fases 2-6: pendientes. **Próxima fase sugerida: Fase 2 — Bitácoras** (ver detalle abajo).
+- **Separación de registro por rol: COMPLETA en la base local y en Neon (producción).** El formulario público único (aprendiz/instructor/coordinador con un selector) se dividió en tres flujos independientes, porque instructor y coordinador ya no son autoregistro libre:
+  - `/register` — solo Aprendiz. Ya no tiene selector de rol.
+  - `/register-coordinador` — autoregistro de Coordinador (nueva página/endpoint), pensado para dar de alta las primeras cuentas de coordinación.
+  - Instructor — **ya no se autoregistra**. Lo crea el Coordinador desde `/formulario/coordinador/instructores` (`POST /api/coordinador/instructores`): genera una contraseña temporal, la envía por correo (mismo mecanismo que `sendWelcomeEmail`) y la muestra una vez en pantalla como respaldo. Ese mismo panel permite **editar** los datos de un instructor ya creado (`PATCH /api/coordinador/instructores/[id]`).
+  - Dos campos nuevos en `User`: `comuna` (enum `Comuna`, las 16 comunas oficiales de Medellín — reemplaza el viejo campo de "barrio" en texto libre) y `coordinacion` (enum `Coordinacion`: Contabilidad y Finanzas / Comercio y Ventas / Gestión Administrativa y Documental — aplica a Instructor y Coordinador). Migración `20260818140000_comuna_coordinacion`.
+  - Verificado en vivo de punta a punta: creación de coordinador, coordinador crea instructor (contraseña temporal funcional), instructor edita sus propios datos, aprendiz se registra con comuna — los tres logins funcionan.
+- **Gestión completa de fichas (estado, nivel, jornada y fechas institucionales): COMPLETA en la base local y en Neon (producción).** El modelo `Ficha` (hasta ahora solo `codigo`/`programa`/`instructorId`) se amplió con los datos que los instructores llevaban en una hoja de cálculo de control aparte (que este trabajo reemplaza):
+  - Campos nuevos: `estado` (enum `EstadoFicha`: `EN_EJECUCION` / `TERMINADA` / `TERMINADA_POR_FECHA` — son dos hitos distintos, no sinónimos: `TERMINADA` = venció el plazo límite para iniciar EP sin haberla iniciado; `TERMINADA_POR_FECHA` = ya se cumplió la fecha de fin de formación), `nivelFormacion` (Técnico/Tecnólogo/Auxiliar), `jornada`, `fechaInicioFicha` y `fechaFinFormacion` (estas dos se diligencian a mano). Migración `20260818150000_gestion_fichas`.
+  - **`fechaInicioProductiva` y `fechaLimiteIniciarEP` NO se editan a mano — se calculan siempre en el servidor** (`src/lib/ficha-fechas.ts`) con la fórmula oficial confirmada por el coordinador: Inicio Productiva = Fecha Inicio Ficha + 181 días calendario (Técnico) o + 631 días (Tecnólogo); Límite para Iniciar EP = Fecha Fin de Formación + 361 días calendario (ambos niveles). No hay fórmula definida para Auxiliar — queda `null`. El cálculo se dispara solo al crear/editar (import y `PATCH /api/coordinador/fichas/[id]`), nunca se toma literal de una fuente externa.
+  - **Importante:** esta fecha institucional vive **a nivel de ficha** (todos los aprendices de una ficha comparten la misma fecha de inicio de Etapa Productiva), a diferencia de `User.fechaInicioEtapaProductiva` (Fase 0, por aprendiz), que sigue sin usarse — ver punto 3 de "Qué falta" más abajo, actualizado con este hallazgo.
+  - **Importación masiva desde hoja de cálculo** (`POST /api/coordinador/fichas/import`, bloque "Importar desde hoja de cálculo" en el panel): pegar directo un rango copiado de la hoja (con o sin fila de encabezado — si hay encabezado, mapea columnas por nombre; ignora a propósito las columnas de vigencia de acuerdo 007/009). **Solo crea fichas nuevas — nunca sobrescribe una que ya exista**; los códigos que ya estaban se listan aparte ("ya existían") para que el coordinador los revise a mano. Reporta errores fila por fila (estado/nivel/jornada no reconocido, fecha mal formada) sin bloquear el resto del lote.
+  - **Migración real de datos históricos:** se importaron 20 fichas reales de la hoja de control (seleccionadas por tener "Límite para Iniciar EP" en 2026 y código sin duplicar en la hoja) y luego se recalcularon con la fórmula oficial (los valores cambian respecto al histórico de la hoja, confirmado como comportamiento esperado).
+  - **Panel de fichas — selección y acciones masivas:** checkbox por ficha + "seleccionar todas las visibles", filtro por código y por "sin instructor asignado", y una barra de acción para asignar un instructor a varias fichas seleccionadas de una vez (`POST /api/coordinador/fichas/asignar-instructor`), en vez de una por una.
+  - **Eliminar ficha** (con confirmación inline obligatoria, no se puede deshacer): borra la ficha y sus datos de gestión. Los aprendices que la tenían asignada **no se borran** — solo quedan sin ficha (`fichaId` a `null`); cuentas, login, evaluaciones y bitácoras se conservan intactas. Decisión de diseño confirmada explícitamente por el coordinador antes de implementarla.
+  - Verificado en vivo de punta a punta (incluyendo casos negativos): importación con filas inválidas y con códigos duplicados, edición de fecha recalculando Inicio Productiva al instante, asignación masiva a 2 fichas seleccionadas, borrado de una ficha con aprendiz confirmando que su cuenta sigue con login funcional después.
+  - Bug encontrado y corregido en el camino: las fechas de ficha se mostraban un día antes en el resumen de solo lectura (conversión a zona horaria local del navegador sobre una fecha guardada a medianoche UTC); y la cédula quedaba vacía en la tarjeta de un instructor recién creado (faltaba en el `select` de la respuesta del POST).
+- **Cierre de este ciclo de trabajo (registro por rol + gestión de instructores + gestión de fichas): COMPLETO end-to-end.**
+  - `npm run lint`: 0 errores (mismo warning preexistente de siempre en `concertacion-form.tsx`).
+  - `npm run build`: compiló limpio, TypeScript en verde, 30 rutas generadas.
+  - Commit `7a204de` ("Separar registro por rol, gestion de instructores y gestion completa de fichas") empujado a `main` en GitHub; Vercel disparó el deployment de producción con el código actualizado.
+- Fases 2-6: pendientes. **Próxima fase sugerida: Fase 2 — Bitácoras** (ver detalle abajo, ya tiene un adelanto: la fecha institucional de inicio de Etapa Productiva por ficha).
 
 ---
 
@@ -50,7 +70,7 @@ Esto cubre, en el lenguaje del documento de requisitos: inscripción (3.1, parci
 
 1. ~~**Roles de usuario** — hoy `User` no distingue aprendiz/instructor/coordinador. No hay instructor asignado a un aprendiz.~~ **Resuelto en Fase 1** (ver arriba: modelo `Ficha`, asignación instructor↔ficha, autorización por rol).
 2. **Estado del aprendiz** (`Activo` / `Certificado`) — el campo (`User.estado`, enum `EstadoAprendiz`) ya existe desde Fase 0 y por defecto queda en `ACTIVO`, pero todavía no hay ningún endpoint/UI para pasarlo a `CERTIFICADO` (eso depende de que todas las evidencias queden en `A`, ver Fase 4).
-3. **Fecha de inicio de Etapa Productiva** — el campo (`User.fechaInicioEtapaProductiva`) ya existe desde Fase 0, pero nada lo diligencia todavía ni lo usa para calcular plazos. Actualmente solo existe la fecha de la reunión de concertación. Se debe definir quién la registra (¿coordinador al precargar? ¿automática al confirmar la concertación?) y usarla en Fase 2 para las 12 fechas límite de bitácoras.
+3. **Fecha de inicio de Etapa Productiva** — **parcialmente resuelto.** `Ficha.fechaInicioProductiva` ya existe y se calcula automáticamente (Técnico +181d / Tecnólogo +631d desde `fechaInicioFicha`, ver "Estado de avance") — es una fecha **institucional, a nivel de ficha**, no por aprendiz. El campo `User.fechaInicioEtapaProductiva` (Fase 0, por aprendiz) sigue sin usarse y probablemente ya no haga falta: Fase 2 debe decidir si las 12 fechas límite de bitácoras se calculan desde `Ficha.fechaInicioProductiva` (compartida por todos los aprendices de la ficha, más simple y consistente con cómo ya lo maneja el coordinador) o si se necesita una fecha individual por aprendiz para casos excepcionales.
 4. **Bitácoras** (cada 15 días, ~12 en total, formato `GFPI-F-147`) — no existe el modelo.
 5. **Evaluación 2 y 3** (seguimiento, a los ~2 meses y al cierre) — solo existe la Evaluación 1 (Concertación). Falta generalizar el patrón de `ConcertacionFuncion` a las 3 evaluaciones con formato `GFPI-F-023_V06` y convención de calificación **A/D/P**.
 6. **Reunión de cierre** (10-15 días antes de terminar) y **reunión extra a solicitud** — hoy solo hay una reunión (la de concertación); falta generalizar "Reunión" como concepto reutilizable con cancelación/reprogramación notificada a las partes.
@@ -80,7 +100,8 @@ Extender `prisma/schema.prisma`:
 - Detalle del diseño final y verificación en vivo: ver "Estado de avance" arriba.
 
 ### Fase 2 — Bitácoras
-- CRUD de bitácoras: cálculo automático de las ~12 fechas límite desde `fechaInicioEtapaProductiva`.
+- Ya construido de adelanto: `Ficha.fechaInicioProductiva` (institucional, calculada automáticamente — ver "Estado de avance" y punto 3 de "Qué falta"). Definir si las bitácoras se calculan desde ahí o si aún hace falta algo por aprendiz.
+- CRUD de bitácoras: cálculo automático de las ~12 fechas límite (cada 15 días) desde `fechaInicioProductiva`.
 - Subida de archivo (plantilla `GFPI-F-147` descargable + opción de firma en la app).
 - Estados y alertas de incumplimiento (correo a aprendiz + coformador).
 
