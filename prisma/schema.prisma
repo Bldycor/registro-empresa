@@ -10,15 +10,31 @@ datasource db {
   provider = "postgresql"
 }
 
+// ADMIN tiene control total de la aplicación (incluye todo lo que ve/hace un Coordinador) y es
+// el único rol que puede crear cuentas de Coordinador — un Coordinador ya NO se autoregistra
+// públicamente (riesgo de seguridad: cualquiera, incluido un aprendiz, podía crear una cuenta de
+// coordinador). No hay autoregistro público de ADMIN tampoco; el primer administrador se
+// promueve directamente en la base de datos.
 enum Role {
   APRENDIZ
   INSTRUCTOR
   COORDINADOR
+  ADMIN
 }
 
 enum EstadoAprendiz {
   ACTIVO
   CERTIFICADO
+}
+
+// Modalidad ("alternativa") bajo la cual el aprendiz cursa su Etapa Productiva. Se elige al
+// registrarse y se puede corregir después desde el panel del coordinador/admin.
+enum AlternativaEtapaProductiva {
+  CONTRATO_APRENDIZAJE
+  CONTRATO_VINCULO_FORMATIVO
+  MONITORIA
+  PROYECTO_PRODUCTIVO
+  VINCULO_LABORAL
 }
 
 // Las 16 comunas oficiales de Medellín, para el campo de ubicación de residencia
@@ -106,9 +122,10 @@ model User {
   // de este campo; el formulario de registro lo exige siempre para cuentas nuevas.
   comuna              Comuna?
 
-  // Rol dentro del sistema. Ya no se elige libremente en un único formulario: el Aprendiz se
-  // autoregistra en /register, el Coordinador se autoregistra en /register-coordinador, y el
-  // Instructor lo crea el Coordinador desde su panel (nunca se autoregistra).
+  // Rol dentro del sistema. Jerarquía de creación de cuentas (nadie se autoregistra excepto el
+  // Aprendiz): ADMIN crea Coordinador (/formulario/admin/coordinadores) → Coordinador crea
+  // Instructor (/formulario/coordinador/instructores). El Aprendiz es el único autoregistro
+  // público (/register). No hay autoregistro público de Coordinador ni de ADMIN.
   role   Role           @default(APRENDIZ)
   // Estado del aprendiz durante/después de la Etapa Productiva. El paso a CERTIFICADO es manual
   // (lo actualiza el aprendiz o el instructor), la certificación de estudio se emite fuera del sistema.
@@ -117,6 +134,11 @@ model User {
   // Fecha de inicio de la Etapa Productiva: dispara el cálculo de todos los plazos posteriores
   // (concertación a los 15 días, bitácoras cada 15 días, evaluaciones de seguimiento, cierre).
   fechaInicioEtapaProductiva DateTime?
+
+  // Modalidad ("alternativa") de Etapa Productiva elegida por el aprendiz al registrarse.
+  // Nullable solo por compatibilidad con cuentas creadas antes de este campo; el formulario de
+  // registro lo exige siempre para cuentas nuevas.
+  alternativaEtapaProductiva AlternativaEtapaProductiva?
 
   // Ficha SENA a la que pertenece (solo aprendices). La ficha debe existir de antemano — la
   // precarga el coordinador académico — y de ahí se deriva quién puede evaluar al aprendiz
@@ -130,6 +152,13 @@ model User {
 
   // Área/departamento del SENA. Solo aplica a Instructor y Coordinador (null en Aprendiz).
   coordinacion Coordinacion?
+
+  // Trazabilidad: quién creó esta cuenta (el ADMIN que creó un Coordinador, o el Coordinador que
+  // creó un Instructor). Null para el Aprendiz (autoregistro) y para cuentas anteriores a este
+  // campo. Si se borra la cuenta creadora, esto queda en null (no se pierde la cuenta creada).
+  creadoPorId    String?
+  creadoPor      User?   @relation("CuentasCreadas", fields: [creadoPorId], references: [id], onDelete: SetNull)
+  cuentasCreadas User[]  @relation("CuentasCreadas")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

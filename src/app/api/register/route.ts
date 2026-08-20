@@ -18,8 +18,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const { nombres, apellidos, cedula, email, celular, direccionResidencia, comuna, fichaId, password } =
-    parsed.data;
+  const {
+    nombres,
+    apellidos,
+    cedula,
+    email,
+    celular,
+    direccionResidencia,
+    comuna,
+    fichaId,
+    alternativaEtapaProductiva,
+    password,
+  } = parsed.data;
 
   const existingUser = await prisma.user.findFirst({
     where: { OR: [{ email }, { cedula }] },
@@ -65,6 +75,7 @@ export async function POST(request: Request) {
         comuna,
         role: "APRENDIZ",
         fichaId,
+        alternativaEtapaProductiva,
         passwordHash,
       },
     });

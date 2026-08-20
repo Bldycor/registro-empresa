@@ -7,7 +7,7 @@ import { CreateInstructorSchema } from "@/lib/validations";
 // el instructor no tiene un formulario propio de datos personales todavía). No toca la
 // contraseña — eso sigue siendo autoservicio del instructor vía "¿Olvidaste tu contraseña?".
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { user, response } = await requireApiUser(["COORDINADOR"]);
+  const { user, response } = await requireApiUser(["COORDINADOR", "ADMIN"]);
   if (!user) return response;
 
   const { id } = await params;
@@ -62,8 +62,32 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       direccionResidencia: true,
       comuna: true,
       coordinacion: true,
+      creadoPorId: true,
+      creadoPor: { select: { id: true, nombres: true, apellidos: true } },
     },
   });
 
   return NextResponse.json({ instructor });
+}
+
+// Elimina la cuenta del instructor (login, datos personales). Las fichas que tenía asignadas NO
+// se borran — solo quedan sin instructor (instructorId a null), igual que al eliminar una ficha
+// se desvinculan sus aprendices sin borrar sus cuentas (ver docs/PLAN-IMPLEMENTACION.md).
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { user, response } = await requireApiUser(["COORDINADOR", "ADMIN"]);
+  if (!user) return response;
+
+  const { id } = await params;
+
+  const existing = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true } });
+  if (!existing || existing.role !== "INSTRUCTOR") {
+    return NextResponse.json({ error: "El instructor no existe." }, { status: 404 });
+  }
+
+  const [{ count: fichasDesvinculadas }] = await prisma.$transaction([
+    prisma.ficha.updateMany({ where: { instructorId: id }, data: { instructorId: null } }),
+    prisma.user.delete({ where: { id } }),
+  ]);
+
+  return NextResponse.json({ success: true, fichasDesvinculadas });
 }

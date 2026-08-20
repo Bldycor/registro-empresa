@@ -103,6 +103,53 @@ export const FichaGestionSchema = z.object({
 
 export type FichaGestionInput = z.infer<typeof FichaGestionSchema>;
 
+// Modalidad ("alternativa") de Etapa Productiva bajo la que el aprendiz la cursa (enum
+// `AlternativaEtapaProductiva`). Se elige al registrarse; el coordinador/admin puede corregirla.
+export const AlternativaEtapaProductivaValues = [
+  "CONTRATO_APRENDIZAJE",
+  "CONTRATO_VINCULO_FORMATIVO",
+  "MONITORIA",
+  "PROYECTO_PRODUCTIVO",
+  "VINCULO_LABORAL",
+] as const;
+export type AlternativaEtapaProductivaValue = (typeof AlternativaEtapaProductivaValues)[number];
+
+export const alternativaEtapaProductivaLabel: Record<AlternativaEtapaProductivaValue, string> = {
+  CONTRATO_APRENDIZAJE: "Contrato de aprendizaje",
+  CONTRATO_VINCULO_FORMATIVO: "Contrato vínculo formativo",
+  MONITORIA: "Monitoría",
+  PROYECTO_PRODUCTIVO: "Proyecto productivo",
+  VINCULO_LABORAL: "Vínculo laboral",
+};
+
+// Estado del aprendiz durante/después de la Etapa Productiva (enum `EstadoAprendiz`). El paso a
+// CERTIFICADO es manual — la certificación de estudio se emite fuera del sistema.
+export const EstadoAprendizValues = ["ACTIVO", "CERTIFICADO"] as const;
+export type EstadoAprendizValue = (typeof EstadoAprendizValues)[number];
+
+export const estadoAprendizLabel: Record<EstadoAprendizValue, string> = {
+  ACTIVO: "Activo",
+  CERTIFICADO: "Certificado",
+};
+
+// Edición de los datos de un aprendiz por el Coordinador (o el ADMIN): datos personales, estado
+// y asignación de ficha — incluye poder desasignarlo (fichaId a null) para un aprendiz que quede
+// sin ficha, o reasignarlo a otra. Todo opcional: se envía solo lo que cambia.
+export const AprendizGestionSchema = z.object({
+  nombres: z.string().trim().min(2, "Ingresa los nombres.").optional(),
+  apellidos: z.string().trim().min(2, "Ingresa los apellidos.").optional(),
+  cedula: z.string().trim().min(5, "Ingresa un número de cédula válido.").optional(),
+  email: z.string().trim().email("Ingresa un correo válido.").optional(),
+  celular: z.string().trim().min(7, "Ingresa un número de celular válido.").optional(),
+  direccionResidencia: z.string().trim().min(5, "Ingresa la dirección de residencia.").optional(),
+  comuna: z.enum(ComunaValues).nullable().optional(),
+  estado: z.enum(EstadoAprendizValues).optional(),
+  alternativaEtapaProductiva: z.enum(AlternativaEtapaProductivaValues).nullable().optional(),
+  fichaId: z.string().trim().nullable().optional(),
+});
+
+export type AprendizGestionInput = z.infer<typeof AprendizGestionSchema>;
+
 // Datos personales compartidos por los tres formularios de registro/creación de cuenta
 // (Aprendiz en /register, Coordinador en /register-coordinador, Instructor creado por el
 // Coordinador desde su panel). Cada flujo extiende esta base con lo que le aplica.
@@ -121,21 +168,16 @@ const datosPersonalesBase = {
 export const RegisterAprendizSchema = z.object({
   ...datosPersonalesBase,
   fichaId: z.string().trim().min(1, "Selecciona tu ficha."),
+  alternativaEtapaProductiva: z.enum(AlternativaEtapaProductivaValues, {
+    message: "Selecciona la alternativa de Etapa Productiva.",
+  }),
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
 });
 
 export type RegisterAprendizInput = z.infer<typeof RegisterAprendizSchema>;
 
-// Registro público de Coordinador (/register-coordinador), separado del de Aprendiz.
-export const RegisterCoordinadorSchema = z.object({
-  ...datosPersonalesBase,
-  coordinacion: z.enum(CoordinacionValues, { message: "Selecciona la coordinación." }),
-  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
-});
-
-export type RegisterCoordinadorInput = z.infer<typeof RegisterCoordinadorSchema>;
-
-// Creación de Instructor por parte del Coordinador (panel autenticado). Sin autoregistro ni
+// Creación de Instructor por parte del Coordinador, o de Coordinador por parte del ADMIN (mismo
+// formulario/API en ambos casos, ver src/lib/temp-password.ts). Sin autoregistro público ni
 // contraseña elegida por el usuario: se genera una contraseña temporal y se envía por correo.
 export const CreateInstructorSchema = z.object({
   ...datosPersonalesBase,
@@ -143,6 +185,13 @@ export const CreateInstructorSchema = z.object({
 });
 
 export type CreateInstructorInput = z.infer<typeof CreateInstructorSchema>;
+
+// Coordinador lo crea el ADMIN — nunca autoregistro público (era una falla de seguridad:
+// cualquiera, incluido un aprendiz, podía crear una cuenta de coordinador). Misma forma que
+// CreateInstructorSchema; se mantiene como alias con nombre propio para que la ruta de admin
+// sea legible por sí sola.
+export const CreateCoordinadorSchema = CreateInstructorSchema;
+export type CreateCoordinadorInput = CreateInstructorInput;
 
 export const ProfileSchema = z.object({
   empresaPatrocinadora: z.string().trim().min(2, "Ingresa el nombre de la empresa patrocinadora."),

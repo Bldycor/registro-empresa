@@ -5,7 +5,7 @@ import { requireApiUser } from "@/lib/auth-guards";
 // Asigna (o quita) el mismo instructor a varias fichas de una sola vez, para cuando el
 // coordinador selecciona un lote en el panel en vez de asignar ficha por ficha.
 export async function POST(request: Request) {
-  const { user, response } = await requireApiUser(["COORDINADOR"]);
+  const { user, response } = await requireApiUser(["COORDINADOR", "ADMIN"]);
   if (!user) return response;
 
   const body = await request.json().catch(() => null);

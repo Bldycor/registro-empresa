@@ -5,7 +5,7 @@ import { CoordinadorFichasPanel } from "@/components/coordinador-fichas-panel";
 export const dynamic = "force-dynamic";
 
 export default async function CoordinadorFichasPage() {
-  await requireUser(["COORDINADOR"]);
+  await requireUser(["COORDINADOR", "ADMIN"]);
 
   const [fichas, instructores] = await Promise.all([
     prisma.ficha.findMany({

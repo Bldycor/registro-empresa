@@ -8,6 +8,7 @@ import type { ProcesoStep } from "@/lib/etapa-productiva-steps";
 const roleLabel: Record<string, string> = {
   INSTRUCTOR: "Instructor",
   COORDINADOR: "Coordinador",
+  ADMIN: "Administrador",
 };
 
 const roleNav: Record<string, { href: string; label: string }[]> = {
@@ -15,6 +16,14 @@ const roleNav: Record<string, { href: string; label: string }[]> = {
   COORDINADOR: [
     { href: "/formulario/coordinador/fichas", label: "Fichas" },
     { href: "/formulario/coordinador/instructores", label: "Instructores" },
+    { href: "/formulario/coordinador/aprendices", label: "Aprendices" },
+  ],
+  // ADMIN tiene control total: todo lo del Coordinador, más la gestión de coordinadores.
+  ADMIN: [
+    { href: "/formulario/admin/coordinadores", label: "Coordinadores" },
+    { href: "/formulario/coordinador/fichas", label: "Fichas" },
+    { href: "/formulario/coordinador/instructores", label: "Instructores" },
+    { href: "/formulario/coordinador/aprendices", label: "Aprendices" },
   ],
 };
 

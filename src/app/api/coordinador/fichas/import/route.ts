@@ -8,7 +8,7 @@ import { parseFichaImportText } from "@/lib/ficha-import";
 // Solo CREA fichas nuevas: si un código ya existe en el sistema, no se toca (para no pisar datos
 // que el coordinador ya haya editado a mano) y se reporta aparte como "ya existía".
 export async function POST(request: Request) {
-  const { user, response } = await requireApiUser(["COORDINADOR"]);
+  const { user, response } = await requireApiUser(["COORDINADOR", "ADMIN"]);
   if (!user) return response;
 
   const body = await request.json().catch(() => null);

@@ -1,15 +1,15 @@
-import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { CreateInstructorSchema } from "@/lib/validations";
 import { sendWelcomeEmail } from "@/lib/mailer";
+import { generarPasswordTemporal } from "@/lib/temp-password";
 
 // Lista de instructores para el selector de asignación de fichas y para el panel de gestión
-// de instructores del coordinador.
+// de instructores del coordinador. ADMIN también tiene acceso (control total).
 export async function GET() {
-  const { user, response } = await requireApiUser(["COORDINADOR"]);
+  const { user, response } = await requireApiUser(["COORDINADOR", "ADMIN"]);
   if (!user) return response;
 
   const instructores = await prisma.user.findMany({
@@ -24,6 +24,9 @@ export async function GET() {
       direccionResidencia: true,
       comuna: true,
       coordinacion: true,
+      fichasAsignadas: { select: { id: true, codigo: true } },
+      creadoPorId: true,
+      creadoPor: { select: { id: true, nombres: true, apellidos: true } },
     },
     orderBy: [{ nombres: "asc" }, { apellidos: "asc" }],
   });
@@ -31,18 +34,13 @@ export async function GET() {
   return NextResponse.json({ instructores });
 }
 
-function generarPasswordTemporal() {
-  // Legible (sin caracteres ambiguos) y suficientemente larga para pasar la validación de
-  // contraseña (mínimo 8) sin quedar críptica al copiarla/transcribirla a mano.
-  return randomBytes(9).toString("base64url");
-}
-
-// El Instructor no se autoregistra: sus datos los ingresa el Coordinador al cual pertenece.
-// Se crea con una contraseña temporal autogenerada, enviada por correo (mismo mecanismo que el
-// correo de bienvenida del autoregistro) y devuelta una sola vez en la respuesta, por si el
-// coordinador necesita comunicarla directamente.
+// El Instructor no se autoregistra: sus datos los ingresa el Coordinador al cual pertenece (o el
+// ADMIN, que tiene control total). Se crea con una contraseña temporal autogenerada, enviada por
+// correo (mismo mecanismo que el correo de bienvenida del autoregistro) y devuelta una sola vez
+// en la respuesta, por si quien lo crea necesita comunicarla directamente. Queda registrado quién
+// lo creó (creadoPorId) para trazabilidad.
 export async function POST(request: Request) {
-  const { user, response } = await requireApiUser(["COORDINADOR"]);
+  const { user, response } = await requireApiUser(["COORDINADOR", "ADMIN"]);
   if (!user) return response;
 
   const body = await request.json();
@@ -77,7 +75,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const password = generarPasswordTemporal();
+  const password = generarPasswordTemporal(cedula);
   const passwordHash = await bcrypt.hash(password, 10);
 
   let instructor;
@@ -94,6 +92,7 @@ export async function POST(request: Request) {
         coordinacion,
         role: "INSTRUCTOR",
         passwordHash,
+        creadoPorId: user.id,
       },
       select: {
         id: true,
@@ -105,6 +104,8 @@ export async function POST(request: Request) {
         direccionResidencia: true,
         comuna: true,
         coordinacion: true,
+        creadoPorId: true,
+        creadoPor: { select: { id: true, nombres: true, apellidos: true } },
       },
     });
   } catch (error) {

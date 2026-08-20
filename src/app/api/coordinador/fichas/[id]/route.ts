@@ -36,7 +36,7 @@ function leerFecha(valor: string | null | undefined): ResultadoFecha | null {
 // evaluarla. Cada ficha tiene a lo sumo un instructor; un instructor puede tener varias fichas
 // (ver docs/PLAN-IMPLEMENTACION.md, Fase 1).
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { user, response } = await requireApiUser(["COORDINADOR"]);
+  const { user, response } = await requireApiUser(["COORDINADOR", "ADMIN"]);
   if (!user) return response;
 
   const { id } = await params;
@@ -129,7 +129,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 // (ver docs/PLAN-IMPLEMENTACION.md): borrar cuentas de aprendices es un riesgo que no se asume
 // implícitamente al borrar una ficha.
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { user, response } = await requireApiUser(["COORDINADOR"]);
+  const { user, response } = await requireApiUser(["COORDINADOR", "ADMIN"]);
   if (!user) return response;
 
   const { id } = await params;

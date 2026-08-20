@@ -6,7 +6,7 @@ import { requireApiUser } from "@/lib/auth-guards";
 // de aprendices) y carga masiva por texto. El coordinador precarga las fichas activas antes de
 // que los aprendices se registren (ver src/app/api/fichas/route.ts, el selector público).
 export async function GET() {
-  const { user, response } = await requireApiUser(["COORDINADOR"]);
+  const { user, response } = await requireApiUser(["COORDINADOR", "ADMIN"]);
   if (!user) return response;
 
   const fichas = await prisma.ficha.findMany({
@@ -36,7 +36,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const { user, response } = await requireApiUser(["COORDINADOR"]);
+  const { user, response } = await requireApiUser(["COORDINADOR", "ADMIN"]);
   if (!user) return response;
 
   const body = await request.json().catch(() => null);

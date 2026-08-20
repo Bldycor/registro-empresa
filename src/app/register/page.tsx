@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ComunaValues, comunaLabel } from "@/lib/validations";
+import {
+  ComunaValues,
+  comunaLabel,
+  AlternativaEtapaProductivaValues,
+  alternativaEtapaProductivaLabel,
+} from "@/lib/validations";
 
 type Ficha = { id: string; codigo: string };
 
@@ -16,6 +21,7 @@ type FormFields = {
   direccionResidencia: string;
   comuna: string;
   fichaId: string;
+  alternativaEtapaProductiva: string;
   password: string;
 };
 
@@ -28,6 +34,7 @@ const initialState: FormFields = {
   direccionResidencia: "",
   comuna: "",
   fichaId: "",
+  alternativaEtapaProductiva: "",
   password: "",
 };
 
@@ -186,6 +193,27 @@ export default function RegisterPage() {
             )}
           </Field>
 
+          <Field
+            label="Alternativa de Etapa Productiva"
+            error={errors.alternativaEtapaProductiva?.[0]}
+          >
+            <select
+              required
+              value={form.alternativaEtapaProductiva}
+              onChange={(e) => update("alternativaEtapaProductiva", e.target.value)}
+              className={inputClass}
+            >
+              <option value="" disabled>
+                Selecciona la alternativa
+              </option>
+              {AlternativaEtapaProductivaValues.map((alternativa) => (
+                <option key={alternativa} value={alternativa}>
+                  {alternativaEtapaProductivaLabel[alternativa]}
+                </option>
+              ))}
+            </select>
+          </Field>
+
           <Field label="Contraseña" error={errors.password?.[0]}>
             <input
               type="password"
@@ -210,13 +238,6 @@ export default function RegisterPage() {
           <Link href="/login" className="font-medium text-zinc-900 underline dark:text-zinc-50">
             Inicia sesión
           </Link>
-        </p>
-        <p className="mt-2 text-center text-xs text-zinc-400 dark:text-zinc-500">
-          ¿Eres coordinador del programa?{" "}
-          <Link href="/register-coordinador" className="underline">
-            Regístrate aquí
-          </Link>
-          . Las cuentas de instructor las crea el coordinador desde su panel.
         </p>
       </div>
     </div>
