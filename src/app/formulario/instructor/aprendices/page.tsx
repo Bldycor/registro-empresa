@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-guards";
+import { InstructorAprendizCreatePanel } from "@/components/instructor-aprendiz-create-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -8,31 +9,40 @@ export default async function InstructorAprendicesPage() {
 
   // El instructor puede consultar (solo lectura) a cualquier aprendiz, de cualquier ficha, pero
   // solo puede evaluarlo si la ficha del aprendiz lo tiene a él como instructor autorizado.
-  const aprendices = await prisma.user.findMany({
-    where: { role: "APRENDIZ" },
-    select: {
-      id: true,
-      nombres: true,
-      apellidos: true,
-      email: true,
-      estado: true,
-      ficha: { select: { id: true, codigo: true, instructorId: true } },
-    },
-    orderBy: [{ nombres: "asc" }, { apellidos: "asc" }],
-  });
+  const [aprendices, fichasAsignadas] = await Promise.all([
+    prisma.user.findMany({
+      where: { role: "APRENDIZ" },
+      select: {
+        id: true,
+        nombres: true,
+        apellidos: true,
+        email: true,
+        estado: true,
+        ficha: { select: { id: true, codigo: true, instructorId: true } },
+      },
+      orderBy: [{ nombres: "asc" }, { apellidos: "asc" }],
+    }),
+    prisma.ficha.findMany({
+      where: { instructorId: user.id },
+      select: { id: true, codigo: true },
+      orderBy: { codigo: "asc" },
+    }),
+  ]);
 
   return (
     <div className="flex flex-1 justify-center px-4 py-10">
-      <div className="w-full max-w-3xl space-y-4">
+      <div className="w-full max-w-3xl space-y-8">
         <div>
           <h1 className="mb-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
             Aprendices
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Puedes consultar a todos los aprendices, pero solo puedes evaluar a los de tus fichas
-            asignadas.
+            Puedes consultar a todos los aprendices, pero solo puedes evaluar y crear cuentas en
+            tus fichas asignadas.
           </p>
         </div>
+
+        <InstructorAprendizCreatePanel fichas={fichasAsignadas} />
 
         <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           {aprendices.length === 0 ? (
