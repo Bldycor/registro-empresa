@@ -12,6 +12,7 @@ export default async function CoordinadorFichasPage() {
       select: {
         id: true,
         codigo: true,
+        programa: true,
         estado: true,
         nivelFormacion: true,
         jornada: true,

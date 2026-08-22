@@ -41,6 +41,7 @@ export async function POST(request: Request) {
       await prisma.ficha.create({
         data: {
           codigo: fila.codigo,
+          programa: fila.programa,
           estado: fila.estado,
           nivelFormacion: fila.nivelFormacion,
           jornada: fila.jornada,

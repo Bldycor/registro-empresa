@@ -76,6 +76,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
     const g = parsed.data;
 
+    if (g.programa !== undefined) data.programa = g.programa;
     if (g.estado !== undefined) data.estado = g.estado;
     if (g.nivelFormacion !== undefined) data.nivelFormacion = g.nivelFormacion;
     if (g.jornada !== undefined) data.jornada = g.jornada;

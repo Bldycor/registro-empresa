@@ -27,6 +27,7 @@ type Aprendiz = {
 type Ficha = {
   id: string;
   codigo: string;
+  programa: string | null;
   estado: EstadoFichaValue | null;
   nivelFormacion: NivelFormacionValue | null;
   jornada: JornadaValue | null;
@@ -44,6 +45,7 @@ type Ficha = {
 // fórmula oficial (ver src/lib/ficha-fechas.ts) a partir del nivel de formación y estas dos
 // fechas, no se editan directamente.
 type GestionForm = {
+  programa: string;
   estado: string;
   nivelFormacion: string;
   jornada: string;
@@ -52,6 +54,7 @@ type GestionForm = {
 };
 
 const gestionVacia: GestionForm = {
+  programa: "",
   estado: "",
   nivelFormacion: "",
   jornada: "",
@@ -261,6 +264,7 @@ export function CoordinadorFichasPanel({
     setEditingId(ficha.id);
     setGestionError(null);
     setGestionForm({
+      programa: ficha.programa ?? "",
       estado: ficha.estado ?? "",
       nivelFormacion: ficha.nivelFormacion ?? "",
       jornada: ficha.jornada ?? "",
@@ -288,6 +292,7 @@ export function CoordinadorFichasPanel({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         gestion: {
+          programa: gestionForm.programa || null,
           estado: gestionForm.estado || null,
           nivelFormacion: gestionForm.nivelFormacion || null,
           jornada: gestionForm.jornada || null,
@@ -403,11 +408,13 @@ export function CoordinadorFichasPanel({
           Importar desde hoja de cálculo
         </label>
         <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
-          Selecciona en la hoja de control las columnas FICHA, ESTADO, NIVEL DE FORMACIÓN,
-          JORNADA, FECHA_INICIO FICHA y FECHA DE FIN DE FORMACIÓN (incluir el encabezado ayuda,
-          pero no es obligatorio), copia y pega aquí. Solo se crean fichas nuevas — si un código
-          ya existe en el sistema, no se modifica; queda listado como &quot;ya existía&quot; para
-          que lo revises tú.
+          Selecciona en la hoja de control las columnas <strong>FICHA</strong>,{" "}
+          <strong>PROGRAMA DE FORMACIÓN</strong>, <strong>ESTADO</strong>,{" "}
+          <strong>NIVEL DE FORMACIÓN</strong>, <strong>JORNADA</strong>,{" "}
+          <strong>INICIO FICHA</strong> y <strong>FIN DE FORMACIÓN</strong> (incluir el
+          encabezado ayuda, pero no es obligatorio), copia y pega aquí. Solo se crean fichas
+          nuevas — si un código ya existe en el sistema, no se modifica; queda listado como
+          &quot;ya existía&quot; para que lo revises tú.
         </p>
         <textarea
           value={importText}
@@ -556,6 +563,7 @@ export function CoordinadorFichasPanel({
               const isDeleting = deletingId === ficha.id;
 
               const resumen = [
+                ficha.programa,
                 ficha.estado ? estadoFichaLabel[ficha.estado] : null,
                 ficha.nivelFormacion ? nivelFormacionLabel[ficha.nivelFormacion] : null,
                 ficha.jornada ? jornadaLabel[ficha.jornada] : null,
@@ -706,6 +714,17 @@ export function CoordinadorFichasPanel({
 
                   {isEditing && (
                     <div className="space-y-3 bg-zinc-50 px-6 pb-4 pt-2 dark:bg-zinc-950/40">
+                      <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
+                        Programa de formación
+                        <input
+                          type="text"
+                          value={gestionForm.programa}
+                          onChange={(e) => updateGestion("programa", e.target.value)}
+                          placeholder="Ej. Asesoría Comercial"
+                          className={inputClass}
+                        />
+                      </label>
+
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                         <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
                           Estado

@@ -20,6 +20,7 @@ import { calcularFechasFicha } from "@/lib/ficha-fechas";
 export type ParsedFichaRow = {
   linea: number;
   codigo: string;
+  programa: string | null;
   estado: EstadoFichaValue | null;
   nivelFormacion: NivelFormacionValue | null;
   jornada: JornadaValue | null;
@@ -46,6 +47,7 @@ function claveEncabezado(texto: string): string {
 
 type CampoFicha =
   | "codigo"
+  | "programa"
   | "estado"
   | "nivelFormacion"
   | "jornada"
@@ -56,6 +58,9 @@ type CampoFicha =
 const MAPA_ENCABEZADOS: Record<string, CampoFicha> = {
   FICHA: "codigo",
   CODIGO: "codigo",
+  PROGRAMA: "programa",
+  PROGRAMADEFORMACION: "programa",
+  PROGRAMASDEFORMACION: "programa",
   ESTADO: "estado",
   NIVELDEFORMACION: "nivelFormacion",
   NIVELFORMACION: "nivelFormacion",
@@ -78,6 +83,7 @@ const MAPA_ENCABEZADOS: Record<string, CampoFicha> = {
 
 const ORDEN_SIN_ENCABEZADO: CampoFicha[] = [
   "codigo",
+  "programa",
   "estado",
   "nivelFormacion",
   "jornada",
@@ -186,6 +192,8 @@ export function parseFichaImportText(texto: string): FichaImportResult {
       continue;
     }
 
+    const programa = (valores.programa ?? "").trim() || null;
+
     const estado = normalizarCatalogo(valores.estado ?? "", ESTADO_MAP);
     if (!estado.reconocido) {
       errores.push({ linea: numeroLinea, motivo: `Estado no reconocido: "${valores.estado}".` });
@@ -227,6 +235,7 @@ export function parseFichaImportText(texto: string): FichaImportResult {
     filas.push({
       linea: numeroLinea,
       codigo,
+      programa,
       estado: estado.valor,
       nivelFormacion: nivel.valor,
       jornada: jornada.valor,

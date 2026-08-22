@@ -94,6 +94,7 @@ export const jornadaLabel: Record<JornadaValue, string> = {
 // fechaInicioProductiva y fechaLimiteIniciarEP NO están acá a propósito: se calculan siempre en
 // el servidor con la fórmula oficial (ver src/lib/ficha-fechas.ts), no se editan directamente.
 export const FichaGestionSchema = z.object({
+  programa: z.string().trim().nullable().optional(),
   estado: z.enum(EstadoFichaValues).nullable().optional(),
   nivelFormacion: z.enum(NivelFormacionValues).nullable().optional(),
   jornada: z.enum(JornadaValues).nullable().optional(),
