@@ -122,6 +122,148 @@ export const alternativaEtapaProductivaLabel: Record<AlternativaEtapaProductivaV
   VINCULO_LABORAL: "Vínculo laboral",
 };
 
+// Subtipos oficiales de cada alternativa (formato GFPI-F-165), agrupados por la alternativa a la
+// que pertenecen. Un subtipo solo es válido junto con su alternativa — ver `subtiposPorAlternativa`
+// y el refine de `SeleccionAlternativaSchema`.
+export const SubtipoAlternativaEtapaProductivaValues = [
+  "CONTRATO_APRENDIZAJE_REGULAR",
+  "CONTRATO_APRENDIZAJE_ECONOMIA_POPULAR_CAMPESINA",
+  "CONTRATO_APRENDIZAJE_GRUPO_INVESTIGACION",
+  "VINCULO_FORMATIVO_ASESORIA_PYMES",
+  "VINCULO_FORMATIVO_APOYO_UNIDAD_PRODUCTIVA_FAMILIAR",
+  "VINCULO_FORMATIVO_APOYO_INSTITUCION_ESTATAL_ONG",
+  "VINCULO_FORMATIVO_GRUPO_INVESTIGACION",
+  "VINCULO_FORMATIVO_ECONOMIA_POPULAR_CAMPESINA",
+  "MONITORIA_REGULAR",
+  "MONITORIA_GRUPO_INVESTIGACION",
+  "PROYECTO_SENA_EMPRESA",
+  "PROYECTO_SENA_PROVEEDOR_SENA",
+  "PROYECTO_PRODUCCION_CENTROS",
+  "PROYECTO_ENFOQUE_EMPRESARIAL",
+  "PROYECTO_ENFOQUE_IDI",
+  "PROYECTO_RUTA_EMPRENDEDORA",
+  "PROYECTO_ECONOMIA_POPULAR_CAMPESINA",
+  "VINCULO_LABORAL_REGULAR",
+  "VINCULO_LABORAL_ECONOMIA_POPULAR_CAMPESINA",
+] as const;
+export type SubtipoAlternativaEtapaProductivaValue =
+  (typeof SubtipoAlternativaEtapaProductivaValues)[number];
+
+export const subtipoAlternativaEtapaProductivaLabel: Record<
+  SubtipoAlternativaEtapaProductivaValue,
+  string
+> = {
+  CONTRATO_APRENDIZAJE_REGULAR: "Contrato de aprendizaje (regular)",
+  CONTRATO_APRENDIZAJE_ECONOMIA_POPULAR_CAMPESINA: "Economía popular y/o campesina",
+  CONTRATO_APRENDIZAJE_GRUPO_INVESTIGACION: "Grupo de Investigación, Desarrollo e Innovación",
+  VINCULO_FORMATIVO_ASESORIA_PYMES: "Asesoría a Pymes",
+  VINCULO_FORMATIVO_APOYO_UNIDAD_PRODUCTIVA_FAMILIAR: "Apoyo a unidad productiva familiar",
+  VINCULO_FORMATIVO_APOYO_INSTITUCION_ESTATAL_ONG:
+    "Apoyo a institución estatal, territorial u ONG",
+  VINCULO_FORMATIVO_GRUPO_INVESTIGACION: "Grupo de Investigación, Desarrollo e Innovación",
+  VINCULO_FORMATIVO_ECONOMIA_POPULAR_CAMPESINA: "Economía popular y/o CampeSENA",
+  MONITORIA_REGULAR: "Monitoría (regular)",
+  MONITORIA_GRUPO_INVESTIGACION: "Grupo de Investigación, Desarrollo e Innovación",
+  PROYECTO_SENA_EMPRESA: "SENA Empresa",
+  PROYECTO_SENA_PROVEEDOR_SENA: "SENA Proveedor SENA",
+  PROYECTO_PRODUCCION_CENTROS: "Producción de centros",
+  PROYECTO_ENFOQUE_EMPRESARIAL: "Enfoque empresarial",
+  PROYECTO_ENFOQUE_IDI: "Enfoque I+D+i",
+  PROYECTO_RUTA_EMPRENDEDORA: "Ruta emprendedora",
+  PROYECTO_ECONOMIA_POPULAR_CAMPESINA: "Economía popular y/o campesina",
+  VINCULO_LABORAL_REGULAR: "Vínculo laboral (regular)",
+  VINCULO_LABORAL_ECONOMIA_POPULAR_CAMPESINA: "Economía popular y/o campesina",
+};
+
+// A qué alternativa pertenece cada subtipo — usado para poblar el desplegable de subtipos según
+// la alternativa elegida, y para validar en el servidor que la combinación sea válida.
+export const subtiposPorAlternativa: Record<
+  AlternativaEtapaProductivaValue,
+  SubtipoAlternativaEtapaProductivaValue[]
+> = {
+  CONTRATO_APRENDIZAJE: [
+    "CONTRATO_APRENDIZAJE_REGULAR",
+    "CONTRATO_APRENDIZAJE_ECONOMIA_POPULAR_CAMPESINA",
+    "CONTRATO_APRENDIZAJE_GRUPO_INVESTIGACION",
+  ],
+  CONTRATO_VINCULO_FORMATIVO: [
+    "VINCULO_FORMATIVO_ASESORIA_PYMES",
+    "VINCULO_FORMATIVO_APOYO_UNIDAD_PRODUCTIVA_FAMILIAR",
+    "VINCULO_FORMATIVO_APOYO_INSTITUCION_ESTATAL_ONG",
+    "VINCULO_FORMATIVO_GRUPO_INVESTIGACION",
+    "VINCULO_FORMATIVO_ECONOMIA_POPULAR_CAMPESINA",
+  ],
+  MONITORIA: ["MONITORIA_REGULAR", "MONITORIA_GRUPO_INVESTIGACION"],
+  PROYECTO_PRODUCTIVO: [
+    "PROYECTO_SENA_EMPRESA",
+    "PROYECTO_SENA_PROVEEDOR_SENA",
+    "PROYECTO_PRODUCCION_CENTROS",
+    "PROYECTO_ENFOQUE_EMPRESARIAL",
+    "PROYECTO_ENFOQUE_IDI",
+    "PROYECTO_RUTA_EMPRENDEDORA",
+    "PROYECTO_ECONOMIA_POPULAR_CAMPESINA",
+  ],
+  VINCULO_LABORAL: ["VINCULO_LABORAL_REGULAR", "VINCULO_LABORAL_ECONOMIA_POPULAR_CAMPESINA"],
+};
+
+export const TipoSolicitudAlternativaValues = ["SELECCION", "MODIFICACION"] as const;
+export type TipoSolicitudAlternativaValue = (typeof TipoSolicitudAlternativaValues)[number];
+
+export const tipoSolicitudAlternativaLabel: Record<TipoSolicitudAlternativaValue, string> = {
+  SELECCION: "Selección (primera vez)",
+  MODIFICACION: "Modificación",
+};
+
+// Evidencia (a): Selección/Modificación de Alternativa de Etapa Productiva (formato GFPI-F-165),
+// modo individual — el propio aprendiz la diligencia desde su panel.
+export const SeleccionAlternativaSchema = z
+  .object({
+    tipoSolicitud: z.enum(TipoSolicitudAlternativaValues, {
+      message: "Selecciona si es selección o modificación.",
+    }),
+    alternativa: z.enum(AlternativaEtapaProductivaValues, {
+      message: "Selecciona la alternativa de Etapa Productiva.",
+    }),
+    subtipoAlternativa: z.enum(SubtipoAlternativaEtapaProductivaValues).nullable().optional(),
+    fechaInicioEjecucion: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Selecciona una fecha de inicio válida."),
+    fechaFinEjecucion: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Selecciona una fecha de fin válida."),
+    archivoUrl: z.string().trim().min(1, "Adjunta el formato GFPI-F-165 firmado."),
+  })
+  .refine((data) => data.fechaFinEjecucion > data.fechaInicioEjecucion, {
+    message: "La fecha de fin debe ser posterior a la de inicio.",
+    path: ["fechaFinEjecucion"],
+  })
+  .refine(
+    (data) =>
+      !data.subtipoAlternativa ||
+      subtiposPorAlternativa[data.alternativa].includes(data.subtipoAlternativa),
+    {
+      message: "Ese subtipo no corresponde a la alternativa seleccionada.",
+      path: ["subtipoAlternativa"],
+    },
+  );
+
+export type SeleccionAlternativaInput = z.infer<typeof SeleccionAlternativaSchema>;
+
+// Modo grupal: un instructor/coordinador diligencia la misma alternativa para varios aprendices
+// de una ficha de una sola vez. Reutiliza la misma validación por aprendiz.
+export const SeleccionAlternativaGrupalSchema = z.object({
+  fichaId: z.string().trim().min(1, "Selecciona la ficha."),
+  userIds: z.array(z.string().trim().min(1)).min(1, "Selecciona al menos un aprendiz."),
+  tipoSolicitud: z.enum(TipoSolicitudAlternativaValues),
+  alternativa: z.enum(AlternativaEtapaProductivaValues),
+  subtipoAlternativa: z.enum(SubtipoAlternativaEtapaProductivaValues).nullable().optional(),
+  fechaInicioEjecucion: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  fechaFinEjecucion: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  archivoUrl: z.string().trim().min(1, "Adjunta el formato GFPI-F-165 firmado."),
+});
+
+export type SeleccionAlternativaGrupalInput = z.infer<typeof SeleccionAlternativaGrupalSchema>;
+
 // Estado del aprendiz durante/después de la Etapa Productiva (enum `EstadoAprendiz`). El paso a
 // CERTIFICADO es manual — la certificación de estudio se emite fuera del sistema.
 export const EstadoAprendizValues = ["ACTIVO", "CERTIFICADO"] as const;
@@ -150,9 +292,9 @@ export const AprendizGestionSchema = z.object({
 
 export type AprendizGestionInput = z.infer<typeof AprendizGestionSchema>;
 
-// Datos personales compartidos por los tres formularios de registro/creación de cuenta
-// (Aprendiz en /register, Coordinador en /register-coordinador, Instructor creado por el
-// Coordinador desde su panel). Cada flujo extiende esta base con lo que le aplica.
+// Datos personales compartidos por los formularios de registro/creación de cuenta (Aprendiz en
+// /register; Coordinador e Instructor creados desde el panel de ADMIN/Coordinador respectivamente,
+// nunca por autoregistro público). Cada flujo extiende esta base con lo que le aplica.
 const datosPersonalesBase = {
   nombres: z.string().trim().min(2, "Ingresa tus nombres."),
   apellidos: z.string().trim().min(2, "Ingresa tus apellidos."),
@@ -256,3 +398,22 @@ export const ConcertacionSchema = z
   });
 
 export type ConcertacionInput = z.infer<typeof ConcertacionSchema>;
+
+// Sugerencias de tipo de documento certificador para la evidencia (b) — no es una lista cerrada
+// (el formato no la cierra a valores fijos), solo ayuda al aprendiz a elegir rápido.
+export const TIPOS_DOCUMENTO_FORMALIZACION = [
+  "Carta de vínculo laboral",
+  "Contrato laboral",
+  "Carta de pasantía",
+  "Otro",
+] as const;
+
+// Evidencia (b): Formalización de la Etapa Productiva — documento certificador (carta de vínculo
+// laboral, contrato laboral, carta de pasantía u otro), diligenciado antes del inicio de la EP.
+export const FormalizacionSchema = z.object({
+  tipoDocumento: z.string().trim().min(2, "Indica el tipo de documento."),
+  fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Selecciona una fecha válida."),
+  archivoUrl: z.string().trim().min(1, "Adjunta el documento certificador."),
+});
+
+export type FormalizacionInput = z.infer<typeof FormalizacionSchema>;

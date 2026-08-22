@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { LogoutButton } from "@/components/logout-button";
 import { PanelSidebar } from "@/components/panel-sidebar";
-import { buildFase0Steps, type ProcesoStep } from "@/lib/etapa-productiva-steps";
+import { EvidenciaEPNav } from "@/components/evidencia-ep-nav";
 
 export default async function FormularioLayout({
   children,
@@ -25,25 +25,20 @@ export default async function FormularioLayout({
     redirect("/login");
   }
 
-  // El menú de pasos (Datos de empresa → Concertación) solo aplica al proceso del Aprendiz.
-  // Instructor/Coordinador todavía no tienen procesos propios en Fase 0 (llegan en la siguiente fase).
-  let steps: ProcesoStep[] = [];
   if (user.role === "APRENDIZ") {
-    const [profile, concertacion] = await Promise.all([
-      prisma.companyProfile.findUnique({
-        where: { userId: session.user.id },
-        select: { id: true },
-      }),
-      prisma.concertacionFuncion.findUnique({
-        where: { userId: session.user.id },
-        select: { id: true },
-      }),
-    ]);
-
-    steps = buildFase0Steps({
-      profileCompleto: Boolean(profile),
-      concertacionCompleta: Boolean(concertacion),
+    const profile = await prisma.companyProfile.findUnique({
+      where: { userId: session.user.id },
+      select: { id: true },
     });
+
+    // Antes de completar el perfil de empresa no hay nada más que navegar — la única pantalla
+    // disponible es /formulario (el propio formulario de perfil), así que no se muestra el nav.
+    return (
+      <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-black">
+        {profile && <EvidenciaEPNav />}
+        <main className="flex flex-1 flex-col">{children}</main>
+      </div>
+    );
   }
 
   return (
@@ -58,7 +53,7 @@ export default async function FormularioLayout({
         <LogoutButton />
       </header>
       <div className="flex flex-1 flex-col sm:flex-row">
-        <PanelSidebar steps={steps} role={user.role} />
+        <PanelSidebar role={user.role} />
         <main className="flex flex-1 flex-col">{children}</main>
       </div>
     </div>

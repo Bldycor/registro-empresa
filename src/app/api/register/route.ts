@@ -4,9 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { RegisterAprendizSchema } from "@/lib/validations";
 import { sendWelcomeEmail } from "@/lib/mailer";
 
-// Registro público de Aprendiz. Instructor y Coordinador ya no pasan por aquí: el Coordinador
-// se autoregistra en /api/register-coordinador, y el Instructor lo crea el Coordinador desde
-// su panel (/api/coordinador/instructores).
+// Registro público de Aprendiz — el único autoregistro que queda. El ADMIN crea Coordinador
+// (/api/admin/coordinadores) y el Coordinador crea Instructor (/api/coordinador/instructores);
+// ninguno de los dos tiene autoregistro público.
 export async function POST(request: Request) {
   const body = await request.json();
   const parsed = RegisterAprendizSchema.safeParse(body);

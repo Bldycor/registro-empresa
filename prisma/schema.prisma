@@ -27,14 +27,90 @@ enum EstadoAprendiz {
   CERTIFICADO
 }
 
-// Modalidad ("alternativa") bajo la cual el aprendiz cursa su Etapa Productiva. Se elige al
-// registrarse y se puede corregir después desde el panel del coordinador/admin.
+// Modalidad ("alternativa") bajo la cual el aprendiz cursa su Etapa Productiva. Se elige/edita
+// mediante la evidencia "Selección/Modificación de Alternativa" (formato GFPI-F-165), no al
+// registrarse — ver `SeleccionAlternativaEP`.
 enum AlternativaEtapaProductiva {
   CONTRATO_APRENDIZAJE
   CONTRATO_VINCULO_FORMATIVO
   MONITORIA
   PROYECTO_PRODUCTIVO
   VINCULO_LABORAL
+}
+
+// Subtipos oficiales de cada alternativa, según el formato GFPI-F-165. La pertenencia de un
+// subtipo a su alternativa se valida en `src/lib/validations.ts` (Zod), no aquí — Prisma no
+// modela enums anidados.
+enum SubtipoAlternativaEtapaProductiva {
+  CONTRATO_APRENDIZAJE_REGULAR
+  CONTRATO_APRENDIZAJE_ECONOMIA_POPULAR_CAMPESINA
+  CONTRATO_APRENDIZAJE_GRUPO_INVESTIGACION
+  VINCULO_FORMATIVO_ASESORIA_PYMES
+  VINCULO_FORMATIVO_APOYO_UNIDAD_PRODUCTIVA_FAMILIAR
+  VINCULO_FORMATIVO_APOYO_INSTITUCION_ESTATAL_ONG
+  VINCULO_FORMATIVO_GRUPO_INVESTIGACION
+  VINCULO_FORMATIVO_ECONOMIA_POPULAR_CAMPESINA
+  MONITORIA_REGULAR
+  MONITORIA_GRUPO_INVESTIGACION
+  PROYECTO_SENA_EMPRESA
+  PROYECTO_SENA_PROVEEDOR_SENA
+  PROYECTO_PRODUCCION_CENTROS
+  PROYECTO_ENFOQUE_EMPRESARIAL
+  PROYECTO_ENFOQUE_IDI
+  PROYECTO_RUTA_EMPRENDEDORA
+  PROYECTO_ECONOMIA_POPULAR_CAMPESINA
+  VINCULO_LABORAL_REGULAR
+  VINCULO_LABORAL_ECONOMIA_POPULAR_CAMPESINA
+}
+
+// Tipo de solicitud del formato GFPI-F-165: la primera vez que un aprendiz declara su
+// alternativa es SELECCION; cualquier cambio posterior es MODIFICACION.
+enum TipoSolicitudAlternativa {
+  SELECCION
+  MODIFICACION
+}
+
+// Tipo de documento de identidad, según las opciones reales de los formatos institucionales.
+enum TipoDocumento {
+  CC
+  TI
+  NUIP
+  CE
+  PEP
+  OTRO
+}
+
+// Modalidad del programa de formación (distinta de `Jornada`, que es el horario). Aplica a nivel
+// de ficha/grupo, igual que en los formatos GFPI-F-165 y GFPI-F-023.
+enum ModalidadFormacion {
+  PRESENCIAL
+  VIRTUAL
+  A_DISTANCIA
+}
+
+// Modalidad de ejecución de la Etapa Productiva del aprendiz (independiente de la modalidad de
+// formación) — puede variar por aprendiz aunque compartan ficha.
+enum ModalidadEjecucionEP {
+  PRESENCIAL
+  VIRTUAL
+}
+
+// Nivel de riesgo de afiliación a la ARL (Administradora de Riesgos Laborales), según el
+// formato GFPI-F-147.
+enum NivelRiesgoARL {
+  I
+  II
+  III
+  IV
+  V
+}
+
+enum TipoDiscapacidad {
+  AUDITIVA
+  VISUAL
+  MOTORA
+  COGNITIVA
+  MULTIPLE
 }
 
 // Las 16 comunas oficiales de Medellín, para el campo de ubicación de residencia
@@ -92,20 +168,57 @@ enum Jornada {
   TARDE_NOCHE
 }
 
-// Convención institucional de calificación de evaluaciones (ver docs/REQUISITOS-FUNCIONALES.md, 3.4).
+// Convención institucional de calificación de evaluaciones (Fase 0, nunca escrita desde ninguna
+// UI). Reemplazada en la práctica por la rúbrica real de 13 variables del formato GFPI-F-023
+// (ver `EvaluacionVariable`/`ValoracionVariable`/`JuicioEtapaProductiva`) — se deja el enum y el
+// campo `calificacion` existentes sin usar, en vez de borrarlos, por si hiciera falta un resumen
+// A/D/P calculado más adelante.
 enum Calificacion {
   A // Evaluación correcta (aprobada).
   D // Con errores en el diligenciamiento; requiere corrección y reenvío.
   P // Pendiente de subir, por demora en el tiempo de entrega.
 }
 
-// Estado de una evidencia (bitácora o certificación) frente a su fecha límite.
+// Estado de una evidencia frente a su fecha límite y su revisión por instructor/coordinador.
 enum EstadoEvidencia {
   PENDIENTE
   SUBIDA_A_TIEMPO
   SUBIDA_CON_ATRASO
   APROBADA
   RECHAZADA
+}
+
+// Categoría de cada variable de la rúbrica de evaluación (formato GFPI-F-023).
+enum CategoriaVariableEvaluacion {
+  TECNICO
+  ACTITUDINAL
+}
+
+// Las 13 variables fijas de la rúbrica GFPI-F-023 (8 técnicas + 5 actitudinales).
+enum VariableEvaluacion {
+  APLICACION_CONOCIMIENTO
+  MEJORA_CONTINUA
+  FORTALECIMIENTO_OCUPACIONAL
+  OPORTUNIDAD_CALIDAD
+  RESPONSABILIDAD_AMBIENTAL
+  ADMINISTRACION_RECURSOS
+  SEGURIDAD_SALUD_TRABAJO
+  DOCUMENTACION_ETAPA_PRODUCTIVA
+  RELACIONES_INTERPERSONALES
+  TRABAJO_EQUIPO
+  SOLUCION_PROBLEMAS
+  CUMPLIMIENTO
+  ORGANIZACION
+}
+
+enum ValoracionVariable {
+  SATISFACTORIO
+  POR_MEJORAR
+}
+
+enum JuicioEtapaProductiva {
+  APROBADO
+  NO_APROBADO
 }
 
 model User {
@@ -116,11 +229,16 @@ model User {
   nombres             String
   apellidos           String
   cedula              String   @unique
+  // Tipo de documento de identidad (CC, TI, NUIP, CE, PEP, Otro). Nullable solo por compatibilidad
+  // con cuentas creadas antes de este campo — los formularios nuevos lo exigen.
+  tipoDocumento       TipoDocumento?
   celular             String
   direccionResidencia String
   // Comuna de Medellín donde reside. Nullable solo por compatibilidad con cuentas creadas antes
   // de este campo; el formulario de registro lo exige siempre para cuentas nuevas.
   comuna              Comuna?
+  departamento        String?
+  ciudad              String?
 
   // Rol dentro del sistema. Jerarquía de creación de cuentas (nadie se autoregistra excepto el
   // Aprendiz): ADMIN crea Coordinador (/formulario/admin/coordinadores) → Coordinador crea
@@ -131,14 +249,28 @@ model User {
   // (lo actualiza el aprendiz o el instructor), la certificación de estudio se emite fuera del sistema.
   estado EstadoAprendiz @default(ACTIVO)
 
-  // Fecha de inicio de la Etapa Productiva: dispara el cálculo de todos los plazos posteriores
-  // (concertación a los 15 días, bitácoras cada 15 días, evaluaciones de seguimiento, cierre).
+  // Fecha real de inicio/fin de la Etapa Productiva de ESTE aprendiz — no todos los aprendices de
+  // una misma ficha inician igual ni con la misma alternativa. Se capturan y mantienen
+  // sincronizadas exclusivamente desde la evidencia "Selección/Modificación de Alternativa"
+  // (`SeleccionAlternativaEP`, formato GFPI-F-165), nunca se editan directamente en otro formulario.
+  // Disparan el cálculo de las fechas límite de bitácoras y evaluaciones de este aprendiz.
   fechaInicioEtapaProductiva DateTime?
+  fechaFinEtapaProductiva    DateTime?
 
-  // Modalidad ("alternativa") de Etapa Productiva elegida por el aprendiz al registrarse.
-  // Nullable solo por compatibilidad con cuentas creadas antes de este campo; el formulario de
-  // registro lo exige siempre para cuentas nuevas.
+  // Modalidad ("alternativa") de Etapa Productiva vigente. Se mantiene sincronizada desde la
+  // solicitud de `SeleccionAlternativaEP` más reciente que quede APROBADA (selección o
+  // modificación) — no se edita directamente en otro formulario.
   alternativaEtapaProductiva AlternativaEtapaProductiva?
+  subtipoAlternativaEtapaProductiva SubtipoAlternativaEtapaProductiva?
+
+  modalidadEjecucionEP ModalidadEjecucionEP?
+  realizaEnExterior    Boolean?
+  paisEtapaProductiva  String?
+
+  enSituacionDiscapacidad     Boolean?
+  tipoDiscapacidad            TipoDiscapacidad?
+  nombreAsistenteDiscapacidad String?
+  telefonoAsistenteDiscapacidad String?
 
   // Ficha SENA a la que pertenece (solo aprendices). La ficha debe existir de antemano — la
   // precarga el coordinador académico — y de ahí se deriva quién puede evaluar al aprendiz
@@ -164,13 +296,23 @@ model User {
   updatedAt DateTime @updatedAt
 
   companyProfile          CompanyProfile?
-  // Evaluación 1 (Concertación de funciones). Se mantiene como modelo propio por ser el que ya
-  // está construido y en producción; las evaluaciones 2 y 3 viven en el modelo `Evaluacion`.
+  // Momento 1 (Planeación de la Etapa Productiva = Concertación de funciones). Se mantiene como
+  // modelo propio por ser el que ya está construido y en producción; los Momentos 2 y 3 viven en
+  // el modelo `Evaluacion`.
   concertacionFuncion     ConcertacionFuncion?
   evaluaciones            Evaluacion[]
   bitacoras               Bitacora[]
   certificacionEmpresario CertificacionEmpresario?
   passwordResetTokens     PasswordResetToken[]
+
+  seleccionesAlternativa      SeleccionAlternativaEP[]      @relation("AprendizSelecciones")
+  seleccionesAlternativaAval  SeleccionAlternativaEP[]      @relation("AvalSeleccionAlternativa")
+  seleccionesGrupoCreadas     SeleccionAlternativaGrupo[]   @relation("SeleccionesGrupoCreadas")
+  formalizacionEtapaProductiva FormalizacionEtapaProductiva? @relation("AprendizFormalizacion")
+  formalizacionesAval         FormalizacionEtapaProductiva[] @relation("AvalFormalizacion")
+  bitacorasAval               Bitacora[]                    @relation("AvalBitacora")
+  evaluacionesAval            Evaluacion[]                  @relation("AvalEvaluacion")
+  certificacionesAval         CertificacionEmpresario[]     @relation("AvalCertificacion")
 }
 
 // Ficha SENA. La precarga el coordinador académico (carga masiva por código) antes de que los
@@ -188,13 +330,15 @@ model Ficha {
   estado         EstadoFicha?
   nivelFormacion NivelFormacion?
   jornada        Jornada?
+  // Modalidad de formación del programa (presencial/virtual/a distancia) — concepto distinto de
+  // `jornada` (el horario).
+  modalidadFormacion ModalidadFormacion?
 
   // Fecha de inicio de la ficha (apertura académica).
   fechaInicioFicha DateTime?
-  // Fecha institucional de inicio de la Etapa Productiva para TODOS los aprendices de esta
-  // ficha (a diferencia de `User.fechaInicioEtapaProductiva`, que hoy no la diligencia nadie —
-  // ver Fase 2 en el plan de implementación; esta fecha viene precargada por ficha desde el
-  // control institucional, no la ingresa cada aprendiz).
+  // Fecha institucional de referencia de inicio de Etapa Productiva para la ficha en general
+  // (se sigue usando para reportes agregados y control institucional), aunque la fecha real que
+  // dispara bitácoras/evaluaciones de cada aprendiz es la suya propia — ver `User.fechaInicioEtapaProductiva`.
   fechaInicioProductiva DateTime?
   fechaFinFormacion     DateTime?
   // Fecha límite para que los aprendices de esta ficha inicien su Etapa Productiva. En la hoja
@@ -206,6 +350,7 @@ model Ficha {
   instructor   User?   @relation("InstructorFichas", fields: [instructorId], references: [id])
 
   aprendices User[] @relation("FichaAprendices")
+  seleccionesGrupo SeleccionAlternativaGrupo[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -228,8 +373,89 @@ model CompanyProfile {
   updatedAt DateTime @updatedAt
 }
 
-// Primer micro proceso de la etapa productiva: concertación de funciones (= Evaluación 1).
-// Cada aprendiz agenda una única fecha/franja; se valida que no choque con la de otro aprendiz.
+// Evidencia (a): Selección/Modificación de Alternativa de Etapa Productiva (formato GFPI-F-165).
+// Puede haber varias filas por aprendiz a lo largo del tiempo (una selección inicial y luego
+// modificaciones); la más reciente que quede APROBADA es la vigente y es la que sincroniza
+// `User.alternativaEtapaProductiva`/`fechaInicioEtapaProductiva`/`fechaFinEtapaProductiva`.
+model SeleccionAlternativaEP {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("AprendizSelecciones", fields: [userId], references: [id], onDelete: Cascade)
+
+  tipoSolicitud TipoSolicitudAlternativa
+  fechaSolicitud DateTime
+
+  alternativa        AlternativaEtapaProductiva
+  subtipoAlternativa SubtipoAlternativaEtapaProductiva?
+
+  // Fechas concertadas de ejecución real de la Etapa Productiva bajo esta alternativa — al
+  // aprobarse, sincronizan `User.fechaInicioEtapaProductiva`/`fechaFinEtapaProductiva`.
+  fechaInicioEjecucion DateTime?
+  fechaFinEjecucion    DateTime?
+
+  // Documento físico GFPI-F-165 diligenciado y firmado, subido como respaldo.
+  archivoUrl String?
+
+  estado             EstadoEvidencia @default(PENDIENTE)
+  avaladoPorId       String?
+  avaladoPor         User?           @relation("AvalSeleccionAlternativa", fields: [avaladoPorId], references: [id], onDelete: SetNull)
+  fechaAval          DateTime?
+  observacionesAval  String?
+
+  // Presente solo cuando esta solicitud se envió como parte de un formulario grupal (varios
+  // aprendices de la misma ficha con la misma alternativa, en un solo envío).
+  grupoId String?
+  grupo   SeleccionAlternativaGrupo? @relation(fields: [grupoId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// Envoltorio de un envío grupal de `SeleccionAlternativaEP` (varios aprendices de una misma
+// ficha, con la misma alternativa, diligenciado en conjunto por el instructor/coordinador).
+model SeleccionAlternativaGrupo {
+  id     String @id @default(cuid())
+  fichaId String
+  ficha   Ficha  @relation(fields: [fichaId], references: [id], onDelete: Cascade)
+
+  creadoPorId String
+  creadoPor   User   @relation("SeleccionesGrupoCreadas", fields: [creadoPorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  selecciones SeleccionAlternativaEP[]
+}
+
+// Evidencia (b): Formalización de la Etapa Productiva — documento certificador (carta de
+// vínculo laboral, contrato laboral, carta de pasantía u otro), previo a la fecha de inicio de
+// la Etapa Productiva. Una vigente por aprendiz.
+model FormalizacionEtapaProductiva {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation("AprendizFormalizacion", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Tipo de documento certificador (carta de vínculo laboral, contrato laboral, carta de
+  // pasantía, u otro) — texto corto, el formato no cierra esta lista a valores fijos.
+  tipoDocumento String
+  archivoUrl    String
+  fecha         DateTime
+
+  estado            EstadoEvidencia @default(PENDIENTE)
+  avaladoPorId      String?
+  avaladoPor        User?           @relation("AvalFormalizacion", fields: [avaladoPorId], references: [id], onDelete: SetNull)
+  fechaAval         DateTime?
+  observaciones     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Primer micro proceso de la etapa productiva: concertación de funciones (= Momento 1 —
+// Planeación, formato GFPI-F-023). Cada aprendiz agenda una única fecha/franja; se valida que no
+// choque con la de otro aprendiz. El Momento 1 real no lleva calificación (a diferencia de los
+// Momentos 2 y 3) — el campo `calificacion` hereda de Fase 0 y no se usa aquí.
 model ConcertacionFuncion {
   id     String @id @default(cuid())
   userId String @unique
@@ -242,7 +468,19 @@ model ConcertacionFuncion {
   videollamadaUrl String? // Enlace real de la videollamada (Google Meet, o Jitsi si no hay integración con Google Calendar)
   googleEventId   String? // Id del evento en Google Calendar, para poder actualizarlo al reagendar
 
-  // Calificación institucional A/D/P de esta evaluación (nulo hasta que el instructor la califique).
+  // Contenido real del Momento 1 (planeación), según GFPI-F-023.
+  competenciasDesarrollar   String?
+  resultadosAprendizaje     String?
+  actividadesDesarrollar    String?
+  evidenciasAprendizaje     String?
+  observacionesAdicionales  String?
+  arlFechaAfiliacion        DateTime?
+  arlNumeroPoliza           String?
+  horario                   String?
+  enlaceGrabacion           String?
+
+  // Calificación institucional A/D/P — Fase 0, sin uso real (el Momento 1 del formato oficial no
+  // lleva calificación). Se conserva el campo por si se necesita un resumen calculado más adelante.
   calificacion  Calificacion?
   observaciones String? // Observaciones del instructor al calificar
 
@@ -252,15 +490,21 @@ model ConcertacionFuncion {
   @@index([fecha])
 }
 
-// Evaluaciones 2 y 3 (seguimiento): misma mecánica de reunión + calificación que ConcertacionFuncion,
-// pero puede haber hasta dos por aprendiz (numero 2 y 3), por eso no es 1:1 con User.
+// Momentos 2 y 3 (Seguimiento y Evaluación final, formato GFPI-F-023), más los seguimientos
+// extraordinarios a petición del coformador o del aprendiz. Cada uno trae su propia rúbrica de
+// 13 variables (`EvaluacionVariable`); el juicio final Aprobado/No aprobado y las
+// retroalimentaciones de cierre solo aplican al Momento 3 (numero = 3).
 model Evaluacion {
   id     String @id @default(cuid())
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // 2 = evaluación de seguimiento a los ~2 meses; 3 = evaluación de cierre (10-15 días antes de terminar).
+  // 2 = Momento de seguimiento a los ~2 meses; 3 = Momento de evaluación de cierre (10-15 días
+  // antes de terminar). Los seguimientos extraordinarios no llevan numero fijo — ver esExtraordinario.
   numero Int
+
+  esExtraordinario      Boolean @default(false)
+  motivoExtraordinario  String?
 
   fecha      DateTime?
   horaInicio String?
@@ -268,15 +512,46 @@ model Evaluacion {
 
   videollamadaUrl String?
   googleEventId   String?
+  modalidad       ModalidadEjecucionEP?
+  enlaceGrabacion String?
 
+  // Solo se diligencia en el Momento 3 (cierre).
+  juicioFinal                 JuicioEtapaProductiva?
+  retroalimentacionCoformador String?
+  retroalimentacionInstructor String?
+  retroalimentacionAprendiz   String?
+
+  // Calificación A/D/P — Fase 0, sin uso real (ver rúbrica real en `EvaluacionVariable`).
   calificacion  Calificacion?
   observaciones String?
+
+  estado            EstadoEvidencia @default(PENDIENTE)
+  avaladoPorId      String?
+  avaladoPor        User?           @relation("AvalEvaluacion", fields: [avaladoPorId], references: [id], onDelete: SetNull)
+  fechaAval         DateTime?
+
+  variables EvaluacionVariable[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([userId, numero])
   @@index([fecha])
+  @@index([userId, numero])
+}
+
+// Una fila por cada una de las 13 variables de la rúbrica GFPI-F-023, para un Momento
+// (Evaluacion) dado — 8 técnicas + 5 actitudinales.
+model EvaluacionVariable {
+  id           String @id @default(cuid())
+  evaluacionId String
+  evaluacion   Evaluacion @relation(fields: [evaluacionId], references: [id], onDelete: Cascade)
+
+  categoria     CategoriaVariableEvaluacion
+  variable      VariableEvaluacion
+  valoracion    ValoracionVariable?
+  observaciones String?
+
+  @@unique([evaluacionId, variable])
 }
 
 // Bitácora quincenal (formato institucional GFPI-F-147). ~12 por aprendiz durante los 6 meses.
@@ -286,12 +561,25 @@ model Bitacora {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   numero       Int // Secuencia 1-12
-  fechaLimite  DateTime // Calculada desde fechaInicioEtapaProductiva + 15 días * numero
+  periodoDesde DateTime?
+  periodoHasta DateTime?
+  fechaLimite  DateTime // Calculada desde User.fechaInicioEtapaProductiva + 15 días * numero
   fechaEntrega DateTime?
   archivoUrl   String? // Plantilla diligenciada subida por el aprendiz (o generada con firma en la app)
 
+  // Información de afiliación a la ARL — se re-pregunta en cada bitácora porque puede cambiar.
+  arlAfiliado          Boolean?
+  arlNivelRiesgo       NivelRiesgoARL?
+  arlRiesgoCorresponde Boolean?
+  arlTieneEPP          Boolean?
+
   estado        EstadoEvidencia @default(PENDIENTE)
   observaciones String?
+  avaladoPorId  String?
+  avaladoPor    User?           @relation("AvalBitacora", fields: [avaladoPorId], references: [id], onDelete: SetNull)
+  fechaAval     DateTime?
+
+  actividades BitacoraActividad[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -300,8 +588,25 @@ model Bitacora {
   @@index([fechaLimite])
 }
 
+// Fila de la tabla "Descripción de las actividades realizadas" de la bitácora — se pueden
+// agregar cuantas filas sean necesarias.
+model BitacoraActividad {
+  id         String @id @default(cuid())
+  bitacoraId String
+  bitacora   Bitacora @relation(fields: [bitacoraId], references: [id], onDelete: Cascade)
+
+  descripcion            String
+  competencias           String?
+  fechaInicio            DateTime?
+  fechaFin               DateTime?
+  evidenciaCumplimiento  String?
+  observaciones          String?
+}
+
 // Evidencia de cierre: carta de terminación del contrato de aprendizaje a satisfacción de la
-// empresa. Requisito para poder emitir la Evaluación 3 (evaluación final).
+// empresa. Requisito para poder emitir la Evaluación 3 (evaluación final). Se sube en una
+// ventana de 5 días antes o 5 días después de `User.fechaFinEtapaProductiva` (validado en el
+// endpoint, no aquí).
 model CertificacionEmpresario {
   id     String @id @default(cuid())
   userId String @unique
@@ -310,6 +615,11 @@ model CertificacionEmpresario {
   archivoUrl String?
   fecha      DateTime?
   estado     EstadoEvidencia @default(PENDIENTE)
+
+  avaladoPorId  String?
+  avaladoPor    User?     @relation("AvalCertificacion", fields: [avaladoPorId], references: [id], onDelete: SetNull)
+  fechaAval     DateTime?
+  observaciones String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

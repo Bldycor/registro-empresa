@@ -6,6 +6,33 @@
 
 Este documento traduce el documento de requisitos ya validado en pasos de código concretos, comparando contra lo que ya existe en el repositorio. Está pensado para trabajarse con Claude Code **una fase a la vez**.
 
+## Autoevaluación de cierre: Fase 0 y Fase 1 (19 de agosto de 2026)
+
+Antes de pasar a Fase 2 se revisó todo lo construido bajo "Fase 0" y "Fase 1" — que crecieron muy por encima de su alcance original — para confirmar que sigue siendo consistente entre sí. Resumen ejecutivo; el detalle cronológico completo (con verificaciones en vivo, bugs encontrados/corregidos y hashes de commit) queda en "Estado de avance" justo debajo.
+
+**Fase 0 — Modelo de datos: COMPLETA, con una pieza sin usar todavía (esperada).**
+- Entregado: enums `Role` (hoy 4 valores: `APRENDIZ`/`INSTRUCTOR`/`COORDINADOR`/`ADMIN` — `ADMIN` se agregó después, no estaba en el alcance original), `EstadoAprendiz`, `Calificacion` (A/D/P), `EstadoEvidencia`; modelos `Evaluacion`, `Bitacora`, `CertificacionEmpresario` ya en el esquema y migrados en Neon.
+- Sin usar todavía, a propósito: `Evaluacion`, `Bitacora` y `CertificacionEmpresario` no tienen ningún endpoint ni UI encima — son tablas vacías esperando Fase 2/3/4. `User.fechaInicioEtapaProductiva` (por aprendiz) tampoco se usa: quedó reemplazada en la práctica por `Ficha.fechaInicioProductiva` (institucional, por ficha) construida durante "gestión de fichas" — ver punto 3 de "Qué falta".
+- Único riesgo real de Fase 0 (autoregistro de coordinador) ya se materializó en producción y se cerró — ver "Cierre de autoregistro de coordinador + rol ADMIN" en el histórico.
+
+**Fase 1 — Roles y asignación instructor↔aprendiz: COMPLETA, y su alcance final es mucho mayor que el planeado.**
+Lo mínimo planeado (guardas por rol, ficha↔instructor, vista de instructor) se hizo primero y sigue funcionando sin cambios; encima se construyó, en el mismo ciclo de trabajo, todo lo que un sistema real de gestión de usuarios necesitaba y que el plan original no preveía:
+- Rol `ADMIN` con control total (Coordinadores + todo lo de Coordinador), reemplazando el autoregistro público de Coordinador (falla de seguridad real, cerrada — ver histórico).
+- CRUD + importación masiva + eliminación con confirmación, para **cuatro** entidades: Fichas, Instructores, Coordinadores y Aprendices (con o sin ficha asignada) — un patrón de UX consistente reutilizado las cuatro veces (`StatBadge`, listas colapsables de duplicados/errores, confirmación inline antes de borrar).
+- Trazabilidad (`creadoPorId`) y política de contraseña (`= cédula` para cuentas creadas por otro rol, no retroactiva).
+- Gestión institucional de fichas (estado, nivel, jornada, fechas con fórmula oficial calculada en servidor) — migró una hoja de cálculo de control externa al sistema.
+- Campos `comuna`, `coordinacion`, `alternativaEtapaProductiva` en el registro/edición de usuarios.
+- Login por cédula + recuperación de contraseña por token.
+
+**Revisión de consistencia hecha hoy (no solo repetir lo ya documentado):**
+- Los 24 puntos de guarda (`requireUser`/`requireApiUser`) en API y páginas son coherentes: todo lo que un Coordinador puede hacer también lo permite `ADMIN`; lo exclusivo de `ADMIN` (gestión de Coordinadores) está protegido solo para `ADMIN`, verificado tanto en Server Components como en Route Handlers.
+- La navegación del panel (`panel-sidebar.tsx`) coincide exactamente con las rutas protegidas — ningún enlace visible lleva a una ruta que el rol no pueda usar, y viceversa.
+- Sin referencias colgantes al viejo campo `codigoFicha` ni a la vieja ruta pública `/register-coordinador` en código vivo — se encontraron y corrigieron dos comentarios (no funcionales) en `src/app/api/register/route.ts` y `src/lib/validations.ts` que todavía la mencionaban como si existiera.
+- La vista de solo-lectura del instructor (`/formulario/instructor/aprendices`, pieza original de Fase 1) sigue funcionando igual pese a que `Ficha` creció con 7 campos nuevos desde entonces.
+- `lint` y `build` en verde (36 rutas), sin cambios de comportamiento — el único ajuste de este repaso fueron los dos comentarios corregidos.
+
+**Conclusión:** no hay deuda técnica ni inconsistencia pendiente de Fase 0/Fase 1. Lo único abierto es de diseño, no de bug: decidir en Fase 2 si las bitácoras se calculan desde `Ficha.fechaInicioProductiva` (recomendado — ya existe, ya es la fuente que usa el coordinador) o si hace falta reactivar `User.fechaInicioEtapaProductiva` por aprendiz para casos excepcionales.
+
 ## Estado de avance
 
 - **Fase 0 (modelo de datos): COMPLETA en la base local.** `prisma/schema.prisma` extendido de forma aditiva (sin romper `ConcertacionFuncion` = Evaluación 1, ya en uso): nuevos enums `Role`, `EstadoAprendiz`, `Calificacion`, `EstadoEvidencia`; nuevos campos en `User` (`role`, `estado`, `fechaInicioEtapaProductiva`, `instructorId`); nuevos modelos `Evaluacion` (evaluaciones 2 y 3), `Bitacora` y `CertificacionEmpresario`. Migración `20260816231953_fase0_roles_bitacoras_evaluaciones` aplicada a la base local y cliente de Prisma regenerado (v7.9.1). Backup del esquema anterior en `prisma/schema.prisma.bak-fase0`.
@@ -63,7 +90,17 @@ Este documento traduce el documento de requisitos ya validado en pasos de códig
   - `npm run lint`: 0 errores (mismo warning preexistente de siempre en `concertacion-form.tsx`).
   - `npm run build`: compiló limpio, TypeScript en verde, 36 rutas generadas.
   - Commit `3228094` empujado a `main` en GitHub; Vercel disparó el deployment de producción con el código actualizado.
-- Fases 2-6: pendientes. **Próxima fase sugerida: Fase 2 — Bitácoras** (ver detalle abajo, ya tiene un adelanto: la fecha institucional de inicio de Etapa Productiva por ficha).
+- **Fase 2 redefinida como "Gestión de Evidencia de Etapa Productiva": EN CONSTRUCCIÓN.** Al revisar los formatos institucionales reales (`GFPI-F-165`, `GFPI-F-147`, `GFPI-F-023`) el alcance de Fase 2 creció de "solo Bitácoras" a un módulo de 5 evidencias (selección de alternativa, formalización, bitácoras, evaluaciones, certificación del empresario), con revisión/aval real dentro de la app. Decisiones de diseño y plan completo en `.claude/plans/rippling-sparking-tome.md` (aprobado con el usuario). Hallazgo clave: **la fecha de inicio/fin de Etapa Productiva es por aprendiz** (`User.fechaInicioEtapaProductiva`/`fechaFinEtapaProductiva`), no por ficha, y se captura exclusivamente en la evidencia de selección de alternativa — no en `/register`. También se confirmó que la evaluación real **no usa la convención A/D/P** (Fase 0) sino una rúbrica de 13 variables Satisfactorio/Por mejorar más un juicio final Aprobado/No aprobado (ver nota en `docs/REQUISITOS-FUNCIONALES.md`, sección 3.4).
+  - **Esquema:** migración `20260821120000_fase2_gestion_evidencia_ep` — 11 enums nuevos, ~13 campos nuevos en `User` (tipo de documento, discapacidad, ubicación, modalidad de ejecución EP, fechas de EP), `Ficha.modalidadFormacion`, modelos nuevos `SeleccionAlternativaEP`, `SeleccionAlternativaGrupo`, `FormalizacionEtapaProductiva`, `BitacoraActividad`, `EvaluacionVariable`, y aval (`avaladoPorId`/`fechaAval`) agregado a `Bitacora`, `Evaluacion`, `CertificacionEmpresario`. Aplicada a Neon vía `prisma migrate deploy` (el diff se generó comparando directo contra Neon con `prisma migrate diff --from-config-datasource`, no con la shadow DB local, que sigue rota).
+  - **Navegación del Aprendiz:** el sidebar izquierdo (stepper) se reemplazó por un nav horizontal superior (`EvidenciaEPNav`) con las 5 evidencias como pestañas, bajo el título "Gestión de Evidencia de Etapa Productiva" — decisión explícita de alcanzar solo al panel del Aprendiz; Coordinador/Admin/Instructor conservan su sidebar izquierdo sin cambios. `PanelSidebar` se simplificó (ya no maneja el caso Aprendiz) y se eliminó `src/lib/etapa-productiva-steps.ts` (quedó sin uso).
+  - **Evidencia (a) — Selección/Modificación de Alternativa (GFPI-F-165): COMPLETA**, individual y grupal. `POST/GET /api/etapa-productiva/alternativa` (aprendiz), `GET/POST /api/coordinador/alternativas` (listar para revisión + envío grupal por ficha) y `PATCH /api/coordinador/alternativas/[id]` (avalar/rechazar — al avalar sincroniza `User.alternativaEtapaProductiva`/`subtipoAlternativaEtapaProductiva`/`fechaInicioEtapaProductiva`/`fechaFinEtapaProductiva`). Modela los ~19 subtipos reales agrupados por alternativa (`subtiposPorAlternativa` en `validations.ts`). UI: `/formulario/etapa-productiva/alternativa` (aprendiz, con historial y datos ya registrados visibles en solo lectura) y `/formulario/coordinador/alternativas` (panel de revisión para Coordinador/Admin, con badges de estado y observaciones).
+  - **Subida de documentos adjuntos:** nueva integración `@vercel/blob` (`src/app/api/upload/route.ts` + `src/components/file-upload-field.tsx`) — sube directo del navegador a Vercel Blob. Blob Storage ya está habilitado en el proyecto de Vercel (store `registro-empresa-blob`, acceso Público). **Limitación conocida:** `BLOB_READ_WRITE_TOKEN` quedó marcado "Sensitive" por Vercel al conectarse desde la integración de Storage — este tipo de variable **nunca se puede volver a leer** vía `vercel env pull` ni el dashboard (ni el propio Vercel te deja verla de nuevo), así que la subida real de archivos **solo se puede probar una vez desplegado** (Vercel la inyecta directo en su runtime); en local, `/api/upload` siempre va a fallar con "Invalid token parameter" hasta que se pruebe en producción/preview. El resto del formulario (todos los demás campos) sí se prueba completo en local.
+  - **Evidencia (b) — Formalización de la Etapa Productiva: COMPLETA.** `POST/GET /api/etapa-productiva/formalizacion` (aprendiz, upsert: reenviar reemplaza el documento y vuelve a PENDIENTE) y `GET /api/instructor/formalizaciones` + `PATCH /api/instructor/formalizaciones/[id]` (revisión, restringida a los aprendices de las fichas asignadas al instructor — misma regla que el resto de la app). UI: `/formulario/etapa-productiva/formalizacion` (aprendiz) y `/formulario/instructor/formalizaciones` (nuevo panel de revisión del instructor, con el mismo patrón de badges/filtro que "Alternativas EP"). Verificado en vivo de punta a punta con una ficha e instructor de prueba aislados (ver nota de incidente abajo).
+  - **Incidente durante las pruebas:** al verificar la evidencia (b) se restableció por error la contraseña de una cuenta real de instructor (Jason David Coba Bendeck, cédula `1152464633`) para poder iniciar sesión con ella. Se corrigió de inmediato restableciéndola a su cédula (misma política que usa la app para cuentas nuevas) y se le devolvió su ficha real sin tocar; no se vio afectado ningún aprendiz real (la ficha en cuestión no tenía aprendices reales asignados en ese momento). A partir de este punto las pruebas usan una ficha e instructor **de prueba** dedicados (`TEST-9999`, cédula `900999888`), nunca cuentas reales. Avísale a Jason que su contraseña quedó en su cédula.
+  - **Selector de fecha con calendario:** nuevo `src/components/date-picker-field.tsx` (sin librería externa) reemplaza el `<input type="date">` nativo en los formularios de evidencias — calendario desplegable, navegación de mes, soporta `min`/`max` (ej. fecha fin no puede ser antes que fecha inicio), atajo "Hoy". Ya integrado en evidencias (a) y (b); se reutiliza en las que faltan.
+  - **Evidencias (c) bitácoras y (e) certificación:** solo placeholders "en construcción" en el nav por ahora — pendientes de construir en la siguiente entrega.
+  - **Evidencia (d) evaluaciones:** el Momento 1 (Concertación) se reubicó de `/formulario/etapa-productiva` a `/formulario/etapa-productiva/evaluaciones` sin cambios de contenido todavía (los campos ricos del formato GFPI-F-023 y los Momentos 2/3 con rúbrica quedan pendientes).
+  - Pendiente antes de cerrar esta fase: notificaciones de atraso por correo (cron), y actualizar `REQUISITOS-FUNCIONALES.md`/este documento con el cierre final una vez estén las 5 evidencias completas.
 
 ---
 
@@ -84,12 +121,12 @@ Esto cubre, en el lenguaje del documento de requisitos: inscripción (3.1, parci
 ## Qué falta frente al documento de requisitos validado
 
 1. ~~**Roles de usuario** — hoy `User` no distingue aprendiz/instructor/coordinador. No hay instructor asignado a un aprendiz.~~ **Resuelto en Fase 1** (ver arriba: modelo `Ficha`, asignación instructor↔ficha, autorización por rol).
-2. **Estado del aprendiz** (`Activo` / `Certificado`) — el campo (`User.estado`, enum `EstadoAprendiz`) ya existe desde Fase 0 y por defecto queda en `ACTIVO`, pero todavía no hay ningún endpoint/UI para pasarlo a `CERTIFICADO` (eso depende de que todas las evidencias queden en `A`, ver Fase 4).
-3. **Fecha de inicio de Etapa Productiva** — **parcialmente resuelto.** `Ficha.fechaInicioProductiva` ya existe y se calcula automáticamente (Técnico +181d / Tecnólogo +631d desde `fechaInicioFicha`, ver "Estado de avance") — es una fecha **institucional, a nivel de ficha**, no por aprendiz. El campo `User.fechaInicioEtapaProductiva` (Fase 0, por aprendiz) sigue sin usarse y probablemente ya no haga falta: Fase 2 debe decidir si las 12 fechas límite de bitácoras se calculan desde `Ficha.fechaInicioProductiva` (compartida por todos los aprendices de la ficha, más simple y consistente con cómo ya lo maneja el coordinador) o si se necesita una fecha individual por aprendiz para casos excepcionales.
-4. **Bitácoras** (cada 15 días, ~12 en total, formato `GFPI-F-147`) — no existe el modelo.
-5. **Evaluación 2 y 3** (seguimiento, a los ~2 meses y al cierre) — solo existe la Evaluación 1 (Concertación). Falta generalizar el patrón de `ConcertacionFuncion` a las 3 evaluaciones con formato `GFPI-F-023_V06` y convención de calificación **A/D/P**.
-6. **Reunión de cierre** (10-15 días antes de terminar) y **reunión extra a solicitud** — hoy solo hay una reunión (la de concertación); falta generalizar "Reunión" como concepto reutilizable con cancelación/reprogramación notificada a las partes.
-7. **Certificación del empresario** (carta de terminación, evidencia de cierre) — no existe.
+2. **Estado del aprendiz** (`Activo` / `Certificado`) — **parcialmente resuelto.** El panel de Aprendices (Coordinador/Admin) ya permite cambiar el estado manualmente. Falta el cambio **automático**: pasar a `CERTIFICADO` cuando todas las evidencias del aprendiz queden en `A` (eso depende de Fase 4, certificación del empresario).
+3. **Fecha de inicio de Etapa Productiva** — **RESUELTO.** Es por aprendiz (`User.fechaInicioEtapaProductiva`/`fechaFinEtapaProductiva`, no `Ficha.fechaInicioProductiva`), y se captura/sincroniza exclusivamente desde la evidencia (a) Selección/Modificación de Alternativa (`SeleccionAlternativaEP`, ya construida — ver "Estado de avance"). `Ficha.fechaInicioProductiva` sigue existiendo como referencia institucional agregada de la ficha, no como fuente de cálculo de bitácoras/evaluaciones de un aprendiz individual.
+4. **Bitácoras** (cada 15 días, ~12 en total, formato `GFPI-F-147`) — modelo y esquema ampliados (ver "Estado de avance"); falta el formulario y el cálculo automático de las 12 fechas límite.
+5. **Evaluación 2 y 3** (seguimiento, a los ~2 meses y al cierre) — el esquema ya no usa A/D/P: adopta la rúbrica real de 13 variables del formato `GFPI-F-023_V06` (ver nota en `REQUISITOS-FUNCIONALES.md`, sección 3.4). Falta el formulario/UI de los Momentos 2 y 3.
+6. **Reunión de cierre** (10-15 días antes de terminar) y **reunión extra a solicitud** — el esquema de `Evaluacion` ya soporta seguimientos extraordinarios (`esExtraordinario`); falta la UI.
+7. **Certificación del empresario** (carta de terminación, evidencia de cierre) — modelo ya ampliado con aval (ver "Estado de avance"); falta el formulario/UI y la validación de ventana de fechas (5 días antes/después del fin de EP).
 8. **Control de evaluaciones por aprendiz** (vista consolidada, sección 3.4) — no existe.
 9. **Módulo de consultas y reportes** (sección 3.5: filtros, métricas, exportación PDF/Excel, acceso por rol) — no existe.
 10. **Notificaciones de incumplimiento** (alertas + correo a aprendiz y coformador) — hoy solo hay correo de citación al agendar y correo de bienvenida al registrarse; falta la lógica de alertas por vencimiento.
@@ -97,22 +134,32 @@ Esto cubre, en el lenguaje del documento de requisitos: inscripción (3.1, parci
 
 ## Fases sugeridas
 
-### Fase 0 — Modelo de datos
-Extender `prisma/schema.prisma`:
-- Agregar `role` a `User` (enum: `APRENDIZ`, `INSTRUCTOR`, `COORDINADOR`).
-- Agregar `estado` a `User`/aprendiz (enum: `ACTIVO`, `CERTIFICADO`).
-- Agregar `instructorId` (relación aprendiz → instructor) y `fechaInicioEtapaProductiva`.
-- Generalizar `ConcertacionFuncion` en un modelo `Evaluacion` (o similar) con `numero` (1-3), `calificacion` (enum `A`/`D`/`P`), reutilizando los campos de reunión (fecha, hora, `videollamadaUrl`, `googleEventId`).
-- Nuevo modelo `Bitacora` (aprendiz, número de secuencia 1-12, fecha límite, fecha de entrega, archivo, estado).
-- Nuevo modelo `CertificacionEmpresario` (o campo/estado dentro de un modelo de cierre).
-- Nuevo modelo `Reunion` genérico si se decide desacoplarlo de la evidencia (recomendado, dado que ahora hay 3 reuniones oficiales + extras).
-- Correr `npx prisma migrate dev` y verificar en local antes de seguir.
+### Fase 0 — Modelo de datos (COMPLETA)
+Alcance original (todo entregado) más lo que se agregó sobre la marcha porque el alcance original se quedó corto:
+- ~~Agregar `role` a `User`~~ → enum `Role`, y terminó con **4** valores (`APRENDIZ`, `INSTRUCTOR`, `COORDINADOR`, `ADMIN` — este último no estaba planeado, se agregó en Fase 1 por necesidad de seguridad).
+- ~~Agregar `estado` a `User`/aprendiz~~ → enum `EstadoAprendiz` (`ACTIVO`/`CERTIFICADO`).
+- ~~Agregar `instructorId` y `fechaInicioEtapaProductiva`~~ → el `instructorId` directo en `User` se reemplazó en Fase 1 por el modelo `Ficha` (una ficha, un instructor); `fechaInicioEtapaProductiva` por aprendiz quedó sin usar (ver punto 3 de "Qué falta").
+- ~~Generalizar `ConcertacionFuncion` en un modelo `Evaluacion`~~ → hecho (`numero` 1-3, `calificacion` A/D/P), pero **todavía sin UI/endpoint** — es Fase 3.
+- ~~Nuevo modelo `Bitacora`~~ → hecho, sin UI/endpoint — es Fase 2.
+- ~~Nuevo modelo `CertificacionEmpresario`~~ → hecho, sin UI/endpoint — es Fase 4.
+- El modelo `Reunion` genérico propuesto no se construyó — se decidió mantener el patrón `ConcertacionFuncion`/`Evaluacion` (reunión + evidencia en el mismo modelo) en vez de desacoplarlo; revisar si sigue siendo suficiente al llegar a Fase 3.
+- Ver autoevaluación completa arriba ("Autoevaluación de cierre: Fase 0 y Fase 1").
 
-### Fase 1 — Roles y asignación instructor↔aprendiz (COMPLETA)
-- ~~Middleware/guardas de autorización por rol en las rutas API y en el panel.~~ → `src/lib/auth-guards.ts` (`requireUser`, `requireApiUser`, `getSessionUser`).
+### Fase 1 — Roles y asignación instructor↔aprendiz (COMPLETA, alcance final mucho mayor al planeado)
+Lo mínimo planeado:
+- ~~Middleware/guardas de autorización por rol en las rutas API y en el panel.~~ → `src/lib/auth-guards.ts` (`requireUser`, `requireApiUser`, `getSessionUser`), hoy con 24 puntos de uso, revisados y consistentes.
 - ~~Vista de instructor: listar aprendices (todas las fichas en modo consulta; solo las propias para evaluar).~~ → `/formulario/instructor/aprendices`.
 - ~~Vista de coordinador: gestión de usuarios, empresas y fichas.~~ → `/formulario/coordinador/fichas` (carga masiva de fichas + asignación de instructor por ficha; una ficha, un instructor como máximo).
-- Detalle del diseño final y verificación en vivo: ver "Estado de avance" arriba.
+
+Lo que se agregó encima, en el mismo ciclo de trabajo, sin estar en el plan original (detalle completo en "Estado de avance"):
+- Rol `ADMIN` + cierre del autoregistro público de Coordinador (falla de seguridad real, explotada en producción antes del cierre).
+- CRUD + importación masiva + eliminación con confirmación para Fichas, Instructores, Coordinadores y Aprendices.
+- Trazabilidad (`creadoPorId`) y política de contraseña temporal = cédula.
+- Gestión institucional completa de fichas (estado, nivel, jornada, fechas calculadas por fórmula oficial) — reemplaza una hoja de cálculo externa.
+- Campos `comuna`, `coordinacion`, `alternativaEtapaProductiva`.
+- Login por cédula + recuperación de contraseña por token.
+
+Detalle del diseño final y verificación en vivo de todo lo anterior: ver "Estado de avance" y la autoevaluación arriba.
 
 ### Fase 2 — Bitácoras
 - Ya construido de adelanto: `Ficha.fechaInicioProductiva` (institucional, calculada automáticamente — ver "Estado de avance" y punto 3 de "Qué falta"). Definir si las bitácoras se calculan desde ahí o si aún hace falta algo por aprendiz.
