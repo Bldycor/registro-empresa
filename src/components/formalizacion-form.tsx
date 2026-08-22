@@ -30,22 +30,15 @@ export function FormalizacionForm({
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  // Cambiar esta key fuerza a FileUploadField a remontarse desde cero — es la única forma de
-  // limpiar su estado interno (archivo mostrado, error de subida) al cancelar, ya que un
-  // <input type="file"> no se puede vaciar programáticamente.
-  const [formKey, setFormKey] = useState(0);
 
   function update<K extends keyof FormFields>(key: K, value: FormFields[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
   function cancelar() {
-    const base = initial ?? { tipoDocumento: "", fecha: "", archivoUrl: "" };
-    setForm(base);
-    setOtroSeleccionado(!(TIPOS_DOCUMENTO_FORMALIZACION as readonly string[]).includes(base.tipoDocumento) && base.tipoDocumento !== "");
-    setErrors({});
-    setSuccess(false);
-    setFormKey((k) => k + 1);
+    // "Cancelar" sale del proceso en curso y vuelve a la pantalla anterior — un reseteo de
+    // campos no bastaba: si el formulario ya estaba vacío, no producía ningún cambio visible.
+    router.back();
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -125,7 +118,6 @@ export function FormalizacionForm({
         />
 
         <FileUploadField
-          key={formKey}
           label="Documento certificador (adjunto)"
           pathPrefix="formalizacion-ep"
           value={form.archivoUrl || null}
