@@ -47,6 +47,10 @@ export function SeleccionAlternativaForm({
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  // Cambiar esta key fuerza a FileUploadField a remontarse desde cero — es la única forma de
+  // limpiar su estado interno (archivo mostrado, error de subida) al cancelar, ya que un
+  // <input type="file"> no se puede vaciar programáticamente.
+  const [formKey, setFormKey] = useState(0);
 
   const subtipos = form.alternativa ? subtiposPorAlternativa[form.alternativa] : [];
 
@@ -65,6 +69,7 @@ export function SeleccionAlternativaForm({
     });
     setErrors({});
     setSuccess(false);
+    setFormKey((k) => k + 1);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -180,6 +185,7 @@ export function SeleccionAlternativaForm({
         </div>
 
         <FileUploadField
+          key={formKey}
           label="Formato GFPI-F-165 firmado (adjunto)"
           pathPrefix="alternativa-ep"
           value={form.archivoUrl || null}
@@ -195,7 +201,7 @@ export function SeleccionAlternativaForm({
           </p>
         )}
 
-        <div className="mt-2 flex gap-3">
+        <div className="mt-4 flex items-center justify-between border-t border-zinc-100 pt-4 dark:border-zinc-800">
           <button
             type="submit"
             disabled={loading}
