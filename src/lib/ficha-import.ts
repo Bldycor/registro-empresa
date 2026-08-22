@@ -58,9 +58,16 @@ const MAPA_ENCABEZADOS: Record<string, CampoFicha> = {
   CODIGO: "codigo",
   ESTADO: "estado",
   NIVELDEFORMACION: "nivelFormacion",
+  NIVELFORMACION: "nivelFormacion",
   JORNADA: "jornada",
+  // Variantes reales de encabezado: con o sin el prefijo "FECHA" (la hoja de control a veces
+  // solo dice "INICIO FICHA" / "FIN DE FORMACIÓN", sin repetir la palabra "FECHA").
   FECHAINICIOFICHA: "fechaInicioFicha",
+  INICIOFICHA: "fechaInicioFicha",
   FECHADEFINDEFORMACION: "fechaFinFormacion",
+  FECHAFINDEFORMACION: "fechaFinFormacion",
+  FINDEFORMACION: "fechaFinFormacion",
+  FINFORMACION: "fechaFinFormacion",
   // Se ignoran a propósito: las de vigencia no se modelan, e INICIO PRODUCTIVA / Límite para
   // Iniciar EP ya no se toman literales — se recalculan con la fórmula oficial.
   INICIOPRODUCTIVA: "ignorar",
