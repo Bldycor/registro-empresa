@@ -1,18 +1,17 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/auth-guards";
 import { SeleccionAlternativaForm } from "@/components/seleccion-alternativa-form";
 import { comunaLabel, alternativaEtapaProductivaLabel } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
 
 export default async function AlternativaPage() {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  const currentUser = await requireUser(["APRENDIZ"]);
 
   const [user, selecciones] = await Promise.all([
     prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: currentUser.id },
       select: {
         nombres: true,
         apellidos: true,
@@ -25,7 +24,7 @@ export default async function AlternativaPage() {
       },
     }),
     prisma.seleccionAlternativaEP.findMany({
-      where: { userId: session.user.id },
+      where: { userId: currentUser.id },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,

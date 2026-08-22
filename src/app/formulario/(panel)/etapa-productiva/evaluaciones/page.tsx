@@ -1,17 +1,16 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/auth-guards";
 import { ConcertacionForm } from "@/components/concertacion-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function EtapaProductivaPage() {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  const currentUser = await requireUser(["APRENDIZ"]);
 
   const [profile, concertacion] = await Promise.all([
-    prisma.companyProfile.findUnique({ where: { userId: session.user.id } }),
-    prisma.concertacionFuncion.findUnique({ where: { userId: session.user.id } }),
+    prisma.companyProfile.findUnique({ where: { userId: currentUser.id } }),
+    prisma.concertacionFuncion.findUnique({ where: { userId: currentUser.id } }),
   ]);
 
   if (!profile) {

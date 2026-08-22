@@ -1,6 +1,9 @@
+import { requireUser } from "@/lib/auth-guards";
 import { EvidenciaEnConstruccion } from "@/components/evidencia-en-construccion";
 
-export default function CertificacionPage() {
+export default async function CertificacionPage() {
+  await requireUser(["APRENDIZ"]);
+
   return (
     <EvidenciaEnConstruccion
       titulo="Certificación del Empresario"

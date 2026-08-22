@@ -15,13 +15,16 @@ export default async function FormularioPage() {
   });
   if (!user) redirect("/login");
 
-  // El proceso de "información de la empresa" solo aplica a Aprendices. Instructor/Coordinador
-  // tienen su propio panel (Fase 1): aprendices en consulta / gestión de fichas.
+  // El proceso de "información de la empresa" solo aplica a Aprendices. Instructor/Coordinador/
+  // Admin tienen su propio panel: aprendices en consulta, gestión de fichas o de coordinadores.
   if (user.role === "INSTRUCTOR") {
     redirect("/formulario/instructor/aprendices");
   }
   if (user.role === "COORDINADOR") {
     redirect("/formulario/coordinador/fichas");
+  }
+  if (user.role === "ADMIN") {
+    redirect("/formulario/admin/coordinadores");
   }
 
   const profile = await prisma.companyProfile.findUnique({
