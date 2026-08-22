@@ -68,6 +68,39 @@ export const estadoFichaLabel: Record<EstadoFichaValue, string> = {
   TERMINADA_POR_FECHA: "Terminada por fecha (fin de formación)",
 };
 
+// Catálogo cerrado de programas de formación ofrecidos por el centro. Lista provista por
+// coordinación — cualquier programa nuevo debe agregarse acá antes de poder asignarse a una
+// ficha (edición manual o importación desde hoja de cálculo).
+export const ProgramasFormacionValues = [
+  "ASESORÍA COMERCIAL",
+  "ASESORÍA COMERCIAL Y OPERACIONES DE ENTIDADES FINANCIERAS",
+  "ASISTENCIA ADMINISTRATIVA",
+  "ASISTENCIA EN ORGANIZACION DE ARCHIVOS",
+  "CONTABILIZACIÓN DE OPERACIONES COMERCIALES Y FINANCIERAS",
+  "COORDINACION DE PROCESOS LOGISTICOS",
+  "DESARROLLO DE PROCESOS DE MERCADEO",
+  "DIRECCIÓN DE VENTAS",
+  "GESTIÓN ADMINISTRATIVA",
+  "GESTIÓN BANCARIA Y DE ENTIDADES FINANCIERAS",
+  "GESTION BIBLIOTECARIA",
+  "GESTIÓN CONTABLE Y DE INFORMACIÓN FINANCIERA",
+  "GESTIÓN DE MERCADOS",
+  "GESTIÓN DEL TALENTO HUMANO",
+  "GESTIÓN DOCUMENTAL",
+  "GESTIÓN EMPRESARIAL",
+  "GESTIÓN LOGÍSTICA",
+  "INFORMACIÓN TURÍSTICA",
+  "INTEGRACION DE OPERACIONES LOGISTICAS",
+  "NEGOCIACIÓN INTERNACIONAL",
+  "OPERACIÓN DE SERVICIOS OMNICANAL EN CONTACT CENTER Y BPO",
+  "OPERACIONES COMERCIALES",
+  "OPERACIONES DE LOGISTICA COMERCIAL EN GRANDES SUPERFICIES",
+  "PROCESOS PARA LA COMERCIALIZACIÓN INTERNACIONAL",
+  "SERVICIOS COMERCIALES Y FINANCIEROS",
+  "VENTA DE PRODUCTOS EN LINEA",
+] as const;
+export type ProgramaFormacionValue = (typeof ProgramasFormacionValues)[number];
+
 export const NivelFormacionValues = ["TECNICO", "TECNOLOGO", "AUXILIAR"] as const;
 export type NivelFormacionValue = (typeof NivelFormacionValues)[number];
 
@@ -94,7 +127,7 @@ export const jornadaLabel: Record<JornadaValue, string> = {
 // fechaInicioProductiva y fechaLimiteIniciarEP NO están acá a propósito: se calculan siempre en
 // el servidor con la fórmula oficial (ver src/lib/ficha-fechas.ts), no se editan directamente.
 export const FichaGestionSchema = z.object({
-  programa: z.string().trim().nullable().optional(),
+  programa: z.enum(ProgramasFormacionValues).nullable().optional(),
   estado: z.enum(EstadoFichaValues).nullable().optional(),
   nivelFormacion: z.enum(NivelFormacionValues).nullable().optional(),
   jornada: z.enum(JornadaValues).nullable().optional(),

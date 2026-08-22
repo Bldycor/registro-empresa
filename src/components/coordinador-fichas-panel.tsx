@@ -8,6 +8,7 @@ import {
   nivelFormacionLabel,
   JornadaValues,
   jornadaLabel,
+  ProgramasFormacionValues,
   type EstadoFichaValue,
   type NivelFormacionValue,
   type JornadaValue,
@@ -412,9 +413,11 @@ export function CoordinadorFichasPanel({
           <strong>PROGRAMA DE FORMACIÓN</strong>, <strong>ESTADO</strong>,{" "}
           <strong>NIVEL DE FORMACIÓN</strong>, <strong>JORNADA</strong>,{" "}
           <strong>INICIO FICHA</strong> y <strong>FIN DE FORMACIÓN</strong> (incluir el
-          encabezado ayuda, pero no es obligatorio), copia y pega aquí. Solo se crean fichas
-          nuevas — si un código ya existe en el sistema, no se modifica; queda listado como
-          &quot;ya existía&quot; para que lo revises tú.
+          encabezado ayuda, pero no es obligatorio), copia y pega aquí. El valor de{" "}
+          <strong>PROGRAMA DE FORMACIÓN</strong> debe coincidir exactamente con uno de los
+          programas del catálogo oficial; si no coincide, esa fila queda reportada como error.
+          Solo se crean fichas nuevas — si un código ya existe en el sistema, no se modifica;
+          queda listado como &quot;ya existía&quot; para que lo revises tú.
         </p>
         <textarea
           value={importText}
@@ -722,13 +725,18 @@ export function CoordinadorFichasPanel({
                     <div className="space-y-3 bg-zinc-50 px-6 pb-4 pt-2 dark:bg-zinc-950/40">
                       <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
                         Programa de formación
-                        <input
-                          type="text"
+                        <select
                           value={gestionForm.programa}
                           onChange={(e) => updateGestion("programa", e.target.value)}
-                          placeholder="Ej. Asesoría Comercial"
                           className={inputClass}
-                        />
+                        >
+                          <option value="">Sin definir</option>
+                          {ProgramasFormacionValues.map((p) => (
+                            <option key={p} value={p}>
+                              {p}
+                            </option>
+                          ))}
+                        </select>
                       </label>
 
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

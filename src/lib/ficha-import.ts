@@ -2,9 +2,11 @@ import {
   EstadoFichaValues,
   NivelFormacionValues,
   JornadaValues,
+  ProgramasFormacionValues,
   type EstadoFichaValue,
   type NivelFormacionValue,
   type JornadaValue,
+  type ProgramaFormacionValue,
 } from "@/lib/validations";
 import { calcularFechasFicha } from "@/lib/ficha-fechas";
 
@@ -20,7 +22,7 @@ import { calcularFechasFicha } from "@/lib/ficha-fechas";
 export type ParsedFichaRow = {
   linea: number;
   codigo: string;
-  programa: string | null;
+  programa: ProgramaFormacionValue | null;
   estado: EstadoFichaValue | null;
   nivelFormacion: NivelFormacionValue | null;
   jornada: JornadaValue | null;
@@ -112,6 +114,10 @@ const JORNADA_MAP: Record<string, JornadaValue> = {
   TARDENOCHE: "TARDE_NOCHE",
 };
 
+const PROGRAMA_MAP: Record<string, ProgramaFormacionValue> = Object.fromEntries(
+  ProgramasFormacionValues.map((p) => [claveEncabezado(p), p])
+) as Record<string, ProgramaFormacionValue>;
+
 function normalizarCatalogo<T extends string>(
   crudo: string,
   mapa: Record<string, T>
@@ -192,7 +198,14 @@ export function parseFichaImportText(texto: string): FichaImportResult {
       continue;
     }
 
-    const programa = (valores.programa ?? "").trim() || null;
+    const programa = normalizarCatalogo(valores.programa ?? "", PROGRAMA_MAP);
+    if (!programa.reconocido) {
+      errores.push({
+        linea: numeroLinea,
+        motivo: `Programa de formación no reconocido: "${valores.programa}".`,
+      });
+      continue;
+    }
 
     const estado = normalizarCatalogo(valores.estado ?? "", ESTADO_MAP);
     if (!estado.reconocido) {
@@ -235,7 +248,7 @@ export function parseFichaImportText(texto: string): FichaImportResult {
     filas.push({
       linea: numeroLinea,
       codigo,
-      programa,
+      programa: programa.valor,
       estado: estado.valor,
       nivelFormacion: nivel.valor,
       jornada: jornada.valor,
