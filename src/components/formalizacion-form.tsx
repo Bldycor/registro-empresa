@@ -35,6 +35,14 @@ export function FormalizacionForm({
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  function cancelar() {
+    const base = initial ?? { tipoDocumento: "", fecha: "", archivoUrl: "" };
+    setForm(base);
+    setOtroSeleccionado(!(TIPOS_DOCUMENTO_FORMALIZACION as readonly string[]).includes(base.tipoDocumento) && base.tipoDocumento !== "");
+    setErrors({});
+    setSuccess(false);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrors({});
@@ -127,13 +135,23 @@ export function FormalizacionForm({
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="mt-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
-          {loading ? "Enviando…" : initial ? "Reemplazar documento" : "Enviar documento"}
-        </button>
+        <div className="mt-2 flex gap-3">
+          <button
+            type="submit"
+            disabled={loading}
+            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            {loading ? "Enviando…" : initial ? "Reemplazar documento" : "Enviar documento"}
+          </button>
+          <button
+            type="button"
+            onClick={cancelar}
+            disabled={loading}
+            className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            Cancelar
+          </button>
+        </div>
       </div>
     </form>
   );
