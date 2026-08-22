@@ -220,11 +220,14 @@ export function InstructorAprendizCreatePanel({ fichas }: { fichas: Ficha[] }) {
           Importar desde hoja de cálculo
         </label>
         <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
-          Pega filas con documento, nombres, apellidos, teléfono, correo, ficha y alternativa EP
-          (incluir el encabezado ayuda, pero no es obligatorio; las columnas de programa de
-          formación e instructor se ignoran, ya viven en la ficha). Solo se crean cuentas nuevas —
-          si la cédula o el correo ya existen, o la ficha no es tuya, esa fila no se modifica y
-          queda reportada aparte. Cada cuenta nueva recibe una contraseña temporal por correo.
+          Pega filas con <strong>DOCUMENTO</strong>, <strong>NOMBRES</strong>,{" "}
+          <strong>APELLIDOS</strong>, <strong>TELÉFONO</strong>, <strong>CORREO</strong>,{" "}
+          <strong>FICHA</strong> y <strong>ALTERNATIVA EP</strong> (incluir el encabezado ayuda,
+          pero no es obligatorio; las columnas de <strong>PROGRAMA DE FORMACIÓN</strong> e{" "}
+          <strong>INSTRUCTOR</strong> se ignoran, ya viven en la ficha). Solo se crean cuentas
+          nuevas — si la cédula o el correo ya existen, o la ficha no es tuya, esa fila no se
+          modifica y queda reportada aparte. Cada cuenta nueva recibe una contraseña temporal por
+          correo.
         </p>
         <textarea
           value={importText}

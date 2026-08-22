@@ -563,7 +563,6 @@ export function CoordinadorFichasPanel({
               const isDeleting = deletingId === ficha.id;
 
               const resumen = [
-                ficha.programa,
                 ficha.estado ? estadoFichaLabel[ficha.estado] : null,
                 ficha.nivelFormacion ? nivelFormacionLabel[ficha.nivelFormacion] : null,
                 ficha.jornada ? jornadaLabel[ficha.jornada] : null,
@@ -619,6 +618,13 @@ export function CoordinadorFichasPanel({
                           </p>
                         </span>
                       </button>
+
+                      <p className="mt-1 pl-6 text-xs text-zinc-500 dark:text-zinc-400">
+                        <strong className="uppercase text-zinc-600 dark:text-zinc-300">
+                          Programa
+                        </strong>
+                        : {ficha.programa || "sin especificar"}
+                      </p>
 
                       {(resumen.length > 0 || fechas.length > 0) && (
                         <div className="mt-2 flex flex-wrap gap-1 pl-6">

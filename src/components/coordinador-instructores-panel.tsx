@@ -385,11 +385,13 @@ export function CoordinadorInstructoresPanel({
           Importar desde hoja de cálculo
         </label>
         <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
-          Pega filas con nombres, apellidos, cédula, correo, celular, dirección, comuna y
-          coordinación (incluir el encabezado ayuda, pero no es obligatorio). Solo se crean
-          cuentas nuevas — si la cédula o el correo ya existen en el sistema, esa fila no se
-          modifica y queda listada como &quot;ya existía&quot;. Cada cuenta nueva recibe una
-          contraseña temporal por correo.
+          Pega filas con <strong>NOMBRES</strong>, <strong>APELLIDOS</strong>,{" "}
+          <strong>CÉDULA</strong>, <strong>CORREO</strong>, <strong>CELULAR</strong>,{" "}
+          <strong>DIRECCIÓN</strong>, <strong>COMUNA</strong> y <strong>COORDINACIÓN</strong>{" "}
+          (incluir el encabezado ayuda, pero no es obligatorio). Solo se crean cuentas nuevas —
+          si la cédula o el correo ya existen en el sistema, esa fila no se modifica y queda
+          listada como &quot;ya existía&quot;. Cada cuenta nueva recibe una contraseña temporal
+          por correo.
         </p>
         <textarea
           value={importText}
