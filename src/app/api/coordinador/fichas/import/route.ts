@@ -28,6 +28,7 @@ export async function POST(request: Request) {
   const yaExistianSet = new Set(existentes.map((f) => f.codigo));
 
   const creadas: string[] = [];
+  const incompletas: string[] = [];
   const yaExistian: string[] = [];
   const erroresGuardado: { codigo: string; motivo: string }[] = [];
 
@@ -52,6 +53,12 @@ export async function POST(request: Request) {
         },
       });
       creadas.push(fila.codigo);
+      // El texto pegado puede traer solo un subconjunto de columnas (p. ej. si se copió sin
+      // incluir Programa o las fechas) — eso no es un error de formato, así que no se rechaza la
+      // fila, pero sí se reporta aparte para que quede visible y no pase inadvertido.
+      if (!fila.programa || !fila.fechaInicioFicha || !fila.fechaFinFormacion) {
+        incompletas.push(fila.codigo);
+      }
     } catch (error) {
       console.error("[api/coordinador/fichas/import] Error al guardar ficha:", fila.codigo, error);
       erroresGuardado.push({ codigo: fila.codigo, motivo: "Error inesperado al guardar." });
@@ -60,6 +67,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     creadas,
+    incompletas,
     yaExistian,
     errores: [
       ...errores.map((e) => ({ motivo: `Línea ${e.linea}: ${e.motivo}` })),

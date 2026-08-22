@@ -114,6 +114,7 @@ export function CoordinadorFichasPanel({
   const [importLoading, setImportLoading] = useState(false);
   const [importResult, setImportResult] = useState<{
     creadas: string[];
+    incompletas: string[];
     yaExistian: string[];
     errores: { motivo: string }[];
   } | null>(null);
@@ -439,6 +440,13 @@ export function CoordinadorFichasPanel({
               {importResult.errores.length > 0 && (
                 <StatBadge tono="rojo" etiqueta="Con errores" cantidad={importResult.errores.length} />
               )}
+              {importResult.incompletas.length > 0 && (
+                <StatBadge
+                  tono="ambar"
+                  etiqueta="Creadas sin programa o sin fechas"
+                  cantidad={importResult.incompletas.length}
+                />
+              )}
             </div>
 
             {importResult.yaExistian.length > 0 && (
@@ -447,6 +455,26 @@ export function CoordinadorFichasPanel({
                   Ver los {importResult.yaExistian.length} código(s) que ya existían
                 </summary>
                 <p className="mt-2 font-mono break-words">{importResult.yaExistian.join(", ")}</p>
+              </details>
+            )}
+
+            {importResult.incompletas.length > 0 && (
+              <details
+                open
+                className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+              >
+                <summary className="cursor-pointer font-medium">
+                  {importResult.incompletas.length} ficha(s) creada(s) sin{" "}
+                  <strong>PROGRAMA</strong> o sin fechas — revísalas
+                </summary>
+                <p className="mt-2">
+                  El texto pegado no traía esas columnas para estas filas. Edítalas manualmente o
+                  vuelve a importar incluyendo <strong>PROGRAMA DE FORMACIÓN</strong>,{" "}
+                  <strong>INICIO FICHA</strong> y <strong>FIN DE FORMACIÓN</strong> (la
+                  importación no pisa fichas existentes, así que tendrás que editarlas una por
+                  una o eliminarlas y reimportar).
+                </p>
+                <p className="mt-2 font-mono break-words">{importResult.incompletas.join(", ")}</p>
               </details>
             )}
 
