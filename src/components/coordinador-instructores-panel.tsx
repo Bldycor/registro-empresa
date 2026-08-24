@@ -11,7 +11,7 @@ import {
 } from "@/lib/validations";
 import { StatBadge } from "@/components/stat-badge";
 
-type Ficha = { id: string; codigo: string };
+type Ficha = { id: string; codigo: string; _count?: { aprendices: number } };
 type CreadoPor = { id: string; nombres: string; apellidos: string };
 
 type Instructor = {
@@ -497,11 +497,32 @@ export function CoordinadorInstructoresPanel({
                       <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
                         {instructor.coordinacion ? coordinacionLabel[instructor.coordinacion] : "Sin coordinación"}
                       </span>
-                      <span className="text-xs text-zinc-400 dark:text-zinc-500">
-                        {instructor.fichasAsignadas.length > 0
-                          ? `Fichas: ${instructor.fichasAsignadas.map((f) => f.codigo).join(", ")}`
-                          : "Sin fichas asignadas"}
-                      </span>
+                      {instructor.fichasAsignadas.length > 0 ? (
+                        <div className="flex flex-col items-start gap-1 sm:items-end">
+                          <div className="flex flex-wrap justify-end gap-1">
+                            {instructor.fichasAsignadas.map((f) => (
+                              <span
+                                key={f.id}
+                                className="rounded-full border border-zinc-200 px-2 py-0.5 text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400"
+                              >
+                                {f.codigo} · {f._count?.aprendices ?? 0} aprendiz(es)
+                              </span>
+                            ))}
+                          </div>
+                          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                            Total a cargo:{" "}
+                            {instructor.fichasAsignadas.reduce(
+                              (suma, f) => suma + (f._count?.aprendices ?? 0),
+                              0
+                            )}{" "}
+                            aprendiz(es)
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                          Sin fichas asignadas
+                        </span>
+                      )}
                       <div className="mt-1 flex gap-3">
                         <button
                           type="button"

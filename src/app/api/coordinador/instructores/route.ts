@@ -24,7 +24,9 @@ export async function GET() {
       direccionResidencia: true,
       comuna: true,
       coordinacion: true,
-      fichasAsignadas: { select: { id: true, codigo: true } },
+      fichasAsignadas: {
+        select: { id: true, codigo: true, _count: { select: { aprendices: true } } },
+      },
       creadoPorId: true,
       creadoPor: { select: { id: true, nombres: true, apellidos: true } },
     },

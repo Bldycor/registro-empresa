@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-guards";
 import { AprendizCreatePanel } from "@/components/aprendiz-create-panel";
+import { InstructorAprendicesPanel } from "@/components/instructor-aprendices-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ export default async function InstructorAprendicesPage() {
         id: true,
         nombres: true,
         apellidos: true,
+        cedula: true,
         email: true,
         estado: true,
         ficha: { select: { id: true, codigo: true, instructorId: true } },
@@ -50,43 +52,7 @@ export default async function InstructorAprendicesPage() {
           restriccionFichaTexto="la ficha no es tuya"
         />
 
-        <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          {aprendices.length === 0 ? (
-            <p className="px-6 py-6 text-sm text-zinc-500 dark:text-zinc-400">
-              Todavía no hay aprendices registrados.
-            </p>
-          ) : (
-            <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {aprendices.map((aprendiz) => {
-                const evaluable = aprendiz.ficha?.instructorId === user.id;
-                return (
-                  <li
-                    key={aprendiz.id}
-                    className="flex flex-col gap-1 px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div>
-                      <p className="font-medium text-zinc-900 dark:text-zinc-50">
-                        {aprendiz.nombres} {aprendiz.apellidos}
-                      </p>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {aprendiz.email} · Ficha {aprendiz.ficha?.codigo ?? "sin asignar"}
-                      </p>
-                    </div>
-                    <span
-                      className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${
-                        evaluable
-                          ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-400"
-                          : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-                      }`}
-                    >
-                      {evaluable ? "Evaluable" : "Solo consulta"}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+        <InstructorAprendicesPanel aprendices={aprendices} fichasAsignadas={fichasAsignadas} />
       </div>
     </div>
   );

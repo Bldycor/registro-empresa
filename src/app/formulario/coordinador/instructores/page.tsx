@@ -19,7 +19,9 @@ export default async function CoordinadorInstructoresPage() {
       direccionResidencia: true,
       comuna: true,
       coordinacion: true,
-      fichasAsignadas: { select: { id: true, codigo: true } },
+      fichasAsignadas: {
+        select: { id: true, codigo: true, _count: { select: { aprendices: true } } },
+      },
     },
     orderBy: [{ nombres: "asc" }, { apellidos: "asc" }],
   });
