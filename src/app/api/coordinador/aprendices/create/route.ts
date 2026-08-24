@@ -6,12 +6,12 @@ import { CreateAprendizSchema } from "@/lib/validations";
 import { generarPasswordTemporal } from "@/lib/temp-password";
 import { sendWelcomeEmail } from "@/lib/mailer";
 
-// Crea un aprendiz individual desde el panel del instructor — solo en una de sus propias fichas
-// asignadas (misma regla de alcance que el resto de la app: el instructor no gestiona fichas
-// ajenas). Igual que instructor/coordinador: sin autoregistro, contraseña temporal = cédula,
-// enviada por correo.
+// Crea un aprendiz individual desde el panel de Coordinador/Admin — a diferencia del mismo
+// formulario en el panel del Instructor, acá no hay restricción de "solo mis fichas asignadas":
+// Coordinador y Admin gestionan cualquier ficha del sistema. Mismo patrón del resto de la app:
+// sin autoregistro, contraseña temporal = cédula, enviada por correo.
 export async function POST(request: Request) {
-  const { user, response } = await requireApiUser(["INSTRUCTOR"]);
+  const { user, response } = await requireApiUser(["COORDINADOR", "ADMIN"]);
   if (!user) return response;
 
   const body = await request.json();
@@ -21,11 +21,11 @@ export async function POST(request: Request) {
   }
   const d = parsed.data;
 
-  const ficha = await prisma.ficha.findUnique({ where: { id: d.fichaId }, select: { instructorId: true } });
-  if (!ficha || ficha.instructorId !== user.id) {
+  const ficha = await prisma.ficha.findUnique({ where: { id: d.fichaId }, select: { id: true } });
+  if (!ficha) {
     return NextResponse.json(
-      { error: { fichaId: ["Esa ficha no está asignada a tu cuenta."] } },
-      { status: 403 },
+      { error: { fichaId: ["Esa ficha ya no existe."] } },
+      { status: 404 },
     );
   }
 
@@ -71,7 +71,12 @@ export async function POST(request: Request) {
       apellidos: true,
       cedula: true,
       email: true,
+      celular: true,
+      direccionResidencia: true,
+      comuna: true,
       estado: true,
+      alternativaEtapaProductiva: true,
+      fichaId: true,
       ficha: { select: { id: true, codigo: true } },
     },
   });
@@ -83,7 +88,7 @@ export async function POST(request: Request) {
     password,
     role: "APRENDIZ",
   }).catch((error) => {
-    console.error("[api/instructor/aprendices] No se pudo enviar el correo de bienvenida:", error);
+    console.error("[api/coordinador/aprendices/create] No se pudo enviar el correo de bienvenida:", error);
   });
 
   return NextResponse.json({ aprendiz, password }, { status: 201 });

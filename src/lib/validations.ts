@@ -365,10 +365,12 @@ export const CreateInstructorSchema = z.object({
 
 export type CreateInstructorInput = z.infer<typeof CreateInstructorSchema>;
 
-// Creación de Aprendiz por parte del Instructor (individual, desde su panel) — para las fichas
-// que tiene asignadas. Sin autoregistro ni contraseña elegida: se genera una contraseña temporal
-// (= cédula) igual que para Instructor/Coordinador, ver src/lib/temp-password.ts.
-export const CreateAprendizByInstructorSchema = z.object({
+// Creación individual de Aprendiz desde el panel de Instructor, Coordinador o Admin. El
+// Instructor solo puede usarla en sus fichas asignadas (verificado en el route handler);
+// Coordinador/Admin pueden usarla en cualquier ficha. Sin autoregistro ni contraseña elegida: se
+// genera una contraseña temporal (= cédula) igual que para Instructor/Coordinador, ver
+// src/lib/temp-password.ts.
+export const CreateAprendizSchema = z.object({
   ...datosPersonalesBase,
   fichaId: z.string().trim().min(1, "Selecciona la ficha."),
   alternativaEtapaProductiva: z.enum(AlternativaEtapaProductivaValues, {
@@ -376,7 +378,7 @@ export const CreateAprendizByInstructorSchema = z.object({
   }),
 });
 
-export type CreateAprendizByInstructorInput = z.infer<typeof CreateAprendizByInstructorSchema>;
+export type CreateAprendizInput = z.infer<typeof CreateAprendizSchema>;
 
 // Coordinador lo crea el ADMIN — nunca autoregistro público (era una falla de seguridad:
 // cualquiera, incluido un aprendiz, podía crear una cuenta de coordinador). Misma forma que

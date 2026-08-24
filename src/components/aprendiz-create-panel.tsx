@@ -39,7 +39,25 @@ const initialState: FormFields = {
 const inputClass =
   "rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950";
 
-export function InstructorAprendizCreatePanel({ fichas }: { fichas: Ficha[] }) {
+// Formulario de creación de aprendiz (individual + importación masiva), compartido por los
+// paneles de Instructor, Coordinador y Admin. La única diferencia real entre roles es el alcance
+// de fichas disponibles (el Instructor solo ve las suyas, verificado en el route handler) — todo
+// lo demás es idéntico, por eso vive en un solo componente parametrizado por URL.
+export function AprendizCreatePanel({
+  fichas,
+  createUrl,
+  importUrl,
+  sinFichasMensaje,
+  restriccionFichaTexto,
+  onCreated,
+}: {
+  fichas: Ficha[];
+  createUrl: string;
+  importUrl: string;
+  sinFichasMensaje: string;
+  restriccionFichaTexto: string;
+  onCreated?: () => void;
+}) {
   const router = useRouter();
   const [form, setForm] = useState<FormFields>(initialState);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
@@ -55,6 +73,14 @@ export function InstructorAprendizCreatePanel({ fichas }: { fichas: Ficha[] }) {
   } | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
 
+  function notifyCreated() {
+    if (onCreated) {
+      onCreated();
+    } else {
+      router.refresh();
+    }
+  }
+
   function update<K extends keyof FormFields>(key: K, value: FormFields[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
@@ -65,7 +91,7 @@ export function InstructorAprendizCreatePanel({ fichas }: { fichas: Ficha[] }) {
     setCreated(null);
     setLoading(true);
 
-    const res = await fetch("/api/instructor/aprendices", {
+    const res = await fetch(createUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
@@ -86,7 +112,7 @@ export function InstructorAprendizCreatePanel({ fichas }: { fichas: Ficha[] }) {
       password: data.password,
     });
     setForm(initialState);
-    router.refresh();
+    notifyCreated();
   }
 
   async function handleImportSubmit(e: React.FormEvent) {
@@ -95,7 +121,7 @@ export function InstructorAprendizCreatePanel({ fichas }: { fichas: Ficha[] }) {
     setImportError(null);
     setImportResult(null);
 
-    const res = await fetch("/api/instructor/aprendices/import", {
+    const res = await fetch(importUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ texto: importText }),
@@ -111,7 +137,7 @@ export function InstructorAprendizCreatePanel({ fichas }: { fichas: Ficha[] }) {
 
     setImportResult(data);
     setImportText("");
-    router.refresh();
+    notifyCreated();
   }
 
   return (
@@ -165,7 +191,7 @@ export function InstructorAprendizCreatePanel({ fichas }: { fichas: Ficha[] }) {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Ficha" error={errors.fichaId?.[0]}>
             {fichas.length === 0 ? (
-              <p className="text-sm text-amber-600 dark:text-amber-500">No tienes fichas asignadas todavía.</p>
+              <p className="text-sm text-amber-600 dark:text-amber-500">{sinFichasMensaje}</p>
             ) : (
               <select required value={form.fichaId} onChange={(e) => update("fichaId", e.target.value)} className={inputClass}>
                 <option value="" disabled>Selecciona la ficha</option>
@@ -225,7 +251,7 @@ export function InstructorAprendizCreatePanel({ fichas }: { fichas: Ficha[] }) {
           <strong>FICHA</strong> y <strong>ALTERNATIVA EP</strong> (incluir el encabezado ayuda,
           pero no es obligatorio; las columnas de <strong>PROGRAMA DE FORMACIÓN</strong> e{" "}
           <strong>INSTRUCTOR</strong> se ignoran, ya viven en la ficha). Solo se crean cuentas
-          nuevas — si la cédula o el correo ya existen, o la ficha no es tuya, esa fila no se
+          nuevas — si la cédula o el correo ya existen, o {restriccionFichaTexto}, esa fila no se
           modifica y queda reportada aparte. Cada cuenta nueva recibe una contraseña temporal por
           correo.
         </p>

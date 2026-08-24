@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-guards";
-import { InstructorAprendizCreatePanel } from "@/components/instructor-aprendiz-create-panel";
+import { AprendizCreatePanel } from "@/components/aprendiz-create-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +42,13 @@ export default async function InstructorAprendicesPage() {
           </p>
         </div>
 
-        <InstructorAprendizCreatePanel fichas={fichasAsignadas} />
+        <AprendizCreatePanel
+          fichas={fichasAsignadas}
+          createUrl="/api/instructor/aprendices"
+          importUrl="/api/instructor/aprendices/import"
+          sinFichasMensaje="No tienes fichas asignadas todavía."
+          restriccionFichaTexto="la ficha no es tuya"
+        />
 
         <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           {aprendices.length === 0 ? (

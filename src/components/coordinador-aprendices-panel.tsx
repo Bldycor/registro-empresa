@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AprendizCreatePanel } from "@/components/aprendiz-create-panel";
 import {
   ComunaValues,
   comunaLabel,
@@ -181,6 +182,14 @@ export function CoordinadorAprendicesPanel({
     setDeletingId(null);
   }
 
+  async function refetchAprendices() {
+    const res = await fetch("/api/coordinador/aprendices");
+    if (res.ok) {
+      const data = await res.json();
+      setAprendices(data.aprendices ?? []);
+    }
+  }
+
   return (
     <div className="w-full max-w-3xl space-y-8">
       <div>
@@ -192,6 +201,15 @@ export function CoordinadorAprendicesPanel({
           su estado, o reasigna/desasigna su ficha.
         </p>
       </div>
+
+      <AprendizCreatePanel
+        fichas={fichas}
+        createUrl="/api/coordinador/aprendices/create"
+        importUrl="/api/coordinador/aprendices/import"
+        sinFichasMensaje="No hay fichas registradas todavía — precárgalas primero en Fichas."
+        restriccionFichaTexto="la ficha no existe"
+        onCreated={refetchAprendices}
+      />
 
       <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div className="space-y-3 border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
