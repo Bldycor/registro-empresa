@@ -11,7 +11,13 @@ import {
 } from "@/lib/validations";
 import { StatBadge } from "@/components/stat-badge";
 
-type Ficha = { id: string; codigo: string; _count?: { aprendices: number } };
+type AprendizNombre = { id: string; nombres: string; apellidos: string };
+type Ficha = {
+  id: string;
+  codigo: string;
+  _count?: { aprendices: number };
+  aprendices?: AprendizNombre[];
+};
 type CreadoPor = { id: string; nombres: string; apellidos: string };
 
 type Instructor = {
@@ -79,6 +85,8 @@ export function CoordinadorInstructoresPanel({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const [fichaExpandidaId, setFichaExpandidaId] = useState<string | null>(null);
 
   function update<K extends keyof FormFields>(key: K, value: FormFields[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -498,17 +506,47 @@ export function CoordinadorInstructoresPanel({
                         {instructor.coordinacion ? coordinacionLabel[instructor.coordinacion] : "Sin coordinación"}
                       </span>
                       {instructor.fichasAsignadas.length > 0 ? (
-                        <div className="flex flex-col items-start gap-1 sm:items-end">
+                        <div className="flex flex-col items-end gap-1">
                           <div className="flex flex-wrap justify-end gap-1">
-                            {instructor.fichasAsignadas.map((f) => (
-                              <span
-                                key={f.id}
-                                className="rounded-full border border-zinc-200 px-2 py-0.5 text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400"
-                              >
-                                {f.codigo} · {f._count?.aprendices ?? 0} aprendiz(es)
-                              </span>
-                            ))}
+                            {instructor.fichasAsignadas.map((f) => {
+                              const expandida = fichaExpandidaId === f.id;
+                              return (
+                                <button
+                                  key={f.id}
+                                  type="button"
+                                  onClick={() =>
+                                    setFichaExpandidaId(expandida ? null : f.id)
+                                  }
+                                  className="rounded-full border border-zinc-200 px-2 py-0.5 text-xs text-zinc-500 hover:border-zinc-400 hover:text-zinc-700 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-500 dark:hover:text-zinc-200"
+                                >
+                                  {f.codigo} · {f._count?.aprendices ?? 0} aprendiz(es)
+                                </button>
+                              );
+                            })}
                           </div>
+
+                          {instructor.fichasAsignadas.map((f) => {
+                            if (fichaExpandidaId !== f.id) return null;
+                            return (
+                              <div
+                                key={f.id}
+                                className="w-56 rounded-md border border-zinc-200 bg-zinc-50 p-2 text-right text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950/40 dark:text-zinc-400"
+                              >
+                                {f.aprendices && f.aprendices.length > 0 ? (
+                                  <ul className="space-y-0.5">
+                                    {f.aprendices.map((a) => (
+                                      <li key={a.id}>
+                                        {a.nombres} {a.apellidos}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p>Sin aprendices en esta ficha.</p>
+                                )}
+                              </div>
+                            );
+                          })}
+
                           <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
                             Total a cargo:{" "}
                             {instructor.fichasAsignadas.reduce(

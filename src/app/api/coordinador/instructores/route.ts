@@ -25,7 +25,15 @@ export async function GET() {
       comuna: true,
       coordinacion: true,
       fichasAsignadas: {
-        select: { id: true, codigo: true, _count: { select: { aprendices: true } } },
+        select: {
+          id: true,
+          codigo: true,
+          _count: { select: { aprendices: true } },
+          aprendices: {
+            select: { id: true, nombres: true, apellidos: true },
+            orderBy: [{ nombres: "asc" }, { apellidos: "asc" }],
+          },
+        },
       },
       creadoPorId: true,
       creadoPor: { select: { id: true, nombres: true, apellidos: true } },
