@@ -3,23 +3,13 @@
 import { useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 
-const MAX_INTENTOS = 3;
+const MAX_INTENTOS = 4;
 
-// Errores de red/token contra Vercel Blob son casi siempre transitorios (conexión inestable del
-// aprendiz, un timeout puntual) — se reintentan solos antes de mostrarle nada al usuario. Errores
-// de validación (tipo de archivo no permitido, etc.) no se reintentan: reintentar no los arregla.
-function esErrorTransitorio(err: unknown): boolean {
-  const mensaje = err instanceof Error ? err.message : String(err);
-  return /client token|network|fetch|timeout|ECONN|failed to retrieve/i.test(mensaje);
-}
-
-function mensajeAmigable(err: unknown): string {
-  if (esErrorTransitorio(err)) {
-    return "No se pudo conectar con el almacenamiento de archivos. Verifica tu conexión e inténtalo de nuevo.";
-  }
-  return err instanceof Error ? err.message : "No se pudo subir el archivo.";
-}
-
+// Antes solo se reintentaba si el mensaje de error coincidía con un patrón de "error de red" —
+// pero cualquier falla del lado del servidor (una consulta a la base de datos que tarda al
+// "despertar" desde inactividad, por ejemplo) le llega al cliente empaquetada por el SDK de
+// Vercel Blob en el mismo mensaje genérico en inglés, sin distinción de causa. Reintentar siempre
+// es más simple y más robusto que tratar de adivinar por el texto del error.
 export function FileUploadField({
   label,
   pathPrefix,
@@ -59,14 +49,17 @@ export function FileUploadField({
         return;
       } catch (err) {
         ultimoError = err;
-        if (!esErrorTransitorio(err)) break;
+        console.error(`[FileUploadField] intento ${intento}/${MAX_INTENTOS} fallido:`, err);
         if (intento < MAX_INTENTOS) {
-          await new Promise((resolve) => setTimeout(resolve, 800 * intento));
+          await new Promise((resolve) => setTimeout(resolve, 700 * intento));
         }
       }
     }
 
-    setUploadError(mensajeAmigable(ultimoError));
+    console.error("[FileUploadField] subida fallida tras agotar reintentos:", ultimoError);
+    setUploadError(
+      "No se pudo subir el archivo tras varios intentos. Verifica tu conexión y usa el botón Reintentar, o recarga la página si el problema sigue."
+    );
     setLoading(false);
   }
 
@@ -106,7 +99,7 @@ export function FileUploadField({
             <button
               type="button"
               onClick={() => handleFile(archivoPendiente)}
-              className="text-sm font-medium text-zinc-600 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              className="shrink-0 text-sm font-medium text-zinc-600 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
             >
               Reintentar
             </button>
