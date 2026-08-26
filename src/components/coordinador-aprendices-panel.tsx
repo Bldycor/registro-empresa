@@ -84,6 +84,11 @@ export function CoordinadorAprendicesPanel({
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkAssignFichaId, setBulkAssignFichaId] = useState("");
+  const [bulkAssignLoading, setBulkAssignLoading] = useState(false);
+  const [bulkAssignError, setBulkAssignError] = useState<string | null>(null);
+
   const aprendicesFiltrados = aprendices.filter((a) => {
     if (soloSinFicha && a.fichaId) return false;
     if (!soloSinFicha && filtroFichaId && a.fichaId !== filtroFichaId) return false;
@@ -190,6 +195,50 @@ export function CoordinadorAprendicesPanel({
     }
   }
 
+  function toggleSelected(aprendizId: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(aprendizId)) {
+        next.delete(aprendizId);
+      } else {
+        next.add(aprendizId);
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectAllVisible() {
+    const idsVisibles = aprendicesFiltrados.map((a) => a.id);
+    const todosSeleccionados = idsVisibles.length > 0 && idsVisibles.every((id) => selectedIds.has(id));
+    setSelectedIds(todosSeleccionados ? new Set() : new Set(idsVisibles));
+  }
+
+  async function handleBulkAssignFicha() {
+    setBulkAssignLoading(true);
+    setBulkAssignError(null);
+
+    const res = await fetch("/api/coordinador/aprendices/asignar-ficha", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        aprendizIds: Array.from(selectedIds),
+        fichaId: bulkAssignFichaId || null,
+      }),
+    });
+
+    const data = await res.json();
+    setBulkAssignLoading(false);
+
+    if (!res.ok) {
+      setBulkAssignError(data.error ?? "No se pudo asignar la ficha.");
+      return;
+    }
+
+    setSelectedIds(new Set());
+    setBulkAssignFichaId("");
+    await refetchAprendices();
+  }
+
   return (
     <div className="w-full max-w-3xl space-y-8">
       <div>
@@ -254,6 +303,59 @@ export function CoordinadorAprendicesPanel({
               </label>
             </div>
           </div>
+
+          {aprendicesFiltrados.length > 0 &&
+            (() => {
+              const todosVisiblesSeleccionados = aprendicesFiltrados.every((a) => selectedIds.has(a.id));
+              return (
+                <label className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400">
+                  <input
+                    type="checkbox"
+                    checked={todosVisiblesSeleccionados}
+                    onChange={toggleSelectAllVisible}
+                  />
+                  {todosVisiblesSeleccionados
+                    ? "Deseleccionar todos los visibles"
+                    : "Seleccionar todos los visibles"}
+                </label>
+              );
+            })()}
+
+          {selectedIds.size > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-950/40">
+              <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                {selectedIds.size} aprendiz(es) seleccionado(s)
+              </span>
+              <select
+                value={bulkAssignFichaId}
+                onChange={(e) => setBulkAssignFichaId(e.target.value)}
+                className={`${inputClass} text-xs`}
+              >
+                <option value="">Sin ficha asignada</option>
+                {fichas.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.codigo}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={handleBulkAssignFicha}
+                disabled={bulkAssignLoading}
+                className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              >
+                {bulkAssignLoading ? "Asignando..." : "Asignar a seleccionados"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedIds(new Set())}
+                className="text-xs font-medium text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+              >
+                Cancelar selección
+              </button>
+              {bulkAssignError && <p className="w-full text-xs text-red-600">{bulkAssignError}</p>}
+            </div>
+          )}
         </div>
 
         {aprendices.length === 0 ? (
@@ -273,13 +375,22 @@ export function CoordinadorAprendicesPanel({
               return (
                 <li key={aprendiz.id}>
                   <div className="flex flex-col gap-2 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="font-medium text-zinc-900 dark:text-zinc-50">
-                        {aprendiz.nombres} {aprendiz.apellidos}
-                      </p>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {aprendiz.email} · Cédula: {aprendiz.cedula}
-                      </p>
+                    <div className="flex items-start gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(aprendiz.id)}
+                        onChange={() => toggleSelected(aprendiz.id)}
+                        className="mt-1"
+                        aria-label={`Seleccionar ${aprendiz.nombres} ${aprendiz.apellidos}`}
+                      />
+                      <div>
+                        <p className="font-medium text-zinc-900 dark:text-zinc-50">
+                          {aprendiz.nombres} {aprendiz.apellidos}
+                        </p>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                          {aprendiz.email} · Cédula: {aprendiz.cedula}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex flex-col items-start gap-1 sm:items-end">
                       <div className="flex flex-wrap items-center gap-1">
