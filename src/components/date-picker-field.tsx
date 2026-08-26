@@ -32,6 +32,7 @@ export function DatePickerField({
   required,
   min,
   max,
+  labelClassName,
 }: {
   label: string;
   value: string;
@@ -40,6 +41,7 @@ export function DatePickerField({
   required?: boolean;
   min?: string;
   max?: string;
+  labelClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const selected = toDateOnly(value);
@@ -92,7 +94,7 @@ export function DatePickerField({
 
   return (
     <div className="relative flex flex-col gap-1" ref={containerRef}>
-      <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+      <label className={labelClassName ?? "text-sm font-medium text-zinc-700 dark:text-zinc-300"}>
         {label}
         {required && <span className="text-red-600"> *</span>}
       </label>

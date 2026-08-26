@@ -14,6 +14,7 @@ import {
   type JornadaValue,
 } from "@/lib/validations";
 import { StatBadge } from "@/components/stat-badge";
+import { DatePickerField } from "@/components/date-picker-field";
 
 type Instructor = { id: string; nombres: string; apellidos: string; email: string };
 
@@ -816,24 +817,18 @@ export function CoordinadorFichasPanel({
                       </div>
 
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
-                          Inicio ficha
-                          <input
-                            type="date"
-                            value={gestionForm.fechaInicioFicha}
-                            onChange={(e) => updateGestion("fechaInicioFicha", e.target.value)}
-                            className={inputClass}
-                          />
-                        </label>
-                        <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
-                          Fin formación
-                          <input
-                            type="date"
-                            value={gestionForm.fechaFinFormacion}
-                            onChange={(e) => updateGestion("fechaFinFormacion", e.target.value)}
-                            className={inputClass}
-                          />
-                        </label>
+                        <DatePickerField
+                          label="Inicio ficha"
+                          value={gestionForm.fechaInicioFicha}
+                          onChange={(v) => updateGestion("fechaInicioFicha", v)}
+                          labelClassName="text-xs text-zinc-600 dark:text-zinc-400"
+                        />
+                        <DatePickerField
+                          label="Fin formación"
+                          value={gestionForm.fechaFinFormacion}
+                          onChange={(v) => updateGestion("fechaFinFormacion", v)}
+                          labelClassName="text-xs text-zinc-600 dark:text-zinc-400"
+                        />
                       </div>
 
                       <p className="text-xs text-zinc-500 dark:text-zinc-400">
