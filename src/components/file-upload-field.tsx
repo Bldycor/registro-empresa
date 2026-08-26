@@ -3,6 +3,23 @@
 import { useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 
+const MAX_INTENTOS = 3;
+
+// Errores de red/token contra Vercel Blob son casi siempre transitorios (conexión inestable del
+// aprendiz, un timeout puntual) — se reintentan solos antes de mostrarle nada al usuario. Errores
+// de validación (tipo de archivo no permitido, etc.) no se reintentan: reintentar no los arregla.
+function esErrorTransitorio(err: unknown): boolean {
+  const mensaje = err instanceof Error ? err.message : String(err);
+  return /client token|network|fetch|timeout|ECONN|failed to retrieve/i.test(mensaje);
+}
+
+function mensajeAmigable(err: unknown): string {
+  if (esErrorTransitorio(err)) {
+    return "No se pudo conectar con el almacenamiento de archivos. Verifica tu conexión e inténtalo de nuevo.";
+  }
+  return err instanceof Error ? err.message : "No se pudo subir el archivo.";
+}
+
 export function FileUploadField({
   label,
   pathPrefix,
@@ -21,21 +38,36 @@ export function FileUploadField({
   const inputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [archivoPendiente, setArchivoPendiente] = useState<File | null>(null);
 
   async function handleFile(file: File) {
     setLoading(true);
     setUploadError(null);
-    try {
-      const result = await upload(`${pathPrefix}/${file.name}`, file, {
-        access: "public",
-        handleUploadUrl: "/api/upload",
-      });
-      onChange(result.url);
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : "No se pudo subir el archivo.");
-    } finally {
-      setLoading(false);
+    setArchivoPendiente(file);
+
+    let ultimoError: unknown = null;
+
+    for (let intento = 1; intento <= MAX_INTENTOS; intento++) {
+      try {
+        const result = await upload(`${pathPrefix}/${file.name}`, file, {
+          access: "public",
+          handleUploadUrl: "/api/upload",
+        });
+        onChange(result.url);
+        setArchivoPendiente(null);
+        setLoading(false);
+        return;
+      } catch (err) {
+        ultimoError = err;
+        if (!esErrorTransitorio(err)) break;
+        if (intento < MAX_INTENTOS) {
+          await new Promise((resolve) => setTimeout(resolve, 800 * intento));
+        }
+      }
     }
+
+    setUploadError(mensajeAmigable(ultimoError));
+    setLoading(false);
   }
 
   return (
@@ -67,7 +99,20 @@ export function FileUploadField({
           Ver documento adjunto
         </a>
       )}
-      {uploadError && <p className="text-sm text-red-600">{uploadError}</p>}
+      {uploadError && !loading && (
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-red-600">{uploadError}</p>
+          {archivoPendiente && (
+            <button
+              type="button"
+              onClick={() => handleFile(archivoPendiente)}
+              className="text-sm font-medium text-zinc-600 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            >
+              Reintentar
+            </button>
+          )}
+        </div>
+      )}
       {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
   );

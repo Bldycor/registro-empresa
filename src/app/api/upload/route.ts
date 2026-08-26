@@ -32,6 +32,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(jsonResponse);
   } catch (error) {
+    console.error("[api/upload] Error al generar el token de subida:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Error al generar el token de subida." },
       { status: 400 },
