@@ -469,3 +469,43 @@ export const FormalizacionSchema = z.object({
 });
 
 export type FormalizacionInput = z.infer<typeof FormalizacionSchema>;
+
+export const NivelRiesgoARLValues = ["I", "II", "III", "IV", "V"] as const;
+export type NivelRiesgoARLValue = (typeof NivelRiesgoARLValues)[number];
+
+export const nivelRiesgoARLLabel: Record<NivelRiesgoARLValue, string> = {
+  I: "I",
+  II: "II",
+  III: "III",
+  IV: "IV",
+  V: "V",
+};
+
+// Evidencia (c): fila de la tabla "Descripción de las actividades realizadas" de una bitácora
+// (formato GFPI-F-147) — se pueden agregar cuantas sean necesarias, mínimo una.
+export const BitacoraActividadSchema = z.object({
+  descripcion: z.string().trim().min(2, "Describe la actividad."),
+  competencias: z.string().trim().nullable().optional(),
+  fechaInicio: z.string().trim().nullable().optional(),
+  fechaFin: z.string().trim().nullable().optional(),
+  evidenciaCumplimiento: z.string().trim().nullable().optional(),
+  observaciones: z.string().trim().nullable().optional(),
+});
+
+export type BitacoraActividadInput = z.infer<typeof BitacoraActividadSchema>;
+
+// Evidencia (c): Bitácora quincenal del aprendiz. `numero` (1-12) identifica cuál de las
+// bitácoras se está diligenciando; la fecha límite se calcula en el servidor, no se recibe acá.
+export const BitacoraSchema = z.object({
+  numero: z.number().int().min(1).max(12),
+  periodoDesde: z.string().trim().nullable().optional(),
+  periodoHasta: z.string().trim().nullable().optional(),
+  archivoUrl: z.string().trim().min(1, "Adjunta la bitácora diligenciada."),
+  arlAfiliado: z.boolean().nullable().optional(),
+  arlNivelRiesgo: z.enum(NivelRiesgoARLValues).nullable().optional(),
+  arlRiesgoCorresponde: z.boolean().nullable().optional(),
+  arlTieneEPP: z.boolean().nullable().optional(),
+  actividades: z.array(BitacoraActividadSchema).min(1, "Agrega al menos una actividad."),
+});
+
+export type BitacoraInput = z.infer<typeof BitacoraSchema>;
