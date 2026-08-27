@@ -28,7 +28,11 @@ type Seleccion = {
     nombres: string;
     apellidos: string;
     cedula: string;
-    ficha: { codigo: string } | null;
+    ficha: {
+      codigo: string;
+      programa: string | null;
+      instructor: { nombres: string; apellidos: string } | null;
+    } | null;
   };
 };
 
@@ -107,6 +111,11 @@ export function AlternativasEPPanel() {
                     {s.user.nombres} {s.user.apellidos}{" "}
                     <span className="font-normal text-zinc-500 dark:text-zinc-400">
                       · CC {s.user.cedula} · Ficha {s.user.ficha?.codigo ?? "sin asignar"}
+                      {s.user.ficha?.programa && <> · {s.user.ficha.programa}</>}
+                      {" · Instructor "}
+                      {s.user.ficha?.instructor
+                        ? `${s.user.ficha.instructor.nombres} ${s.user.ficha.instructor.apellidos}`
+                        : "sin asignar"}
                     </span>
                   </p>
                   <p className="text-sm text-zinc-700 dark:text-zinc-300">

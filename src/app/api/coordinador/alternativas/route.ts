@@ -18,7 +18,21 @@ const SELECCION_SELECT = {
   fechaAval: true,
   createdAt: true,
   grupoId: true,
-  user: { select: { id: true, nombres: true, apellidos: true, cedula: true, ficha: { select: { codigo: true } } } },
+  user: {
+    select: {
+      id: true,
+      nombres: true,
+      apellidos: true,
+      cedula: true,
+      ficha: {
+        select: {
+          codigo: true,
+          programa: true,
+          instructor: { select: { nombres: true, apellidos: true } },
+        },
+      },
+    },
+  },
 } satisfies Prisma.SeleccionAlternativaEPSelect;
 
 // Lista todas las solicitudes de selección/modificación de alternativa, para que
