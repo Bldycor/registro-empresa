@@ -6,6 +6,7 @@ import { BitacoraForm, type BitacoraFormInitial } from "@/components/bitacora-fo
 export type BitacoraSlot = {
   numero: number;
   fechaLimite: string;
+  periodoSugerido: { desde: string; hasta: string };
   existing: {
     fechaEntrega: string | null;
     estado: "PENDIENTE" | "APROBADA" | "RECHAZADA";
@@ -139,6 +140,10 @@ export function BitacorasAprendizPanel({ slots }: { slots: BitacoraSlot[] }) {
                 <BitacoraForm
                   numero={slot.numero}
                   initial={initial}
+                  periodoSugerido={{
+                    desde: toDateInput(slot.periodoSugerido.desde),
+                    hasta: toDateInput(slot.periodoSugerido.hasta),
+                  }}
                   onSaved={() => setAbiertoNumero(null)}
                   onCancel={() => setAbiertoNumero(null)}
                 />

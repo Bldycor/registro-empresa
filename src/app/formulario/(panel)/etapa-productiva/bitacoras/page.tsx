@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-guards";
-import { calcularFechasLimiteBitacoras } from "@/lib/bitacora-fechas";
+import { calcularFechasLimiteBitacoras, calcularPeriodoBitacora } from "@/lib/bitacora-fechas";
 import { BitacorasAprendizPanel, type BitacoraSlot } from "@/components/bitacoras-aprendiz-panel";
 
 export const dynamic = "force-dynamic";
@@ -63,9 +63,14 @@ async function BitacorasPanelServer({
   const slots: BitacoraSlot[] = fechasLimite.map((fechaLimite, idx) => {
     const numero = idx + 1;
     const existente = bitacoraPorNumero.get(numero);
+    const periodoSugerido = calcularPeriodoBitacora(fechaInicioEtapaProductiva, numero);
     return {
       numero,
       fechaLimite: fechaLimite.toISOString(),
+      periodoSugerido: {
+        desde: periodoSugerido.desde.toISOString(),
+        hasta: periodoSugerido.hasta.toISOString(),
+      },
       existing: existente
         ? {
             fechaEntrega: existente.fechaEntrega?.toISOString() ?? null,

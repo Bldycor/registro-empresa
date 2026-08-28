@@ -20,3 +20,16 @@ export function calcularFechasLimiteBitacoras(
 ): Date[] {
   return Array.from({ length: total }, (_, i) => calcularFechaLimiteBitacora(fechaInicioEP, i + 1));
 }
+
+// Período quincenal que le corresponde a cada bitácora (para sugerirlo por defecto en el
+// formulario, editable por el aprendiz): desde el límite de la bitácora anterior (o la fecha de
+// inicio de EP, en la primera) hasta el límite de esta bitácora.
+export function calcularPeriodoBitacora(
+  fechaInicioEP: Date,
+  numero: number
+): { desde: Date; hasta: Date } {
+  return {
+    desde: numero === 1 ? fechaInicioEP : calcularFechaLimiteBitacora(fechaInicioEP, numero - 1),
+    hasta: calcularFechaLimiteBitacora(fechaInicioEP, numero),
+  };
+}

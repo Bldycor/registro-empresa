@@ -63,11 +63,13 @@ export type BitacoraFormInitial = {
 export function BitacoraForm({
   numero,
   initial,
+  periodoSugerido,
   onSaved,
   onCancel,
 }: {
   numero: number;
   initial: BitacoraFormInitial;
+  periodoSugerido?: { desde: string; hasta: string };
   onSaved?: () => void;
   onCancel?: () => void;
 }) {
@@ -75,8 +77,8 @@ export function BitacoraForm({
   const [form, setForm] = useState<FormFields>(
     initial
       ? {
-          periodoDesde: initial.periodoDesde ?? "",
-          periodoHasta: initial.periodoHasta ?? "",
+          periodoDesde: initial.periodoDesde ?? periodoSugerido?.desde ?? "",
+          periodoHasta: initial.periodoHasta ?? periodoSugerido?.hasta ?? "",
           archivoUrl: initial.archivoUrl ?? "",
           arlAfiliado: booleanAString(initial.arlAfiliado),
           arlNivelRiesgo: initial.arlNivelRiesgo ?? "",
@@ -95,8 +97,8 @@ export function BitacoraForm({
               : [actividadVacia],
         }
       : {
-          periodoDesde: "",
-          periodoHasta: "",
+          periodoDesde: periodoSugerido?.desde ?? "",
+          periodoHasta: periodoSugerido?.hasta ?? "",
           archivoUrl: "",
           arlAfiliado: "",
           arlNivelRiesgo: "",
@@ -190,19 +192,27 @@ export function BitacoraForm({
       className="w-full rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
     >
       <div className="flex flex-col gap-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <DatePickerField
-            label="Período desde"
-            value={form.periodoDesde}
-            onChange={(v) => update("periodoDesde", v)}
-            error={errors.periodoDesde?.[0]}
-          />
-          <DatePickerField
-            label="Período hasta"
-            value={form.periodoHasta}
-            onChange={(v) => update("periodoHasta", v)}
-            error={errors.periodoHasta?.[0]}
-          />
+        <div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <DatePickerField
+              label="Período desde"
+              value={form.periodoDesde}
+              onChange={(v) => update("periodoDesde", v)}
+              error={errors.periodoDesde?.[0]}
+            />
+            <DatePickerField
+              label="Período hasta"
+              value={form.periodoHasta}
+              onChange={(v) => update("periodoHasta", v)}
+              error={errors.periodoHasta?.[0]}
+            />
+          </div>
+          {periodoSugerido && (
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              Calculado automáticamente según tu fecha de inicio de Etapa Productiva — puedes
+              ajustarlo si es necesario.
+            </p>
+          )}
         </div>
 
         <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
