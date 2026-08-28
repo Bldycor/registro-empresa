@@ -36,7 +36,13 @@ type Seleccion = {
   };
 };
 
-export function AlternativasEPPanel() {
+export function AlternativasEPPanel({
+  listUrl = "/api/coordinador/alternativas",
+  patchUrlBase = "/api/coordinador/alternativas",
+}: {
+  listUrl?: string;
+  patchUrlBase?: string;
+} = {}) {
   const [selecciones, setSelecciones] = useState<Seleccion[] | null>(null);
   const [filtro, setFiltro] = useState<"TODAS" | "PENDIENTE" | "APROBADA" | "RECHAZADA">(
     "PENDIENTE",
@@ -45,16 +51,16 @@ export function AlternativasEPPanel() {
   const [busy, setBusy] = useState<string | null>(null);
 
   function load() {
-    fetch("/api/coordinador/alternativas")
+    fetch(listUrl)
       .then((res) => res.json())
       .then((data) => setSelecciones(data.selecciones ?? []));
   }
 
-  useEffect(load, []);
+  useEffect(load, [listUrl]);
 
   async function avalar(id: string, estado: "APROBADA" | "RECHAZADA") {
     setBusy(id);
-    await fetch(`/api/coordinador/alternativas/${id}`, {
+    await fetch(`${patchUrlBase}/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado, observacionesAval: observaciones[id] ?? null }),

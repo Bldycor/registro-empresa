@@ -13,6 +13,7 @@ const roleLabel: Record<string, string> = {
 const roleNav: Record<string, { href: string; label: string }[]> = {
   INSTRUCTOR: [
     { href: "/formulario/instructor/aprendices", label: "Aprendices" },
+    { href: "/formulario/instructor/alternativas", label: "Alternativas EP" },
     { href: "/formulario/instructor/formalizaciones", label: "Formalizaciones" },
     { href: "/formulario/instructor/bitacoras", label: "Bitácoras" },
   ],
