@@ -100,6 +100,7 @@ export const ProgramasFormacionValues = [
   "OPERACIONES DE LOGISTICA COMERCIAL EN GRANDES SUPERFICIES",
   "PROCESOS PARA LA COMERCIALIZACIÓN INTERNACIONAL",
   "SERVICIOS COMERCIALES Y FINANCIEROS",
+  "SUPERVISIÓN DE VENTAS",
   "VENTA DE PRODUCTOS EN LINEA",
 ] as const;
 export type ProgramaFormacionValue = (typeof ProgramasFormacionValues)[number];
@@ -480,6 +481,28 @@ export const nivelRiesgoARLLabel: Record<NivelRiesgoARLValue, string> = {
   IV: "IV",
   V: "V",
 };
+
+export const TipoCompetenciaValues = ["TECNICA", "BASICA_CLAVE"] as const;
+export type TipoCompetenciaValue = (typeof TipoCompetenciaValues)[number];
+
+export const tipoCompetenciaLabel: Record<TipoCompetenciaValue, string> = {
+  TECNICA: "Técnica",
+  BASICA_CLAVE: "Básica y/o clave",
+};
+
+// Catálogo de competencias/resultados de aprendizaje por programa (ver src/lib/competencias-import.ts
+// para la importación masiva) — este schema es para el alta/edición manual de una fila suelta.
+export const CompetenciaFormacionSchema = z.object({
+  programa: z.enum(ProgramasFormacionValues, { message: "Selecciona el programa de formación." }),
+  tipo: z.enum(TipoCompetenciaValues, { message: "Selecciona el tipo de competencia." }),
+  codigoCompetencia: z.string().trim().min(1, "Ingresa el código de la competencia."),
+  nombreCompetencia: z.string().trim().min(2, "Ingresa el nombre de la competencia."),
+  resultadoAprendizaje: z.string().trim().min(2, "Ingresa el resultado de aprendizaje."),
+  horas: z.number().int().positive().nullable().optional(),
+  redConocimiento: z.string().trim().nullable().optional(),
+});
+
+export type CompetenciaFormacionInput = z.infer<typeof CompetenciaFormacionSchema>;
 
 // Evidencia (c): fila de la tabla "Descripción de las actividades realizadas" de una bitácora
 // (formato GFPI-F-147) — se pueden agregar cuantas sean necesarias, mínimo una.

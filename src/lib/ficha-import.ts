@@ -9,6 +9,7 @@ import {
   type ProgramaFormacionValue,
 } from "@/lib/validations";
 import { calcularFechasFicha } from "@/lib/ficha-fechas";
+import { claveEncabezado, normalizarCatalogo } from "@/lib/texto";
 
 // Importador de fichas desde el control institucional en hoja de cálculo. Acepta texto pegado
 // desde Google Sheets/Excel (separado por tabulaciones) con o sin fila de encabezado — si hay
@@ -38,14 +39,6 @@ export type FichaImportResult = {
   filas: ParsedFichaRow[];
   errores: FichaImportError[];
 };
-
-function quitarAcentos(texto: string): string {
-  return texto.normalize("NFD").replace(/[̀-ͯ]/g, "");
-}
-
-function claveEncabezado(texto: string): string {
-  return quitarAcentos(texto).toUpperCase().replace(/[^A-Z0-9]/g, "");
-}
 
 type CampoFicha =
   | "codigo"
@@ -117,17 +110,6 @@ const JORNADA_MAP: Record<string, JornadaValue> = {
 const PROGRAMA_MAP: Record<string, ProgramaFormacionValue> = Object.fromEntries(
   ProgramasFormacionValues.map((p) => [claveEncabezado(p), p])
 ) as Record<string, ProgramaFormacionValue>;
-
-function normalizarCatalogo<T extends string>(
-  crudo: string,
-  mapa: Record<string, T>
-): { valor: T | null; reconocido: boolean } {
-  const texto = crudo.trim();
-  if (!texto) return { valor: null, reconocido: true };
-  const clave = claveEncabezado(texto);
-  const valor = mapa[clave];
-  return valor ? { valor, reconocido: true } : { valor: null, reconocido: false };
-}
 
 // Fechas en formato colombiano D/M/YYYY o DD/MM/YYYY. Blanco o "0" (como en las columnas de
 // vigencia de acuerdo, cuando no aplica) se interpreta como "sin fecha", no como error.

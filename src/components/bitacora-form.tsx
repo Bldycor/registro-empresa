@@ -1,10 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileUploadField } from "@/components/file-upload-field";
 import { DatePickerField } from "@/components/date-picker-field";
 import { NivelRiesgoARLValues, nivelRiesgoARLLabel } from "@/lib/validations";
+
+type CompetenciaCatalogo = {
+  id: string;
+  tipo: "TECNICA" | "BASICA_CLAVE";
+  nombreCompetencia: string;
+  resultadoAprendizaje: string;
+};
 
 type Actividad = {
   descripcion: string;
@@ -37,6 +44,16 @@ const actividadVacia: Actividad = {
 
 const inputClass =
   "rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950";
+
+function agruparCompetencias(catalogo: CompetenciaCatalogo[]) {
+  const grupos = new Map<string, CompetenciaCatalogo[]>();
+  for (const c of catalogo) {
+    const lista = grupos.get(c.nombreCompetencia) ?? [];
+    lista.push(c);
+    grupos.set(c.nombreCompetencia, lista);
+  }
+  return Array.from(grupos.entries());
+}
 
 function booleanAString(v: boolean | null): string {
   return v === true ? "SI" : v === false ? "NO" : "";
@@ -110,6 +127,16 @@ export function BitacoraForm({
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [catalogoCompetencias, setCatalogoCompetencias] = useState<CompetenciaCatalogo[] | null>(
+    null
+  );
+
+  useEffect(() => {
+    fetch("/api/etapa-productiva/competencias")
+      .then((res) => res.json())
+      .then((data) => setCatalogoCompetencias(data.competencias ?? []))
+      .catch(() => setCatalogoCompetencias([]));
+  }, []);
 
   function update<K extends keyof FormFields>(key: K, value: FormFields[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -319,11 +346,37 @@ export function BitacoraForm({
                     />
                   </Field>
                   <Field label="Competencias / resultados de aprendizaje">
-                    <input
-                      value={actividad.competencias}
-                      onChange={(e) => updateActividad(idx, "competencias", e.target.value)}
-                      className={inputClass}
-                    />
+                    {catalogoCompetencias && catalogoCompetencias.length > 0 ? (
+                      <select
+                        value={actividad.competencias}
+                        onChange={(e) => updateActividad(idx, "competencias", e.target.value)}
+                        className={inputClass}
+                      >
+                        <option value="">Selecciona</option>
+                        {actividad.competencias &&
+                          !catalogoCompetencias.some(
+                            (c) => c.resultadoAprendizaje === actividad.competencias
+                          ) && <option value={actividad.competencias}>{actividad.competencias}</option>}
+                        {agruparCompetencias(catalogoCompetencias).map(([nombreCompetencia, items]) => (
+                          <optgroup key={nombreCompetencia} label={nombreCompetencia}>
+                            {items.map((c) => (
+                              <option key={c.id} value={c.resultadoAprendizaje}>
+                                {c.resultadoAprendizaje}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        value={actividad.competencias}
+                        onChange={(e) => updateActividad(idx, "competencias", e.target.value)}
+                        className={inputClass}
+                        placeholder={
+                          catalogoCompetencias === null ? "Cargando catálogo…" : undefined
+                        }
+                      />
+                    )}
                   </Field>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <DatePickerField

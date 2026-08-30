@@ -159,6 +159,11 @@ enum NivelFormacion {
   AUXILIAR
 }
 
+enum TipoCompetencia {
+  TECNICA
+  BASICA_CLAVE
+}
+
 enum Jornada {
   MANANA
   TARDE
@@ -354,6 +359,32 @@ model Ficha {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Catálogo institucional de competencias/resultados de aprendizaje por programa de formación
+// (consolidado oficial SENA). Lo administra Coordinador/Admin (importación masiva pegando la
+// hoja de cálculo, o carga manual) y alimenta el selector de "Competencias / resultados de
+// aprendizaje" en las actividades de Bitácora — evita que el aprendiz lo escriba a mano.
+// `resultadoAprendizaje` es el texto que efectivamente se guarda en `BitacoraActividad.competencias`
+// (texto libre, sin FK) para no romper compatibilidad con bitácoras ya diligenciadas.
+model CompetenciaFormacion {
+  id String @id @default(cuid())
+
+  // Debe coincidir con uno de `ProgramasFormacionValues` (mismo catálogo que `Ficha.programa`) —
+  // se valida en la capa de aplicación, no en la base de datos.
+  programa             String
+  tipo                 TipoCompetencia
+  codigoCompetencia    String
+  nombreCompetencia    String
+  resultadoAprendizaje String
+  horas                Int?
+  redConocimiento      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([programa, codigoCompetencia, resultadoAprendizaje])
+  @@index([programa])
 }
 
 model CompanyProfile {
