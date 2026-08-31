@@ -46,12 +46,29 @@ export default async function FormularioLayout({
       select: { id: true },
     });
 
+    // Cuenta de evidencias Rechazadas por sección, para la insignia roja del nav — solo hace
+    // falta calcularla si ya hay nav que mostrar (perfil completo).
+    const rechazos = profile
+      ? await (async () => {
+          const userId = session.user.id;
+          const [alternativa, formalizacion, bitacoras, evaluaciones, certificacion] =
+            await Promise.all([
+              prisma.seleccionAlternativaEP.count({ where: { userId, estado: "RECHAZADA" } }),
+              prisma.formalizacionEtapaProductiva.count({ where: { userId, estado: "RECHAZADA" } }),
+              prisma.bitacora.count({ where: { userId, estado: "RECHAZADA" } }),
+              prisma.evaluacion.count({ where: { userId, estado: "RECHAZADA" } }),
+              prisma.certificacionEmpresario.count({ where: { userId, estado: "RECHAZADA" } }),
+            ]);
+          return { alternativa, formalizacion, bitacoras, evaluaciones, certificacion };
+        })()
+      : undefined;
+
     // Antes de completar el perfil de empresa no hay nada más que navegar — la única pantalla
     // disponible es /formulario (el propio formulario de perfil), así que no se muestra el nav.
     return (
       <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-black">
         {header}
-        {profile && <EvidenciaEPNav />}
+        {profile && <EvidenciaEPNav rechazos={rechazos} />}
         <main className="flex flex-1 flex-col">{children}</main>
       </div>
     );

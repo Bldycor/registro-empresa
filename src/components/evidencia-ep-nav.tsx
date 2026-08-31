@@ -4,18 +4,53 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 
+type RechazosPorEvidencia = {
+  alternativa: number;
+  formalizacion: number;
+  bitacoras: number;
+  evaluaciones: number;
+  certificacion: number;
+};
+
 const TABS = [
-  { href: "/formulario/etapa-productiva/alternativa", label: "Alternativa EP", icon: "📋" },
-  { href: "/formulario/etapa-productiva/formalizacion", label: "Formalización", icon: "📄" },
-  { href: "/formulario/etapa-productiva/bitacoras", label: "Bitácoras", icon: "📓" },
-  { href: "/formulario/etapa-productiva/evaluaciones", label: "Evaluaciones", icon: "✅" },
-  { href: "/formulario/etapa-productiva/certificacion", label: "Certificación", icon: "🏁" },
+  {
+    href: "/formulario/etapa-productiva/alternativa",
+    label: "Alternativa EP",
+    icon: "📋",
+    key: "alternativa" as const,
+  },
+  {
+    href: "/formulario/etapa-productiva/formalizacion",
+    label: "Formalización",
+    icon: "📄",
+    key: "formalizacion" as const,
+  },
+  {
+    href: "/formulario/etapa-productiva/bitacoras",
+    label: "Bitácoras",
+    icon: "📓",
+    key: "bitacoras" as const,
+  },
+  {
+    href: "/formulario/etapa-productiva/evaluaciones",
+    label: "Evaluaciones",
+    icon: "✅",
+    key: "evaluaciones" as const,
+  },
+  {
+    href: "/formulario/etapa-productiva/certificacion",
+    label: "Certificación",
+    icon: "🏁",
+    key: "certificacion" as const,
+  },
 ];
 
 // Nav horizontal del panel del Aprendiz — reemplaza el sidebar izquierdo (stepper) que existía
 // antes de Fase 2. Las 5 evidencias son secciones del mismo nivel, sin bloqueo secuencial estricto
 // (a diferencia del stepper anterior): el aprendiz puede moverse libremente entre ellas.
-export function EvidenciaEPNav() {
+// `rechazos` marca con una insignia roja cuántas evidencias de cada sección están Rechazadas, para
+// que el aprendiz note de un vistazo dónde debe corregir sin tener que entrar a cada pestaña.
+export function EvidenciaEPNav({ rechazos }: { rechazos?: RechazosPorEvidencia }) {
   const pathname = usePathname();
 
   return (
@@ -41,11 +76,12 @@ export function EvidenciaEPNav() {
       <nav className="mt-3 flex gap-1 overflow-x-auto px-4 pb-3 sm:px-6">
         {TABS.map((tab) => {
           const active = pathname?.startsWith(tab.href) ?? false;
+          const rechazadas = rechazos?.[tab.key] ?? 0;
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+              className={`relative flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                 active
                   ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
                   : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
@@ -53,6 +89,14 @@ export function EvidenciaEPNav() {
             >
               <span aria-hidden>{tab.icon}</span>
               {tab.label}
+              {rechazadas > 0 && (
+                <span
+                  className="absolute -top-1.5 -right-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white ring-2 ring-white dark:ring-zinc-900"
+                  title={`${rechazadas} rechazada(s) — revisa y corrige`}
+                >
+                  {rechazadas}
+                </span>
+              )}
             </Link>
           );
         })}
