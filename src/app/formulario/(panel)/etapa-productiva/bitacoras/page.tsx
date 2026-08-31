@@ -60,10 +60,22 @@ async function BitacorasPanelServer({
 
   const bitacoraPorNumero = new Map(bitacoras.map((b) => [b.numero, b]));
 
+  // Para prellenar una bitácora nueva: la más reciente ya enviada ANTES de `numero` (no
+  // necesariamente numero-1, por si el aprendiz se saltó alguna).
+  function buscarPrevia(numero: number) {
+    for (let n = numero - 1; n >= 1; n--) {
+      const previa = bitacoraPorNumero.get(n);
+      if (previa) return previa;
+    }
+    return null;
+  }
+
   const slots: BitacoraSlot[] = fechasLimite.map((fechaLimite, idx) => {
     const numero = idx + 1;
     const existente = bitacoraPorNumero.get(numero);
     const periodoSugerido = calcularPeriodoBitacora(fechaInicioEtapaProductiva, numero);
+    const previa = !existente ? buscarPrevia(numero) : null;
+
     return {
       numero,
       fechaLimite: fechaLimite.toISOString(),
@@ -86,8 +98,20 @@ async function BitacorasPanelServer({
             actividades: existente.actividades.map((a) => ({
               descripcion: a.descripcion,
               competencias: a.competencias,
-              fechaInicio: a.fechaInicio?.toISOString() ?? null,
-              fechaFin: a.fechaFin?.toISOString() ?? null,
+              evidenciaCumplimiento: a.evidenciaCumplimiento,
+              observaciones: a.observaciones,
+            })),
+          }
+        : null,
+      prefillPrevio: previa
+        ? {
+            arlAfiliado: previa.arlAfiliado,
+            arlNivelRiesgo: previa.arlNivelRiesgo,
+            arlRiesgoCorresponde: previa.arlRiesgoCorresponde,
+            arlTieneEPP: previa.arlTieneEPP,
+            actividades: previa.actividades.map((a) => ({
+              descripcion: a.descripcion,
+              competencias: a.competencias,
               evidenciaCumplimiento: a.evidenciaCumplimiento,
               observaciones: a.observaciones,
             })),

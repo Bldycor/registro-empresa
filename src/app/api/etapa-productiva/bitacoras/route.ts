@@ -80,11 +80,16 @@ export async function POST(request: Request) {
 
   const fechaLimite = calcularFechaLimiteBitacora(aprendiz.fechaInicioEtapaProductiva, d.numero);
 
+  // Cada actividad hereda el período de la bitácora (periodoDesde/periodoHasta) como su propia
+  // fechaInicio/fechaFin — el formulario ya no las pide por separado, serían el mismo dato dos veces.
+  const actividadFechaInicio = d.periodoDesde ? new Date(d.periodoDesde) : null;
+  const actividadFechaFin = d.periodoHasta ? new Date(d.periodoHasta) : null;
+
   const actividadesData = d.actividades.map((a) => ({
     descripcion: a.descripcion,
     competencias: a.competencias || null,
-    fechaInicio: a.fechaInicio ? new Date(a.fechaInicio) : null,
-    fechaFin: a.fechaFin ? new Date(a.fechaFin) : null,
+    fechaInicio: actividadFechaInicio,
+    fechaFin: actividadFechaFin,
     evidenciaCumplimiento: a.evidenciaCumplimiento || null,
     observaciones: a.observaciones || null,
   }));

@@ -506,11 +506,11 @@ export type CompetenciaFormacionInput = z.infer<typeof CompetenciaFormacionSchem
 
 // Evidencia (c): fila de la tabla "Descripción de las actividades realizadas" de una bitácora
 // (formato GFPI-F-147) — se pueden agregar cuantas sean necesarias, mínimo una.
+// Sin fechaInicio/fechaFin propias: el formato pide el mismo período que ya cubre la bitácora
+// (periodoDesde/periodoHasta), así que el servidor las deriva de ahí en vez de pedirlas dos veces.
 export const BitacoraActividadSchema = z.object({
   descripcion: z.string().trim().min(2, "Describe la actividad."),
   competencias: z.string().trim().nullable().optional(),
-  fechaInicio: z.string().trim().nullable().optional(),
-  fechaFin: z.string().trim().nullable().optional(),
   evidenciaCumplimiento: z.string().trim().nullable().optional(),
   observaciones: z.string().trim().nullable().optional(),
 });

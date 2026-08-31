@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BitacoraForm, type BitacoraFormInitial } from "@/components/bitacora-form";
+import { BitacoraForm, type BitacoraFormInitial, type BitacoraPrefillPrevio } from "@/components/bitacora-form";
 
 export type BitacoraSlot = {
   numero: number;
@@ -21,12 +21,11 @@ export type BitacoraSlot = {
     actividades: {
       descripcion: string;
       competencias: string | null;
-      fechaInicio: string | null;
-      fechaFin: string | null;
       evidenciaCumplimiento: string | null;
       observaciones: string | null;
     }[];
   } | null;
+  prefillPrevio: BitacoraPrefillPrevio;
 };
 
 const estadoStyles: Record<string, string> = {
@@ -69,11 +68,7 @@ export function BitacorasAprendizPanel({ slots }: { slots: BitacoraSlot[] }) {
               arlNivelRiesgo: slot.existing.arlNivelRiesgo,
               arlRiesgoCorresponde: slot.existing.arlRiesgoCorresponde,
               arlTieneEPP: slot.existing.arlTieneEPP,
-              actividades: slot.existing.actividades.map((a) => ({
-                ...a,
-                fechaInicio: toDateInput(a.fechaInicio),
-                fechaFin: toDateInput(a.fechaFin),
-              })),
+              actividades: slot.existing.actividades,
             }
           : null;
 
@@ -144,6 +139,7 @@ export function BitacorasAprendizPanel({ slots }: { slots: BitacoraSlot[] }) {
                     desde: toDateInput(slot.periodoSugerido.desde),
                     hasta: toDateInput(slot.periodoSugerido.hasta),
                   }}
+                  prefillPrevio={slot.prefillPrevio}
                   onSaved={() => setAbiertoNumero(null)}
                   onCancel={() => setAbiertoNumero(null)}
                 />

@@ -16,8 +16,6 @@ type CompetenciaCatalogo = {
 type Actividad = {
   descripcion: string;
   competencias: string;
-  fechaInicio: string;
-  fechaFin: string;
   evidenciaCumplimiento: string;
   observaciones: string;
 };
@@ -36,8 +34,6 @@ type FormFields = {
 const actividadVacia: Actividad = {
   descripcion: "",
   competencias: "",
-  fechaInicio: "",
-  fechaFin: "",
   evidenciaCumplimiento: "",
   observaciones: "",
 };
@@ -70,8 +66,22 @@ export type BitacoraFormInitial = {
   actividades: {
     descripcion: string;
     competencias: string | null;
-    fechaInicio: string | null;
-    fechaFin: string | null;
+    evidenciaCumplimiento: string | null;
+    observaciones: string | null;
+  }[];
+} | null;
+
+// Datos de la bitácora anterior más reciente que ya se envió — se usan solo para prellenar una
+// bitácora nueva (ARL y actividades suelen repetirse quincena a quincena), nunca para pisar algo
+// que el aprendiz ya haya diligenciado.
+export type BitacoraPrefillPrevio = {
+  arlAfiliado: boolean | null;
+  arlNivelRiesgo: string | null;
+  arlRiesgoCorresponde: boolean | null;
+  arlTieneEPP: boolean | null;
+  actividades: {
+    descripcion: string;
+    competencias: string | null;
     evidenciaCumplimiento: string | null;
     observaciones: string | null;
   }[];
@@ -81,12 +91,14 @@ export function BitacoraForm({
   numero,
   initial,
   periodoSugerido,
+  prefillPrevio,
   onSaved,
   onCancel,
 }: {
   numero: number;
   initial: BitacoraFormInitial;
   periodoSugerido?: { desde: string; hasta: string };
+  prefillPrevio?: BitacoraPrefillPrevio;
   onSaved?: () => void;
   onCancel?: () => void;
 }) {
@@ -106,8 +118,6 @@ export function BitacoraForm({
               ? initial.actividades.map((a) => ({
                   descripcion: a.descripcion,
                   competencias: a.competencias ?? "",
-                  fechaInicio: a.fechaInicio ?? "",
-                  fechaFin: a.fechaFin ?? "",
                   evidenciaCumplimiento: a.evidenciaCumplimiento ?? "",
                   observaciones: a.observaciones ?? "",
                 }))
@@ -117,11 +127,19 @@ export function BitacoraForm({
           periodoDesde: periodoSugerido?.desde ?? "",
           periodoHasta: periodoSugerido?.hasta ?? "",
           archivoUrl: "",
-          arlAfiliado: "",
-          arlNivelRiesgo: "",
-          arlRiesgoCorresponde: "",
-          arlTieneEPP: "",
-          actividades: [actividadVacia],
+          arlAfiliado: booleanAString(prefillPrevio?.arlAfiliado ?? null),
+          arlNivelRiesgo: prefillPrevio?.arlNivelRiesgo ?? "",
+          arlRiesgoCorresponde: booleanAString(prefillPrevio?.arlRiesgoCorresponde ?? null),
+          arlTieneEPP: booleanAString(prefillPrevio?.arlTieneEPP ?? null),
+          actividades:
+            prefillPrevio?.actividades && prefillPrevio.actividades.length > 0
+              ? prefillPrevio.actividades.map((a) => ({
+                  descripcion: a.descripcion,
+                  competencias: a.competencias ?? "",
+                  evidenciaCumplimiento: a.evidenciaCumplimiento ?? "",
+                  observaciones: a.observaciones ?? "",
+                }))
+              : [actividadVacia],
         }
   );
   const [errors, setErrors] = useState<Record<string, string[]>>({});
@@ -160,6 +178,8 @@ export function BitacoraForm({
     }));
   }
 
+  const usandoPrefill = !initial && Boolean(prefillPrevio);
+
   function cancelar() {
     // Cuando el formulario está anidado en un acordeón (lista de las 12 bitácoras en una sola
     // página), "Cancelar" solo debe cerrar esa fila — router.back() sacaría al aprendiz de toda
@@ -192,8 +212,6 @@ export function BitacoraForm({
         actividades: form.actividades.map((a) => ({
           descripcion: a.descripcion,
           competencias: a.competencias || null,
-          fechaInicio: a.fechaInicio || null,
-          fechaFin: a.fechaFin || null,
           evidenciaCumplimiento: a.evidenciaCumplimiento || null,
           observaciones: a.observaciones || null,
         })),
@@ -243,9 +261,14 @@ export function BitacoraForm({
         </div>
 
         <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-          <h3 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+          <h3 className="mb-1 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
             Afiliación a ARL
           </h3>
+          {usandoPrefill && (
+            <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
+              Precargado desde tu última bitácora — ajústalo si algo cambió.
+            </p>
+          )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="¿Estás afiliado a la ARL?">
               <select
@@ -298,7 +321,7 @@ export function BitacoraForm({
         </div>
 
         <div>
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-1 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
               Descripción de las actividades realizadas
             </h3>
@@ -310,6 +333,11 @@ export function BitacoraForm({
               + Agregar actividad
             </button>
           </div>
+          {usandoPrefill && (
+            <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
+              Precargadas desde tu última bitácora — edítalas, quítalas o agrega nuevas.
+            </p>
+          )}
 
           <div className="flex flex-col gap-3">
             {form.actividades.map((actividad, idx) => (
@@ -378,18 +406,6 @@ export function BitacoraForm({
                       />
                     )}
                   </Field>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <DatePickerField
-                      label="Fecha inicio"
-                      value={actividad.fechaInicio}
-                      onChange={(v) => updateActividad(idx, "fechaInicio", v)}
-                    />
-                    <DatePickerField
-                      label="Fecha fin"
-                      value={actividad.fechaFin}
-                      onChange={(v) => updateActividad(idx, "fechaFin", v)}
-                    />
-                  </div>
                   <Field label="Evidencia de cumplimiento">
                     <input
                       value={actividad.evidenciaCumplimiento}
