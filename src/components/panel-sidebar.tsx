@@ -26,6 +26,7 @@ const roleNav: Record<string, { href: string; label: string }[]> = {
     { href: "/formulario/coordinador/aprendices", label: "Aprendices" },
     { href: "/formulario/coordinador/alternativas", label: "Alternativas EP" },
     { href: "/formulario/coordinador/competencias", label: "Competencias" },
+    { href: "/formulario/coordinador/perfil", label: "Mi perfil" },
   ],
   // ADMIN tiene control total: todo lo del Coordinador, más la gestión de coordinadores.
   ADMIN: [
@@ -35,6 +36,7 @@ const roleNav: Record<string, { href: string; label: string }[]> = {
     { href: "/formulario/coordinador/aprendices", label: "Aprendices" },
     { href: "/formulario/coordinador/alternativas", label: "Alternativas EP" },
     { href: "/formulario/coordinador/competencias", label: "Competencias" },
+    { href: "/formulario/coordinador/perfil", label: "Mi perfil" },
   ],
 };
 

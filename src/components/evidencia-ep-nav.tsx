@@ -66,13 +66,25 @@ export function EvidenciaEPNav({ alertas }: { alertas?: AlertasPorEvidencia }) {
             Gestión de Evidencia de Etapa Productiva
           </h1>
         </div>
-        <button
-          type="button"
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className="hidden shrink-0 rounded-md px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 sm:block dark:text-zinc-400 dark:hover:bg-zinc-800"
-        >
-          ← Salir
-        </button>
+        <div className="hidden shrink-0 items-center gap-2 sm:flex">
+          <Link
+            href="/formulario/actualizar"
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              pathname === "/formulario/actualizar"
+                ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
+                : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            }`}
+          >
+            Mi perfil
+          </Link>
+          <button
+            type="button"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="rounded-md px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+          >
+            ← Salir
+          </button>
+        </div>
       </div>
 
       <nav className="mt-3 flex gap-1 overflow-x-auto px-4 pb-3 sm:px-6">
