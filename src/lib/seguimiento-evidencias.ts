@@ -43,15 +43,15 @@ function estadoPorFecha(params: {
   hoy: Date;
   referencia: Date | null;
   completa: boolean;
-}): { estado: EstadoSeguimiento; dias: number | null } {
+}): { estado: EstadoSeguimiento; dias: number | null; sinReferencia: boolean } {
   const { hoy, referencia, completa } = params;
-  if (completa) return { estado: "completa", dias: null };
-  if (!referencia) return { estado: "pendiente", dias: null };
+  if (completa) return { estado: "completa", dias: null, sinReferencia: false };
+  if (!referencia) return { estado: "pendiente", dias: null, sinReferencia: true };
 
   const dias = diffDias(referencia, hoy);
-  if (dias > 0) return { estado: "atrasada", dias };
-  if (dias >= -DIAS_ALERTA_PROXIMA) return { estado: "proxima", dias: -dias };
-  return { estado: "pendiente", dias: null };
+  if (dias > 0) return { estado: "atrasada", dias, sinReferencia: false };
+  if (dias >= -DIAS_ALERTA_PROXIMA) return { estado: "proxima", dias: -dias, sinReferencia: false };
+  return { estado: "pendiente", dias: -dias, sinReferencia: false };
 }
 
 export function calcularSeguimiento(input: {
@@ -138,23 +138,27 @@ export function calcularSeguimiento(input: {
     detalle:
       peorEvaluacion.estado === "completa"
         ? "Momentos 2 y 3 al día"
-        : `Momento ${momento2.estado !== "completa" ? 2 : 3}${
-            peorEvaluacion.dias != null
-              ? peorEvaluacion.estado === "atrasada"
+        : peorEvaluacion.sinReferencia
+          ? "Aún no inicia su EP"
+          : `Momento ${momento2.estado !== "completa" ? 2 : 3}${
+              peorEvaluacion.estado === "atrasada"
                 ? ` atrasado ${peorEvaluacion.dias}d`
                 : ` vence en ${peorEvaluacion.dias}d`
-              : " pendiente"
-          }`,
+            }`,
     href: "/formulario/instructor/evaluaciones",
   };
 
   const certificacion = estadoPorFecha({ hoy, referencia: fechaFinEP, completa: input.certificacionAprobada });
 
-  function detalleFecha(item: { estado: EstadoSeguimiento; dias: number | null }, sinReferenciaMsg: string) {
+  function detalleFecha(
+    item: { estado: EstadoSeguimiento; dias: number | null; sinReferencia: boolean },
+    sinReferenciaMsg: string
+  ) {
     if (item.estado === "completa") return "Al día";
     if (item.estado === "atrasada") return `Atrasada ${item.dias}d`;
     if (item.estado === "proxima") return `Vence en ${item.dias}d`;
-    return sinReferenciaMsg;
+    if (item.sinReferencia) return sinReferenciaMsg;
+    return `A tiempo · vence en ${item.dias}d`;
   }
 
   return [
