@@ -17,7 +17,13 @@ type PersonalData = {
   direccionResidencia: string;
 };
 
-export function PersonalDataForm({ initialData }: { initialData: PersonalData }) {
+export function PersonalDataForm({
+  initialData,
+  codigoFichaLabel = "Código de ficha",
+}: {
+  initialData: PersonalData;
+  codigoFichaLabel?: string;
+}) {
   const router = useRouter();
   const { update } = useSession();
   const [saved, setSaved] = useState(false);
@@ -85,7 +91,7 @@ export function PersonalDataForm({ initialData }: { initialData: PersonalData })
         <ReadOnlyField label="Nombres" value={initialData.nombres} />
         <ReadOnlyField label="Apellidos" value={initialData.apellidos} />
         <ReadOnlyField label="Cédula" value={initialData.cedula} />
-        <ReadOnlyField label="Código de ficha" value={initialData.codigoFicha} />
+        <ReadOnlyField label={codigoFichaLabel} value={initialData.codigoFicha} />
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
