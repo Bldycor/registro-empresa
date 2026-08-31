@@ -30,11 +30,13 @@ export function TimeSlotPicker({
   horaInicio,
   horaFin,
   onChange,
+  tipo = "concertacion",
 }: {
   fecha: string | null;
   horaInicio: string | null;
   horaFin: string | null;
   onChange: (values: { horaInicio: string; horaFin: string }) => void;
+  tipo?: "concertacion" | "evaluacion";
 }) {
   const [ocupados, setOcupados] = useState<OcupadoSlot[]>([]);
   const [duracion, setDuracion] = useState(() =>
@@ -44,7 +46,7 @@ export function TimeSlotPicker({
   useEffect(() => {
     if (!fecha) return;
     let cancelled = false;
-    fetch(`/api/etapa-productiva/disponibilidad?fecha=${fecha}`)
+    fetch(`/api/etapa-productiva/disponibilidad?fecha=${fecha}&tipo=${tipo}`)
       .then((res) => (res.ok ? res.json() : { ocupados: [] }))
       .then((data) => {
         if (!cancelled) setOcupados(data.ocupados ?? []);
@@ -52,7 +54,7 @@ export function TimeSlotPicker({
     return () => {
       cancelled = true;
     };
-  }, [fecha]);
+  }, [fecha, tipo]);
 
   if (!fecha) {
     return (

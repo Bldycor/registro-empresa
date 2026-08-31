@@ -125,10 +125,9 @@ export async function POST(request: Request) {
     googleEventId = result.eventId;
   } else {
     const result = await sendCitacionEmail({
-      concertacionId: concertacion.id,
+      reunionId: concertacion.id,
       aprendizNombre,
-      aprendizEmail: user.email,
-      coformadorEmail: companyProfile.correoCoformador,
+      destinatarios: attendees,
       fecha,
       horaInicio,
       horaFin,

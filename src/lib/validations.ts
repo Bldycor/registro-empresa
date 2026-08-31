@@ -532,3 +532,92 @@ export const BitacoraSchema = z.object({
 });
 
 export type BitacoraInput = z.infer<typeof BitacoraSchema>;
+
+export const ModalidadEjecucionEPValues = ["PRESENCIAL", "VIRTUAL"] as const;
+export type ModalidadEjecucionEPValue = (typeof ModalidadEjecucionEPValues)[number];
+export const modalidadEjecucionEPLabel: Record<ModalidadEjecucionEPValue, string> = {
+  PRESENCIAL: "Presencial",
+  VIRTUAL: "Virtual",
+};
+
+export const ValoracionVariableValues = ["SATISFACTORIO", "POR_MEJORAR"] as const;
+export type ValoracionVariableValue = (typeof ValoracionVariableValues)[number];
+export const valoracionVariableLabel: Record<ValoracionVariableValue, string> = {
+  SATISFACTORIO: "Satisfactorio",
+  POR_MEJORAR: "Por mejorar",
+};
+
+export const JuicioEtapaProductivaValues = ["APROBADO", "NO_APROBADO"] as const;
+export type JuicioEtapaProductivaValue = (typeof JuicioEtapaProductivaValues)[number];
+export const juicioEtapaProductivaLabel: Record<JuicioEtapaProductivaValue, string> = {
+  APROBADO: "Aprobado",
+  NO_APROBADO: "No aprobado",
+};
+
+// Evidencia (d): agenda de la reunión de Momento 2 (seguimiento) o Momento 3 (cierre) — mismo
+// patrón de fecha/franja horaria que la Concertación (Momento 1), agendada por el aprendiz.
+export const EvaluacionAgendaSchema = z
+  .object({
+    numero: z.union([z.literal(2), z.literal(3)]),
+    fecha: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Selecciona una fecha válida.")
+      .refine((fecha) => fecha >= todayDateString(), {
+        message: "La fecha no puede ser en el pasado.",
+      }),
+    horaInicio: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Selecciona una hora de inicio válida."),
+    horaFin: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Selecciona una hora de fin válida."),
+    modalidad: z.enum(ModalidadEjecucionEPValues),
+  })
+  .refine((data) => toMinutes(data.horaFin) > toMinutes(data.horaInicio), {
+    message: "La hora de fin debe ser posterior a la hora de inicio.",
+    path: ["horaFin"],
+  })
+  .refine((data) => toMinutes(data.horaFin) - toMinutes(data.horaInicio) >= 60, {
+    message: "La franja debe durar al menos una hora.",
+    path: ["horaFin"],
+  });
+
+export type EvaluacionAgendaInput = z.infer<typeof EvaluacionAgendaSchema>;
+
+// El aprendiz agrega su propia reflexión en el Momento 3 (cierre) — el resto del contenido de
+// la evaluación lo diligencia el instructor (ver EvaluacionRubricaSchema).
+export const EvaluacionRetroAprendizSchema = z.object({
+  retroalimentacionAprendiz: z.string().trim().min(1, "Escribe tu comentario."),
+});
+
+// Evidencia (d): el instructor registra la evaluación (rúbrica de 13 variables + retroalimentación
+// y, en el Momento 3, el juicio final) — coherente con su rol ("revisa y califica evidencias,
+// registra evaluaciones") en docs/REQUISITOS-FUNCIONALES.md sección 2. `finalizar` distingue
+// guardar como borrador (sigue editable) de cerrar la evaluación (ya no se puede seguir editando).
+export const EvaluacionRubricaSchema = z.object({
+  variables: z
+    .array(
+      z.object({
+        variable: z.enum([
+          "APLICACION_CONOCIMIENTO",
+          "MEJORA_CONTINUA",
+          "FORTALECIMIENTO_OCUPACIONAL",
+          "OPORTUNIDAD_CALIDAD",
+          "RESPONSABILIDAD_AMBIENTAL",
+          "ADMINISTRACION_RECURSOS",
+          "SEGURIDAD_SALUD_TRABAJO",
+          "DOCUMENTACION_ETAPA_PRODUCTIVA",
+          "RELACIONES_INTERPERSONALES",
+          "TRABAJO_EQUIPO",
+          "SOLUCION_PROBLEMAS",
+          "CUMPLIMIENTO",
+          "ORGANIZACION",
+        ]),
+        valoracion: z.enum(ValoracionVariableValues).nullable().optional(),
+        observaciones: z.string().trim().nullable().optional(),
+      })
+    )
+    .length(13, "Faltan variables de la rúbrica."),
+  retroalimentacionInstructor: z.string().trim().nullable().optional(),
+  retroalimentacionCoformador: z.string().trim().nullable().optional(),
+  juicioFinal: z.enum(JuicioEtapaProductivaValues).nullable().optional(),
+  finalizar: z.boolean(),
+});
+
+export type EvaluacionRubricaInput = z.infer<typeof EvaluacionRubricaSchema>;

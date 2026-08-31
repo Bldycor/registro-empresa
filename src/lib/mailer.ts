@@ -115,30 +115,34 @@ export async function sendWelcomeEmail({
   return { info };
 }
 
+// Citación por videollamada (respaldo Jitsi cuando no hay integración de Google Calendar) —
+// reutilizada por Concertación (Momento 1) y por las evaluaciones de seguimiento/cierre
+// (Momento 2/3): `titulo` identifica la reunión en el asunto/ICS, `destinatarios` ya trae
+// resueltos los correos correctos según quién revisa esa reunión (coordinador fijo para
+// Concertación, instructor de la ficha para Momento 2/3).
 export async function sendCitacionEmail({
-  concertacionId,
+  reunionId,
+  titulo = "Concertación de funciones",
+  prefijoSala,
   aprendizNombre,
-  aprendizEmail,
-  coformadorEmail,
+  destinatarios,
   fecha,
   horaInicio,
   horaFin,
 }: {
-  concertacionId: string;
+  reunionId: string;
+  titulo?: string;
+  prefijoSala?: string;
   aprendizNombre: string;
-  aprendizEmail: string;
-  coformadorEmail: string;
+  destinatarios: string[];
   fecha: string;
   horaInicio: string;
   horaFin: string;
 }) {
-  const coordinadorEmail = process.env.CITACION_EMAIL || "bcoba@sena.edu.co";
   const from = process.env.EMAIL_FROM || "no-responder@registro-empresa.local";
-  const to = Array.from(
-    new Set([coordinadorEmail, aprendizEmail, coformadorEmail].filter(Boolean))
-  );
+  const to = Array.from(new Set(destinatarios.filter(Boolean)));
 
-  const videollamadaUrl = getVideoConferenceUrl(concertacionId);
+  const videollamadaUrl = getVideoConferenceUrl(reunionId, prefijoSala);
   const { start, duration } = parseStartAndDuration(fecha, horaInicio, horaFin);
 
   const fechaLegible = new Date(`${fecha}T00:00:00`).toLocaleDateString("es-CO", {
@@ -151,8 +155,8 @@ export async function sendCitacionEmail({
   const icsContent = await buildIcsEvent({
     start,
     duration,
-    title: `Concertación de funciones - ${aprendizNombre}`,
-    description: `Videollamada de concertación de funciones (etapa productiva).\n\nUnirse: ${videollamadaUrl}`,
+    title: `${titulo} - ${aprendizNombre}`,
+    description: `Videollamada de ${titulo.toLowerCase()} (etapa productiva).\n\nUnirse: ${videollamadaUrl}`,
     location: videollamadaUrl,
     url: videollamadaUrl,
     organizer: { name: "Registro Empresa", email: from },
@@ -171,10 +175,10 @@ export async function sendCitacionEmail({
   const info = await transporter.sendMail({
     from,
     to,
-    subject: `Videollamada: Concertación de funciones - ${aprendizNombre}`,
-    text: `Se ha agendado una videollamada de concertación de funciones (etapa productiva).\n\nUnirse a la videollamada: ${videollamadaUrl}\n\nAprendiz: ${aprendizNombre}\nFecha: ${fechaLegible}\nHora: ${horaInicio} - ${horaFin}`,
+    subject: `Videollamada: ${titulo} - ${aprendizNombre}`,
+    text: `Se ha agendado una videollamada de ${titulo.toLowerCase()} (etapa productiva).\n\nUnirse a la videollamada: ${videollamadaUrl}\n\nAprendiz: ${aprendizNombre}\nFecha: ${fechaLegible}\nHora: ${horaInicio} - ${horaFin}`,
     html: `
-      <p>Se ha agendado una <strong>videollamada</strong> de concertación de funciones (etapa productiva).</p>
+      <p>Se ha agendado una <strong>videollamada</strong> de ${titulo.toLowerCase()} (etapa productiva).</p>
       <p><a href="${videollamadaUrl}">Unirse a la videollamada</a></p>
       <ul>
         <li><strong>Aprendiz:</strong> ${aprendizNombre}</li>
