@@ -27,7 +27,7 @@ export async function GET() {
         take: 1,
       },
       formalizacionEtapaProductiva: { select: { estado: true } },
-      concertacionFuncion: { select: { id: true } },
+      concertacionFuncion: { select: { fecha: true } },
       bitacoras: { select: { numero: true, estado: true } },
       evaluaciones: {
         where: { numero: { in: [2, 3] }, esExtraordinario: false },
@@ -48,7 +48,7 @@ export async function GET() {
       fechaLimiteIniciarEPFicha: a.ficha?.fechaLimiteIniciarEP ?? null,
       alternativaAprobada: a.seleccionesAlternativa[0]?.estado === "APROBADA",
       formalizacionAprobada: a.formalizacionEtapaProductiva?.estado === "APROBADA",
-      concertacionAgendada: Boolean(a.concertacionFuncion),
+      concertacionFecha: a.concertacionFuncion?.fecha ?? null,
       bitacoras: a.bitacoras,
       evaluacion2Aprobada: a.evaluaciones.some((e) => e.numero === 2 && e.estado === "APROBADA"),
       evaluacion3Aprobada: a.evaluaciones.some((e) => e.numero === 3 && e.estado === "APROBADA"),

@@ -30,6 +30,12 @@ export type ChecklistItem = {
   // Certificación no tienen página de revisión propia para el instructor aún) — el chip se
   // muestra igual, solo que no es clicable.
   href: string | null;
+  // Cuántas piezas concretas están atrasadas dentro de este chip — 0 o 1 para los de un solo
+  // punto (Alternativa, Formalización, Concertación, Certificación), la cuenta real de bitácoras
+  // vencidas sin enviar, o hasta 2 para Evaluaciones (Momento 2 y Momento 3). Reutilizado tanto
+  // por el panel de Seguimiento del instructor como por la insignia del nav del propio aprendiz
+  // — un solo cálculo de fechas, dos consumidores, para no tener que repetir esta lógica.
+  cantidadAtrasada: number;
 };
 
 function diffDias(desde: Date, hasta: Date): number {
@@ -61,7 +67,10 @@ export function calcularSeguimiento(input: {
   fechaLimiteIniciarEPFicha: Date | null;
   alternativaAprobada: boolean;
   formalizacionAprobada: boolean;
-  concertacionAgendada: boolean;
+  // Fecha de la reunión de Concertación ya agendada (null si no se ha agendado) — no basta con
+  // que exista el registro: si se agendó después del plazo (15 días desde el inicio de EP),
+  // sigue contando como atrasada, solo que ya fue resuelta tarde.
+  concertacionFecha: Date | null;
   bitacoras: { numero: number; estado: EstadoEvidencia }[];
   evaluacion2Aprobada: boolean;
   evaluacion3Aprobada: boolean;
@@ -84,17 +93,29 @@ export function calcularSeguimiento(input: {
   const refConcertacion = fechaInicioEP
     ? new Date(fechaInicioEP.getTime() + DIAS_CONCERTACION * 86400000)
     : null;
+  // "Completa" solo si además se agendó a tiempo — un registro que existe pero se agendó
+  // después del plazo sigue contando como atrasada (se resolvió tarde, no a tiempo).
+  const concertacionATiempo = input.concertacionFecha
+    ? !refConcertacion || input.concertacionFecha.getTime() <= refConcertacion.getTime()
+    : false;
   const concertacion = estadoPorFecha({
     hoy,
     referencia: refConcertacion,
-    completa: input.concertacionAgendada,
+    completa: concertacionATiempo,
   });
 
   // Bitácoras: no es un único punto — se cuentan cuántas de las 12 ya vencieron sin quedar
   // aprobadas (incluye las rechazadas sin reenviar, porque siguen sin estar al día).
   let bitacoras: ChecklistItem;
   if (!fechaInicioEP) {
-    bitacoras = { clave: "bitacoras", etiqueta: "Bitácoras", estado: "pendiente", detalle: "Sin fecha de inicio de EP", href: "/formulario/instructor/bitacoras" };
+    bitacoras = {
+      clave: "bitacoras",
+      etiqueta: "Bitácoras",
+      estado: "pendiente",
+      detalle: "Sin fecha de inicio de EP",
+      href: "/formulario/instructor/bitacoras",
+      cantidadAtrasada: 0,
+    };
   } else {
     const fechasLimite = calcularFechasLimiteBitacoras(fechaInicioEP);
     const porNumero = new Map(input.bitacoras.map((b) => [b.numero, b]));
@@ -116,7 +137,14 @@ export function calcularSeguimiento(input: {
         : proxima
           ? "Una bitácora vence pronto"
           : "Al día";
-    bitacoras = { clave: "bitacoras", etiqueta: "Bitácoras", estado, detalle, href: "/formulario/instructor/bitacoras" };
+    bitacoras = {
+      clave: "bitacoras",
+      etiqueta: "Bitácoras",
+      estado,
+      detalle,
+      href: "/formulario/instructor/bitacoras",
+      cantidadAtrasada: atrasadas,
+    };
   }
 
   const refMomento2 = fechaInicioEP ? new Date(fechaInicioEP.getTime() + DIAS_MOMENTO2 * 86400000) : null;
@@ -146,6 +174,8 @@ export function calcularSeguimiento(input: {
                 : ` vence en ${peorEvaluacion.dias}d`
             }`,
     href: "/formulario/instructor/evaluaciones",
+    cantidadAtrasada:
+      (momento2.estado === "atrasada" ? 1 : 0) + (momento3.estado === "atrasada" ? 1 : 0),
   };
 
   const certificacion = estadoPorFecha({ hoy, referencia: fechaFinEP, completa: input.certificacionAprobada });
@@ -168,6 +198,7 @@ export function calcularSeguimiento(input: {
       estado: alternativa.estado,
       detalle: detalleFecha(alternativa, "Sin fecha límite de la ficha"),
       href: "/formulario/instructor/alternativas",
+      cantidadAtrasada: alternativa.estado === "atrasada" ? 1 : 0,
     },
     {
       clave: "formalizacion",
@@ -175,6 +206,7 @@ export function calcularSeguimiento(input: {
       estado: formalizacion.estado,
       detalle: detalleFecha(formalizacion, "Aún no inicia su EP"),
       href: "/formulario/instructor/formalizaciones",
+      cantidadAtrasada: formalizacion.estado === "atrasada" ? 1 : 0,
     },
     {
       clave: "concertacion",
@@ -182,6 +214,7 @@ export function calcularSeguimiento(input: {
       estado: concertacion.estado,
       detalle: detalleFecha(concertacion, "Aún no inicia su EP"),
       href: null,
+      cantidadAtrasada: concertacion.estado === "atrasada" ? 1 : 0,
     },
     bitacoras,
     evaluaciones,
@@ -191,6 +224,7 @@ export function calcularSeguimiento(input: {
       estado: certificacion.estado,
       detalle: detalleFecha(certificacion, "Aún no termina su EP"),
       href: null,
+      cantidadAtrasada: certificacion.estado === "atrasada" ? 1 : 0,
     },
   ];
 }

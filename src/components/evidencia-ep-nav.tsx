@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 
-type RechazosPorEvidencia = {
+type AlertasPorEvidencia = {
   alternativa: number;
   formalizacion: number;
   bitacoras: number;
@@ -48,9 +48,11 @@ const TABS = [
 // Nav horizontal del panel del Aprendiz — reemplaza el sidebar izquierdo (stepper) que existía
 // antes de Fase 2. Las 5 evidencias son secciones del mismo nivel, sin bloqueo secuencial estricto
 // (a diferencia del stepper anterior): el aprendiz puede moverse libremente entre ellas.
-// `rechazos` marca con una insignia roja cuántas evidencias de cada sección están Rechazadas, para
-// que el aprendiz note de un vistazo dónde debe corregir sin tener que entrar a cada pestaña.
-export function EvidenciaEPNav({ rechazos }: { rechazos?: RechazosPorEvidencia }) {
+// `alertas` marca con una insignia roja cuántas evidencias de cada sección están Rechazadas o
+// Atrasadas (vencidas sin diligenciar, según la fecha real de inicio/fin de su Etapa Productiva
+// — ver src/lib/seguimiento-evidencias.ts), para que el aprendiz note de un vistazo dónde debe
+// actuar sin tener que entrar a cada pestaña.
+export function EvidenciaEPNav({ alertas }: { alertas?: AlertasPorEvidencia }) {
   const pathname = usePathname();
 
   return (
@@ -76,7 +78,7 @@ export function EvidenciaEPNav({ rechazos }: { rechazos?: RechazosPorEvidencia }
       <nav className="mt-3 flex gap-1 overflow-x-auto px-4 pb-3 sm:px-6">
         {TABS.map((tab) => {
           const active = pathname?.startsWith(tab.href) ?? false;
-          const rechazadas = rechazos?.[tab.key] ?? 0;
+          const enAlerta = alertas?.[tab.key] ?? 0;
           return (
             <Link
               key={tab.href}
@@ -89,12 +91,12 @@ export function EvidenciaEPNav({ rechazos }: { rechazos?: RechazosPorEvidencia }
             >
               <span aria-hidden>{tab.icon}</span>
               {tab.label}
-              {rechazadas > 0 && (
+              {enAlerta > 0 && (
                 <span
                   className="absolute -top-1.5 -right-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white ring-2 ring-white dark:ring-zinc-900"
-                  title={`${rechazadas} rechazada(s) — revisa y corrige`}
+                  title={`${enAlerta} evidencia(s) rechazada(s) o atrasada(s) — revisa y actúa`}
                 >
-                  {rechazadas}
+                  {enAlerta}
                 </span>
               )}
             </Link>

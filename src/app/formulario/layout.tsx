@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { LogoutButton } from "@/components/logout-button";
 import { PanelSidebar } from "@/components/panel-sidebar";
 import { EvidenciaEPNav } from "@/components/evidencia-ep-nav";
+import { calcularSeguimiento } from "@/lib/seguimiento-evidencias";
 
 export default async function FormularioLayout({
   children,
@@ -46,20 +47,69 @@ export default async function FormularioLayout({
       select: { id: true },
     });
 
-    // Cuenta de evidencias Rechazadas por sección, para la insignia roja del nav — solo hace
-    // falta calcularla si ya hay nav que mostrar (perfil completo).
-    const rechazos = profile
+    // Insignia roja del nav: cuenta evidencias Rechazadas + evidencias Atrasadas (vencidas según
+    // su propia fecha real de inicio/fin de EP — mismo cálculo que el panel de Seguimiento del
+    // instructor, ver src/lib/seguimiento-evidencias.ts) por sección. Solo hace falta calcularla
+    // si ya hay nav que mostrar (perfil completo).
+    const alertas = profile
       ? await (async () => {
           const userId = session.user.id;
-          const [alternativa, formalizacion, bitacoras, evaluaciones, certificacion] =
-            await Promise.all([
-              prisma.seleccionAlternativaEP.count({ where: { userId, estado: "RECHAZADA" } }),
-              prisma.formalizacionEtapaProductiva.count({ where: { userId, estado: "RECHAZADA" } }),
-              prisma.bitacora.count({ where: { userId, estado: "RECHAZADA" } }),
-              prisma.evaluacion.count({ where: { userId, estado: "RECHAZADA" } }),
-              prisma.certificacionEmpresario.count({ where: { userId, estado: "RECHAZADA" } }),
-            ]);
-          return { alternativa, formalizacion, bitacoras, evaluaciones, certificacion };
+          const [rechazos, aprendiz] = await Promise.all([
+            (async () => {
+              const [alternativa, formalizacion, bitacoras, evaluaciones, certificacion] =
+                await Promise.all([
+                  prisma.seleccionAlternativaEP.count({ where: { userId, estado: "RECHAZADA" } }),
+                  prisma.formalizacionEtapaProductiva.count({ where: { userId, estado: "RECHAZADA" } }),
+                  prisma.bitacora.count({ where: { userId, estado: "RECHAZADA" } }),
+                  prisma.evaluacion.count({ where: { userId, estado: "RECHAZADA" } }),
+                  prisma.certificacionEmpresario.count({ where: { userId, estado: "RECHAZADA" } }),
+                ]);
+              return { alternativa, formalizacion, bitacoras, evaluaciones, certificacion };
+            })(),
+            prisma.user.findUnique({
+              where: { id: userId },
+              select: {
+                fechaInicioEtapaProductiva: true,
+                fechaFinEtapaProductiva: true,
+                ficha: { select: { fechaLimiteIniciarEP: true } },
+                seleccionesAlternativa: { select: { estado: true }, orderBy: { createdAt: "desc" }, take: 1 },
+                formalizacionEtapaProductiva: { select: { estado: true } },
+                concertacionFuncion: { select: { fecha: true } },
+                bitacoras: { select: { numero: true, estado: true } },
+                evaluaciones: {
+                  where: { numero: { in: [2, 3] }, esExtraordinario: false },
+                  select: { numero: true, estado: true },
+                },
+                certificacionEmpresario: { select: { estado: true } },
+              },
+            }),
+          ]);
+
+          const checklist = aprendiz
+            ? calcularSeguimiento({
+                hoy: new Date(),
+                fechaInicioEP: aprendiz.fechaInicioEtapaProductiva,
+                fechaFinEP: aprendiz.fechaFinEtapaProductiva,
+                fechaLimiteIniciarEPFicha: aprendiz.ficha?.fechaLimiteIniciarEP ?? null,
+                alternativaAprobada: aprendiz.seleccionesAlternativa[0]?.estado === "APROBADA",
+                formalizacionAprobada: aprendiz.formalizacionEtapaProductiva?.estado === "APROBADA",
+                concertacionFecha: aprendiz.concertacionFuncion?.fecha ?? null,
+                bitacoras: aprendiz.bitacoras,
+                evaluacion2Aprobada: aprendiz.evaluaciones.some((e) => e.numero === 2 && e.estado === "APROBADA"),
+                evaluacion3Aprobada: aprendiz.evaluaciones.some((e) => e.numero === 3 && e.estado === "APROBADA"),
+                certificacionAprobada: aprendiz.certificacionEmpresario?.estado === "APROBADA",
+              })
+            : [];
+
+          const porClave = Object.fromEntries(checklist.map((c) => [c.clave, c.cantidadAtrasada]));
+
+          return {
+            alternativa: rechazos.alternativa + (porClave.alternativa ?? 0),
+            formalizacion: rechazos.formalizacion + (porClave.formalizacion ?? 0),
+            bitacoras: rechazos.bitacoras + (porClave.bitacoras ?? 0),
+            evaluaciones: rechazos.evaluaciones + (porClave.concertacion ?? 0) + (porClave.evaluaciones ?? 0),
+            certificacion: rechazos.certificacion + (porClave.certificacion ?? 0),
+          };
         })()
       : undefined;
 
@@ -68,7 +118,7 @@ export default async function FormularioLayout({
     return (
       <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-black">
         {header}
-        {profile && <EvidenciaEPNav rechazos={rechazos} />}
+        {profile && <EvidenciaEPNav alertas={alertas} />}
         <main className="flex flex-1 flex-col">{children}</main>
       </div>
     );
