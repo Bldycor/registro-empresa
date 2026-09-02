@@ -22,7 +22,13 @@ export default async function CoordinadorAprendicesPage() {
         estado: true,
         alternativaEtapaProductiva: true,
         fichaId: true,
-        ficha: { select: { id: true, codigo: true } },
+        ficha: {
+          select: {
+            id: true,
+            codigo: true,
+            instructor: { select: { nombres: true, apellidos: true } },
+          },
+        },
       },
       orderBy: [{ nombres: "asc" }, { apellidos: "asc" }],
     }),

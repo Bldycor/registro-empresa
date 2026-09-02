@@ -16,7 +16,13 @@ const APRENDIZ_SELECT = {
   estado: true,
   alternativaEtapaProductiva: true,
   fichaId: true,
-  ficha: { select: { id: true, codigo: true } },
+  ficha: {
+    select: {
+      id: true,
+      codigo: true,
+      instructor: { select: { nombres: true, apellidos: true } },
+    },
+  },
 } satisfies Prisma.UserSelect;
 
 // Edita los datos de un aprendiz: datos personales, estado (Activo/Certificado) y asignación de

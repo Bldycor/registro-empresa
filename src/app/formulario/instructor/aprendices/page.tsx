@@ -20,7 +20,14 @@ export default async function InstructorAprendicesPage() {
         cedula: true,
         email: true,
         estado: true,
-        ficha: { select: { id: true, codigo: true, instructorId: true } },
+        ficha: {
+          select: {
+            id: true,
+            codigo: true,
+            instructorId: true,
+            instructor: { select: { nombres: true, apellidos: true } },
+          },
+        },
       },
       orderBy: [{ nombres: "asc" }, { apellidos: "asc" }],
     }),

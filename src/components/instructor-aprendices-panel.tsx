@@ -10,7 +10,12 @@ type Aprendiz = {
   apellidos: string;
   cedula: string;
   email: string;
-  ficha: { id: string; codigo: string; instructorId: string | null } | null;
+  ficha: {
+    id: string;
+    codigo: string;
+    instructorId: string | null;
+    instructor: { nombres: string; apellidos: string } | null;
+  } | null;
 };
 
 const OTROS_VALUE = "__OTROS__";
@@ -156,6 +161,16 @@ function AprendizRow({ aprendiz, evaluable }: { aprendiz: Aprendiz; evaluable: b
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
           {aprendiz.email} · Cédula: {aprendiz.cedula}
           {!aprendiz.ficha && " · Sin ficha asignada"}
+          {!evaluable && aprendiz.ficha && (
+            <>
+              {" · Ficha "}
+              {aprendiz.ficha.codigo}
+              {" · "}
+              {aprendiz.ficha.instructor
+                ? `Instructor: ${aprendiz.ficha.instructor.nombres} ${aprendiz.ficha.instructor.apellidos}`
+                : "Ficha sin instructor"}
+            </>
+          )}
         </p>
       </div>
       <span

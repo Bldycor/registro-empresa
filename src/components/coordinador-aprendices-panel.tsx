@@ -16,6 +16,10 @@ import {
 
 type Ficha = { id: string; codigo: string };
 
+type FichaConInstructor = Ficha & {
+  instructor: { nombres: string; apellidos: string } | null;
+};
+
 type Aprendiz = {
   id: string;
   nombres: string;
@@ -28,7 +32,7 @@ type Aprendiz = {
   estado: EstadoAprendizValue;
   alternativaEtapaProductiva: AlternativaEtapaProductivaValue | null;
   fichaId: string | null;
-  ficha: Ficha | null;
+  ficha: FichaConInstructor | null;
 };
 
 type GestionForm = {
@@ -404,9 +408,21 @@ export function CoordinadorAprendicesPanel({
                           {estadoAprendizLabel[aprendiz.estado]}
                         </span>
                         {aprendiz.ficha ? (
-                          <span className="rounded-full border border-zinc-200 px-2 py-0.5 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
-                            Ficha: {aprendiz.ficha.codigo}
-                          </span>
+                          <>
+                            <span className="rounded-full border border-zinc-200 px-2 py-0.5 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
+                              Ficha: {aprendiz.ficha.codigo}
+                            </span>
+                            {aprendiz.ficha.instructor ? (
+                              <span className="rounded-full border border-zinc-200 px-2 py-0.5 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
+                                Instructor: {aprendiz.ficha.instructor.nombres}{" "}
+                                {aprendiz.ficha.instructor.apellidos}
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                                Ficha sin instructor
+                              </span>
+                            )}
+                          </>
                         ) : (
                           <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
                             Sin ficha asignada
