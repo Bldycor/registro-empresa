@@ -78,6 +78,7 @@ export function CoordinadorAprendicesPanel({
   const [filtroTexto, setFiltroTexto] = useState("");
   const [soloSinFicha, setSoloSinFicha] = useState(false);
   const [filtroFichaId, setFiltroFichaId] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState<"" | EstadoAprendizValue>("");
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [gestionForm, setGestionForm] = useState<GestionForm | null>(null);
@@ -93,9 +94,12 @@ export function CoordinadorAprendicesPanel({
   const [bulkAssignLoading, setBulkAssignLoading] = useState(false);
   const [bulkAssignError, setBulkAssignError] = useState<string | null>(null);
 
+  const porCertificarCount = aprendices.filter((a) => a.estado === "POR_CERTIFICAR").length;
+
   const aprendicesFiltrados = aprendices.filter((a) => {
     if (soloSinFicha && a.fichaId) return false;
     if (!soloSinFicha && filtroFichaId && a.fichaId !== filtroFichaId) return false;
+    if (filtroEstado && a.estado !== filtroEstado) return false;
     const texto = filtroTexto.trim().toLowerCase();
     if (texto) {
       const nombreCompleto = `${a.nombres} ${a.apellidos}`.toLowerCase();
@@ -305,8 +309,30 @@ export function CoordinadorAprendicesPanel({
                 />
                 Sin ficha asignada
               </label>
+              <select
+                value={filtroEstado}
+                onChange={(e) => setFiltroEstado(e.target.value as "" | EstadoAprendizValue)}
+                className={`${inputClass} text-xs`}
+              >
+                <option value="">Todos los estados</option>
+                {EstadoAprendizValues.map((v) => (
+                  <option key={v} value={v}>
+                    {estadoAprendizLabel[v]}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
+
+          {porCertificarCount > 0 && filtroEstado !== "POR_CERTIFICAR" && (
+            <button
+              type="button"
+              onClick={() => setFiltroEstado("POR_CERTIFICAR")}
+              className="flex w-fit items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
+            >
+              ✓ {porCertificarCount} aprendiz{porCertificarCount === 1 ? "" : "es"} por certificar — ver
+            </button>
+          )}
 
           {aprendicesFiltrados.length > 0 &&
             (() => {
@@ -402,7 +428,9 @@ export function CoordinadorAprendicesPanel({
                           className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                             aprendiz.estado === "CERTIFICADO"
                               ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                              : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                              : aprendiz.estado === "POR_CERTIFICAR"
+                                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                                : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
                           }`}
                         >
                           {estadoAprendizLabel[aprendiz.estado]}

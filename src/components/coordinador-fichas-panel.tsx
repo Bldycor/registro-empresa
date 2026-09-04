@@ -9,9 +9,11 @@ import {
   JornadaValues,
   jornadaLabel,
   ProgramasFormacionValues,
+  estadoAprendizLabel,
   type EstadoFichaValue,
   type NivelFormacionValue,
   type JornadaValue,
+  type EstadoAprendizValue,
 } from "@/lib/validations";
 import { StatBadge } from "@/components/stat-badge";
 import { DatePickerField } from "@/components/date-picker-field";
@@ -23,7 +25,7 @@ type Aprendiz = {
   nombres: string;
   apellidos: string;
   cedula: string;
-  estado: "ACTIVO" | "CERTIFICADO";
+  estado: EstadoAprendizValue;
 };
 
 type Ficha = {
@@ -878,10 +880,12 @@ export function CoordinadorFichasPanel({
                               className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                                 aprendiz.estado === "CERTIFICADO"
                                   ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                  : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                                  : aprendiz.estado === "POR_CERTIFICAR"
+                                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                                    : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
                               }`}
                             >
-                              {aprendiz.estado === "CERTIFICADO" ? "Certificado" : "Activo"}
+                              {estadoAprendizLabel[aprendiz.estado]}
                             </span>
                           </li>
                         ))}

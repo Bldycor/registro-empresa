@@ -302,13 +302,15 @@ export const SeleccionAlternativaGrupalSchema = z.object({
 
 export type SeleccionAlternativaGrupalInput = z.infer<typeof SeleccionAlternativaGrupalSchema>;
 
-// Estado del aprendiz durante/después de la Etapa Productiva (enum `EstadoAprendiz`). El paso a
-// CERTIFICADO es manual — la certificación de estudio se emite fuera del sistema.
-export const EstadoAprendizValues = ["ACTIVO", "CERTIFICADO"] as const;
+// Estado del aprendiz durante/después de la Etapa Productiva (enum `EstadoAprendiz`). ACTIVO →
+// POR_CERTIFICAR (lo marca el instructor, ver panel de Seguimiento) → CERTIFICADO (paso manual
+// de Coordinación — la certificación de estudio se emite fuera del sistema).
+export const EstadoAprendizValues = ["ACTIVO", "POR_CERTIFICAR", "CERTIFICADO"] as const;
 export type EstadoAprendizValue = (typeof EstadoAprendizValues)[number];
 
 export const estadoAprendizLabel: Record<EstadoAprendizValue, string> = {
   ACTIVO: "Activo",
+  POR_CERTIFICAR: "Por certificar",
   CERTIFICADO: "Certificado",
 };
 

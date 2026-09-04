@@ -1,5 +1,7 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { createEvent, type EventAttributes } from "ics";
+import { readFile } from "fs/promises";
+import path from "path";
 import { getVideoConferenceUrl } from "@/lib/video";
 
 let cachedTransporter: Transporter | null = null;
@@ -237,6 +239,57 @@ export async function sendPasswordResetEmail({
   if (usingTestAccount) {
     console.log(
       `[mailer] Cuenta de prueba (Ethereal) — vista previa del correo de recuperación: ${nodemailer.getTestMessageUrl(info)}`
+    );
+  }
+
+  return { info };
+}
+
+// Ficha institucional con los requisitos del proceso de certificación (documentos a entregar,
+// encuestas, dependencias involucradas) — se adjunta tal cual al correo de "Por certificar".
+const RUTA_FICHA_REQUISITOS_CERTIFICACION = path.join(
+  process.cwd(),
+  "public/documentos/requisitos-certificacion.pdf"
+);
+
+// Aviso de que el instructor marcó al aprendiz como "Por certificar": ya avaló las 6 evidencias
+// de Etapa Productiva, así que puede iniciar el trámite institucional de certificación. Se
+// adjunta la ficha de requisitos vigente para que sepa exactamente qué entregar y a dónde.
+export async function sendPorCertificarEmail({
+  nombres,
+  email,
+}: {
+  nombres: string;
+  email: string;
+}) {
+  const from = process.env.EMAIL_FROM || "no-responder@registro-empresa.local";
+  const adjunto = await readFile(RUTA_FICHA_REQUISITOS_CERTIFICACION);
+
+  const transporter = await getTransporter();
+
+  const info = await transporter.sendMail({
+    from,
+    to: email,
+    subject: "Ya puedes iniciar tu proceso de certificación",
+    text: `Hola ${nombres},\n\n¡Buenas noticias! Tu instructor confirmó que has cumplido con todas las evidencias de tu Etapa Productiva y tu registro quedó en estado "Por certificar".\n\nCon esto ya puedes iniciar tu proceso de certificación ante el SENA, entregando los documentos y trámites que se detallan en la ficha de requisitos adjunta a este correo.\n\nCualquier duda sobre el trámite de certificación en sí (no sobre esta plataforma), consulta directamente los datos de contacto que aparecen en la ficha adjunta.`,
+    html: `
+      <p>Hola ${nombres},</p>
+      <p>¡Buenas noticias! Tu instructor confirmó que has cumplido con todas las evidencias de tu Etapa Productiva y tu registro quedó en estado <strong>"Por certificar"</strong>.</p>
+      <p>Con esto ya puedes iniciar tu proceso de certificación ante el SENA, entregando los documentos y trámites que se detallan en la <strong>ficha de requisitos adjunta</strong> a este correo.</p>
+      <p>Cualquier duda sobre el trámite de certificación en sí (no sobre esta plataforma), consulta directamente los datos de contacto que aparecen en la ficha adjunta.</p>
+    `,
+    attachments: [
+      {
+        filename: "Requisitos de certificación.pdf",
+        content: adjunto,
+        contentType: "application/pdf",
+      },
+    ],
+  });
+
+  if (usingTestAccount) {
+    console.log(
+      `[mailer] Cuenta de prueba (Ethereal) — vista previa del correo de "Por certificar": ${nodemailer.getTestMessageUrl(info)}`
     );
   }
 

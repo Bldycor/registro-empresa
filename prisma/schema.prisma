@@ -24,6 +24,11 @@ enum Role {
 
 enum EstadoAprendiz {
   ACTIVO
+  // El instructor lo marca así uno a uno (ver checklist de Seguimiento), solo cuando las 6
+  // evidencias de Etapa Productiva ya quedaron avaladas/aprobadas — dispara el correo con la
+  // ficha de requisitos institucionales de certificación. Coordinación lo revisa y hace el paso
+  // final a CERTIFICADO.
+  POR_CERTIFICAR
   CERTIFICADO
 }
 
@@ -250,9 +255,17 @@ model User {
   // Instructor (/formulario/coordinador/instructores). El Aprendiz es el único autoregistro
   // público (/register). No hay autoregistro público de Coordinador ni de ADMIN.
   role   Role           @default(APRENDIZ)
-  // Estado del aprendiz durante/después de la Etapa Productiva. El paso a CERTIFICADO es manual
-  // (lo actualiza el aprendiz o el instructor), la certificación de estudio se emite fuera del sistema.
+  // Estado del aprendiz durante/después de la Etapa Productiva: ACTIVO → POR_CERTIFICAR (lo
+  // marca su instructor uno a uno, solo cuando las 6 evidencias ya quedaron avaladas/aprobadas —
+  // dispara el correo con la ficha de requisitos de certificación) → CERTIFICADO (paso final,
+  // manual, lo hace Coordinación; la certificación de estudio se emite fuera del sistema).
   estado EstadoAprendiz @default(ACTIVO)
+  // Trazabilidad de quién marcó a este aprendiz como POR_CERTIFICAR y cuándo (dispara el correo
+  // de requisitos). Null mientras no se haya marcado, o si se revierte a ACTIVO por corrección.
+  porCertificarPorId String?
+  porCertificarPor   User?     @relation("MarcadoPorCertificar", fields: [porCertificarPorId], references: [id], onDelete: SetNull)
+  marcadosPorCertificar User[] @relation("MarcadoPorCertificar")
+  fechaPorCertificar DateTime?
 
   // Fecha real de inicio/fin de la Etapa Productiva de ESTE aprendiz — no todos los aprendices de
   // una misma ficha inician igual ni con la misma alternativa. Se capturan y mantienen

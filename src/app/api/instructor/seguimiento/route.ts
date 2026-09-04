@@ -18,6 +18,7 @@ export async function GET() {
       nombres: true,
       apellidos: true,
       cedula: true,
+      estado: true,
       fechaInicioEtapaProductiva: true,
       fechaFinEtapaProductiva: true,
       ficha: { select: { codigo: true, fechaLimiteIniciarEP: true } },
@@ -57,27 +58,32 @@ export async function GET() {
 
     const atrasos = checklist.filter((c) => c.estado === "atrasada").length;
 
+    // Paz y salvo: las 6 evidencias ya avaladas/aprobadas — elegible para que el instructor lo
+    // marque como "Por certificar" (casilla en el panel). No es lo mismo que `estado ===
+    // "POR_CERTIFICAR"`: esto último es la confirmación explícita del instructor, la que dispara
+    // el correo con la ficha de requisitos y la que ve Coordinación.
+    const evidenciasCompletas = checklist.every((c) => c.estado === "completa");
+
     return {
       id: a.id,
       nombres: a.nombres,
       apellidos: a.apellidos,
       cedula: a.cedula,
       ficha: a.ficha?.codigo ?? null,
+      estadoAprendiz: a.estado,
       fechaInicioEtapaProductiva: a.fechaInicioEtapaProductiva?.toISOString() ?? null,
       checklist,
       atrasos,
-      // Paz y salvo: las 6 evidencias ya avaladas/aprobadas — listo para que coordinación lo
-      // marque como Certificado (ese paso sigue siendo manual, ver CLAUDE.md).
-      porCertificar: checklist.every((c) => c.estado === "completa"),
+      evidenciasCompletas,
     };
   });
 
   // Atrasados primero (más atrasos arriba); entre los que no tienen atrasos, los que ya están
-  // listos para certificar suben antes que los que solo van al día — es la lista más accionable
-  // para el instructor en un vistazo.
+  // listos para certificar (o ya se marcaron) suben antes que los que solo van al día — es la
+  // lista más accionable para el instructor en un vistazo.
   resultado.sort((x, y) => {
     if (y.atrasos !== x.atrasos) return y.atrasos - x.atrasos;
-    return Number(y.porCertificar) - Number(x.porCertificar);
+    return Number(y.evidenciasCompletas) - Number(x.evidenciasCompletas);
   });
 
   return NextResponse.json({ aprendices: resultado });
