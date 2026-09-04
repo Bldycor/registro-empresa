@@ -55,6 +55,8 @@ export async function GET() {
       certificacionAprobada: a.certificacionEmpresario?.estado === "APROBADA",
     });
 
+    const atrasos = checklist.filter((c) => c.estado === "atrasada").length;
+
     return {
       id: a.id,
       nombres: a.nombres,
@@ -63,11 +65,20 @@ export async function GET() {
       ficha: a.ficha?.codigo ?? null,
       fechaInicioEtapaProductiva: a.fechaInicioEtapaProductiva?.toISOString() ?? null,
       checklist,
-      atrasos: checklist.filter((c) => c.estado === "atrasada").length,
+      atrasos,
+      // Paz y salvo: las 6 evidencias ya avaladas/aprobadas — listo para que coordinación lo
+      // marque como Certificado (ese paso sigue siendo manual, ver CLAUDE.md).
+      porCertificar: checklist.every((c) => c.estado === "completa"),
     };
   });
 
-  resultado.sort((x, y) => y.atrasos - x.atrasos);
+  // Atrasados primero (más atrasos arriba); entre los que no tienen atrasos, los que ya están
+  // listos para certificar suben antes que los que solo van al día — es la lista más accionable
+  // para el instructor en un vistazo.
+  resultado.sort((x, y) => {
+    if (y.atrasos !== x.atrasos) return y.atrasos - x.atrasos;
+    return Number(y.porCertificar) - Number(x.porCertificar);
+  });
 
   return NextResponse.json({ aprendices: resultado });
 }

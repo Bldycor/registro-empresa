@@ -121,18 +121,34 @@ export function calcularSeguimiento(input: {
     const porNumero = new Map(input.bitacoras.map((b) => [b.numero, b]));
     let atrasadas = 0;
     let proxima = false;
+    let aprobadas = 0;
     fechasLimite.forEach((limite, idx) => {
       const numero = idx + 1;
       const b = porNumero.get(numero);
-      const alDia = b?.estado === "APROBADA" || b?.estado === "PENDIENTE";
+      if (b?.estado === "APROBADA") {
+        aprobadas++;
+        return;
+      }
+      const alDia = b?.estado === "PENDIENTE";
       if (alDia) return;
       const dias = diffDias(limite, hoy);
       if (dias > 0) atrasadas++;
       else if (dias >= -DIAS_ALERTA_PROXIMA) proxima = true;
     });
-    const estado: EstadoSeguimiento = atrasadas > 0 ? "atrasada" : proxima ? "proxima" : "pendiente";
-    const detalle =
-      atrasadas > 0
+    // "completa" solo cuando las 12 quedaron realmente aprobadas — no basta con que ninguna esté
+    // atrasada/próxima todavía (eso es "pendiente", en curso), o el chip nunca reflejaría que el
+    // aprendiz ya terminó bitácoras del todo.
+    const todasAprobadas = aprobadas === fechasLimite.length;
+    const estado: EstadoSeguimiento = todasAprobadas
+      ? "completa"
+      : atrasadas > 0
+        ? "atrasada"
+        : proxima
+          ? "proxima"
+          : "pendiente";
+    const detalle = todasAprobadas
+      ? "Al día"
+      : atrasadas > 0
         ? `${atrasadas} bitácora${atrasadas === 1 ? "" : "s"} atrasada${atrasadas === 1 ? "" : "s"}`
         : proxima
           ? "Una bitácora vence pronto"

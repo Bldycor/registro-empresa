@@ -22,6 +22,7 @@ type Aprendiz = {
   fechaInicioEtapaProductiva: string | null;
   checklist: ChecklistItem[];
   atrasos: number;
+  porCertificar: boolean;
 };
 
 const chipStyles: Record<EstadoSeguimiento, string> = {
@@ -69,7 +70,9 @@ function Chip({ item }: { item: ChecklistItem }) {
 
 export function InstructorSeguimientoPanel() {
   const [aprendices, setAprendices] = useState<Aprendiz[] | null>(null);
-  const [filtro, setFiltro] = useState<"ATRASADOS" | "AL_DIA" | "TODOS">("ATRASADOS");
+  const [filtro, setFiltro] = useState<"ATRASADOS" | "POR_CERTIFICAR" | "AL_DIA" | "TODOS">(
+    "ATRASADOS",
+  );
 
   useEffect(() => {
     fetch("/api/instructor/seguimiento")
@@ -81,19 +84,32 @@ export function InstructorSeguimientoPanel() {
     return <p className="text-sm text-zinc-500 dark:text-zinc-400">Cargando…</p>;
   }
 
+  // Categorías mutuamente excluyentes, en orden de prioridad: con atrasos primero (lo más
+  // urgente), luego paz y salvo listo para certificar (lo más accionable), y por último al día
+  // sin más que hacer todavía — así "al día" no se mezcla con "ya terminó todo".
   const conAtrasos = aprendices.filter((a) => a.atrasos > 0).length;
-  const alDia = aprendices.length - conAtrasos;
+  const porCertificar = aprendices.filter((a) => a.atrasos === 0 && a.porCertificar).length;
+  const alDia = aprendices.length - conAtrasos - porCertificar;
 
   const visibles = aprendices.filter((a) => {
     if (filtro === "ATRASADOS") return a.atrasos > 0;
-    if (filtro === "AL_DIA") return a.atrasos === 0;
+    if (filtro === "POR_CERTIFICAR") return a.atrasos === 0 && a.porCertificar;
+    if (filtro === "AL_DIA") return a.atrasos === 0 && !a.porCertificar;
     return true;
   });
+
+  const mensajeVacio: Record<typeof filtro, string> = {
+    ATRASADOS: "Nadie tiene atrasos ahora mismo.",
+    POR_CERTIFICAR: "Nadie está listo para certificar todavía.",
+    AL_DIA: "No hay aprendices en este filtro.",
+    TODOS: "No hay aprendices en este filtro.",
+  };
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <StatBadge tono="rojo" etiqueta="con atrasos" cantidad={conAtrasos} />
+        <StatBadge tono="azul" etiqueta="por certificar" cantidad={porCertificar} />
         <StatBadge tono="verde" etiqueta="al día" cantidad={alDia} />
         <select
           value={filtro}
@@ -101,6 +117,7 @@ export function InstructorSeguimientoPanel() {
           className="ml-auto rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950"
         >
           <option value="ATRASADOS">Con atrasos</option>
+          <option value="POR_CERTIFICAR">Por certificar</option>
           <option value="AL_DIA">Al día</option>
           <option value="TODOS">Todos</option>
         </select>
@@ -108,7 +125,7 @@ export function InstructorSeguimientoPanel() {
 
       {visibles.length === 0 ? (
         <p className="rounded-lg border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-          {filtro === "ATRASADOS" ? "Nadie tiene atrasos ahora mismo." : "No hay aprendices en este filtro."}
+          {mensajeVacio[filtro]}
         </p>
       ) : (
         <ul className="space-y-3">
@@ -131,10 +148,16 @@ export function InstructorSeguimientoPanel() {
                       : "Todavía no tiene fecha de inicio de Etapa Productiva"}
                   </p>
                 </div>
-                {a.atrasos > 0 && (
+                {a.atrasos > 0 ? (
                   <span className="shrink-0 rounded-full bg-red-600 px-2.5 py-1 text-xs font-semibold text-white">
                     {a.atrasos} atrasada{a.atrasos === 1 ? "" : "s"}
                   </span>
+                ) : (
+                  a.porCertificar && (
+                    <span className="shrink-0 rounded-full bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white">
+                      ✓ Por certificar
+                    </span>
+                  )
                 )}
               </div>
 
