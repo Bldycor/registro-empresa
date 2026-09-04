@@ -18,6 +18,7 @@ const roleNav: Record<string, { href: string; label: string }[]> = {
     { href: "/formulario/instructor/formalizaciones", label: "Formalizaciones" },
     { href: "/formulario/instructor/bitacoras", label: "Bitácoras" },
     { href: "/formulario/instructor/evaluaciones", label: "Evaluaciones" },
+    { href: "/formulario/instructor/certificacion", label: "Certificación" },
     { href: "/formulario/instructor/perfil", label: "Mi perfil" },
   ],
   COORDINADOR: [

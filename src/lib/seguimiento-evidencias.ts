@@ -26,9 +26,9 @@ export type ChecklistItem = {
   etiqueta: string;
   estado: EstadoSeguimiento;
   detalle: string;
-  // null cuando todavía no existe un panel dedicado para esa evidencia (Concertación y
-  // Certificación no tienen página de revisión propia para el instructor aún) — el chip se
-  // muestra igual, solo que no es clicable.
+  // null cuando todavía no existe un panel dedicado para esa evidencia (Concertación no tiene
+  // página de revisión propia para el instructor aún) — el chip se muestra igual, solo que no
+  // es clicable.
   href: string | null;
   // Cuántas piezas concretas están atrasadas dentro de este chip — 0 o 1 para los de un solo
   // punto (Alternativa, Formalización, Concertación, Certificación), la cuenta real de bitácoras
@@ -223,7 +223,7 @@ export function calcularSeguimiento(input: {
       etiqueta: "Certificación",
       estado: certificacion.estado,
       detalle: detalleFecha(certificacion, "Aún no termina su EP"),
-      href: null,
+      href: "/formulario/instructor/certificacion",
       cantidadAtrasada: certificacion.estado === "atrasada" ? 1 : 0,
     },
   ];

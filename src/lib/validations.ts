@@ -471,6 +471,21 @@ export const FormalizacionSchema = z.object({
 
 export type FormalizacionInput = z.infer<typeof FormalizacionSchema>;
 
+// Evidencia (e): Certificación del Empresario — carta de certificación a satisfacción del
+// empresario, al cierre de la Etapa Productiva. La fecha del documento debe caer dentro de la
+// ventana institucional (5 días antes/después de la fecha de fin de EP del aprendiz) — se valida
+// en el servidor, donde sí se conoce esa fecha (ver /api/etapa-productiva/certificacion).
+export const CertificacionEmpresarioSchema = z.object({
+  fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Selecciona una fecha válida."),
+  archivoUrl: z.string().trim().min(1, "Adjunta la carta de certificación."),
+});
+
+export type CertificacionEmpresarioInput = z.infer<typeof CertificacionEmpresarioSchema>;
+
+// Días de tolerancia antes/después de la fecha de fin de Etapa Productiva del aprendiz dentro de
+// los cuales puede datarse la carta de certificación del empresario.
+export const VENTANA_CERTIFICACION_DIAS = 5;
+
 export const NivelRiesgoARLValues = ["I", "II", "III", "IV", "V"] as const;
 export type NivelRiesgoARLValue = (typeof NivelRiesgoARLValues)[number];
 
