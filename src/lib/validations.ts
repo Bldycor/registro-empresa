@@ -314,23 +314,81 @@ export const estadoAprendizLabel: Record<EstadoAprendizValue, string> = {
   CERTIFICADO: "Certificado",
 };
 
+// Fecha "YYYY-MM-DD" (formato que ya usa DatePickerField), opcional/nullable: se puede dejar sin
+// definir o borrar (null) tanto al crear como al editar un aprendiz.
+const fechaEtapaProductivaOpcional = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Selecciona una fecha válida.")
+  .nullable()
+  .optional();
+
 // Edición de los datos de un aprendiz por el Coordinador (o el ADMIN): datos personales, estado
 // y asignación de ficha — incluye poder desasignarlo (fichaId a null) para un aprendiz que quede
-// sin ficha, o reasignarlo a otra. Todo opcional: se envía solo lo que cambia.
-export const AprendizGestionSchema = z.object({
-  nombres: z.string().trim().min(2, "Ingresa los nombres.").optional(),
-  apellidos: z.string().trim().min(2, "Ingresa los apellidos.").optional(),
-  cedula: z.string().trim().min(5, "Ingresa un número de cédula válido.").optional(),
-  email: z.string().trim().email("Ingresa un correo válido.").optional(),
-  celular: z.string().trim().min(7, "Ingresa un número de celular válido.").optional(),
-  direccionResidencia: z.string().trim().min(5, "Ingresa la dirección de residencia.").optional(),
-  comuna: z.enum(ComunaValues).nullable().optional(),
-  estado: z.enum(EstadoAprendizValues).optional(),
-  alternativaEtapaProductiva: z.enum(AlternativaEtapaProductivaValues).nullable().optional(),
-  fichaId: z.string().trim().nullable().optional(),
-});
+// sin ficha, o reasignarlo a otra. Todo opcional: se envía solo lo que cambia. Las fechas de
+// Etapa Productiva son por aprendiz (no por ficha) — se pueden fijar o corregir aquí uno a uno,
+// además de sincronizarse desde la evidencia "Selección de Alternativa" cuando el aprendiz la
+// diligencia (la última aprobada gana).
+export const AprendizGestionSchema = z
+  .object({
+    nombres: z.string().trim().min(2, "Ingresa los nombres.").optional(),
+    apellidos: z.string().trim().min(2, "Ingresa los apellidos.").optional(),
+    cedula: z.string().trim().min(5, "Ingresa un número de cédula válido.").optional(),
+    email: z.string().trim().email("Ingresa un correo válido.").optional(),
+    celular: z.string().trim().min(7, "Ingresa un número de celular válido.").optional(),
+    direccionResidencia: z.string().trim().min(5, "Ingresa la dirección de residencia.").optional(),
+    comuna: z.enum(ComunaValues).nullable().optional(),
+    estado: z.enum(EstadoAprendizValues).optional(),
+    alternativaEtapaProductiva: z.enum(AlternativaEtapaProductivaValues).nullable().optional(),
+    fichaId: z.string().trim().nullable().optional(),
+    fechaInicioEtapaProductiva: fechaEtapaProductivaOpcional,
+    fechaFinEtapaProductiva: fechaEtapaProductivaOpcional,
+  })
+  .refine(
+    (data) =>
+      !data.fechaInicioEtapaProductiva ||
+      !data.fechaFinEtapaProductiva ||
+      data.fechaFinEtapaProductiva > data.fechaInicioEtapaProductiva,
+    { message: "La fecha de fin debe ser posterior a la de inicio.", path: ["fechaFinEtapaProductiva"] },
+  );
 
 export type AprendizGestionInput = z.infer<typeof AprendizGestionSchema>;
+
+// El instructor corrige las fechas de Etapa Productiva de UN aprendiz de su ficha (el sistema ya
+// las calculó al crear la cuenta — ver src/lib/etapa-productiva-fechas.ts). Ambas opcionales:
+// puede fijar solo una, o borrar las dos (null) si la ficha todavía no tiene fecha institucional.
+export const FechasEtapaProductivaSchema = z
+  .object({
+    fechaInicioEtapaProductiva: fechaEtapaProductivaOpcional,
+    fechaFinEtapaProductiva: fechaEtapaProductivaOpcional,
+  })
+  .refine(
+    (data) =>
+      !data.fechaInicioEtapaProductiva ||
+      !data.fechaFinEtapaProductiva ||
+      data.fechaFinEtapaProductiva > data.fechaInicioEtapaProductiva,
+    { message: "La fecha de fin debe ser posterior a la de inicio.", path: ["fechaFinEtapaProductiva"] },
+  );
+
+export type FechasEtapaProductivaInput = z.infer<typeof FechasEtapaProductivaSchema>;
+
+// El instructor aplica la misma fecha de inicio (y opcionalmente de fin) a TODOS los aprendices
+// de una de sus fichas de una sola vez — para corregir en bloque una ficha completa en vez de
+// aprendiz por aprendiz. La fecha de inicio es obligatoria acá (no tendría sentido "limpiar" a
+// todo un grupo); si no se da fecha de fin, se calcula sola (+180 días, ver
+// src/lib/etapa-productiva-fechas.ts).
+export const FechasEtapaProductivaFichaSchema = z
+  .object({
+    fechaInicioEtapaProductiva: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Selecciona una fecha de inicio válida."),
+    fechaFinEtapaProductiva: fechaEtapaProductivaOpcional,
+  })
+  .refine(
+    (data) => !data.fechaFinEtapaProductiva || data.fechaFinEtapaProductiva > data.fechaInicioEtapaProductiva,
+    { message: "La fecha de fin debe ser posterior a la de inicio.", path: ["fechaFinEtapaProductiva"] },
+  );
+
+export type FechasEtapaProductivaFichaInput = z.infer<typeof FechasEtapaProductivaFichaSchema>;
 
 // Datos personales compartidos por los formularios de registro/creación de cuenta (Aprendiz en
 // /register; Coordinador e Instructor creados desde el panel de ADMIN/Coordinador respectivamente,
@@ -372,7 +430,9 @@ export type CreateInstructorInput = z.infer<typeof CreateInstructorSchema>;
 // Instructor solo puede usarla en sus fichas asignadas (verificado en el route handler);
 // Coordinador/Admin pueden usarla en cualquier ficha. Sin autoregistro ni contraseña elegida: se
 // genera una contraseña temporal (= cédula) igual que para Instructor/Coordinador, ver
-// src/lib/temp-password.ts.
+// src/lib/temp-password.ts. Las fechas de Etapa Productiva NO se piden acá: el sistema las
+// calcula solas desde `Ficha.fechaInicioProductiva` (ver src/lib/etapa-productiva-fechas.ts) — el
+// instructor las corrige después, individualmente o para toda la ficha, si hace falta.
 export const CreateAprendizSchema = z.object({
   ...datosPersonalesBase,
   fichaId: z.string().trim().min(1, "Selecciona la ficha."),

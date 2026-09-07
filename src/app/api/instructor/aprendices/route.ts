@@ -5,6 +5,7 @@ import { requireApiUser } from "@/lib/auth-guards";
 import { CreateAprendizSchema } from "@/lib/validations";
 import { generarPasswordTemporal } from "@/lib/temp-password";
 import { sendWelcomeEmail } from "@/lib/mailer";
+import { calcularFechasEtapaProductivaDesdeFicha } from "@/lib/etapa-productiva-fechas";
 
 // Crea un aprendiz individual desde el panel del instructor — solo en una de sus propias fichas
 // asignadas (misma regla de alcance que el resto de la app: el instructor no gestiona fichas
@@ -21,13 +22,17 @@ export async function POST(request: Request) {
   }
   const d = parsed.data;
 
-  const ficha = await prisma.ficha.findUnique({ where: { id: d.fichaId }, select: { instructorId: true } });
+  const ficha = await prisma.ficha.findUnique({
+    where: { id: d.fichaId },
+    select: { instructorId: true, fechaInicioProductiva: true },
+  });
   if (!ficha || ficha.instructorId !== user.id) {
     return NextResponse.json(
       { error: { fichaId: ["Esa ficha no está asignada a tu cuenta."] } },
       { status: 403 },
     );
   }
+  const fechasEP = calcularFechasEtapaProductivaDesdeFicha(ficha.fechaInicioProductiva);
 
   const duplicado = await prisma.user.findFirst({
     where: { OR: [{ email: d.email }, { cedula: d.cedula }] },
@@ -62,6 +67,8 @@ export async function POST(request: Request) {
       role: "APRENDIZ",
       fichaId: d.fichaId,
       alternativaEtapaProductiva: d.alternativaEtapaProductiva,
+      fechaInicioEtapaProductiva: fechasEP.fechaInicioEtapaProductiva,
+      fechaFinEtapaProductiva: fechasEP.fechaFinEtapaProductiva,
       passwordHash,
       creadoPorId: user.id,
     },
@@ -72,6 +79,8 @@ export async function POST(request: Request) {
       cedula: true,
       email: true,
       estado: true,
+      fechaInicioEtapaProductiva: true,
+      fechaFinEtapaProductiva: true,
       ficha: { select: { id: true, codigo: true } },
     },
   });

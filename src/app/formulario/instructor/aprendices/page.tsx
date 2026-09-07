@@ -20,11 +20,16 @@ export default async function InstructorAprendicesPage() {
         cedula: true,
         email: true,
         estado: true,
+        alternativaEtapaProductiva: true,
+        fechaInicioEtapaProductiva: true,
+        fechaFinEtapaProductiva: true,
         ficha: {
           select: {
             id: true,
             codigo: true,
             instructorId: true,
+            fechaInicioProductiva: true,
+            fechaLimiteIniciarEP: true,
             instructor: { select: { nombres: true, apellidos: true } },
           },
         },
@@ -33,10 +38,29 @@ export default async function InstructorAprendicesPage() {
     }),
     prisma.ficha.findMany({
       where: { instructorId: user.id },
-      select: { id: true, codigo: true },
+      select: { id: true, codigo: true, fechaInicioProductiva: true, fechaLimiteIniciarEP: true },
       orderBy: { codigo: "asc" },
     }),
   ]);
+
+  const aprendicesSerializados = aprendices.map((a) => ({
+    ...a,
+    fechaInicioEtapaProductiva: a.fechaInicioEtapaProductiva?.toISOString() ?? null,
+    fechaFinEtapaProductiva: a.fechaFinEtapaProductiva?.toISOString() ?? null,
+    ficha: a.ficha
+      ? {
+          ...a.ficha,
+          fechaInicioProductiva: a.ficha.fechaInicioProductiva?.toISOString() ?? null,
+          fechaLimiteIniciarEP: a.ficha.fechaLimiteIniciarEP?.toISOString() ?? null,
+        }
+      : null,
+  }));
+
+  const fichasAsignadasSerializadas = fichasAsignadas.map((f) => ({
+    ...f,
+    fechaInicioProductiva: f.fechaInicioProductiva?.toISOString() ?? null,
+    fechaLimiteIniciarEP: f.fechaLimiteIniciarEP?.toISOString() ?? null,
+  }));
 
   return (
     <div className="flex flex-1 justify-center px-4 py-10">
@@ -46,20 +70,23 @@ export default async function InstructorAprendicesPage() {
             Aprendices
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Puedes consultar a todos los aprendices, pero solo puedes evaluar y crear cuentas en
-            tus fichas asignadas.
+            Puedes consultar a todos los aprendices, pero solo puedes evaluar, crear cuentas y
+            corregir fechas de Etapa Productiva en tus fichas asignadas.
           </p>
         </div>
 
         <AprendizCreatePanel
-          fichas={fichasAsignadas}
+          fichas={fichasAsignadasSerializadas}
           createUrl="/api/instructor/aprendices"
           importUrl="/api/instructor/aprendices/import"
           sinFichasMensaje="No tienes fichas asignadas todavía."
           restriccionFichaTexto="la ficha no es tuya"
         />
 
-        <InstructorAprendicesPanel aprendices={aprendices} fichasAsignadas={fichasAsignadas} />
+        <InstructorAprendicesPanel
+          aprendices={aprendicesSerializados}
+          fichasAsignadas={fichasAsignadasSerializadas}
+        />
       </div>
     </div>
   );

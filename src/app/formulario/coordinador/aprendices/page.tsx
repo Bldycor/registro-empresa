@@ -22,6 +22,8 @@ export default async function CoordinadorAprendicesPage() {
         estado: true,
         alternativaEtapaProductiva: true,
         fichaId: true,
+        fechaInicioEtapaProductiva: true,
+        fechaFinEtapaProductiva: true,
         ficha: {
           select: {
             id: true,
@@ -38,9 +40,15 @@ export default async function CoordinadorAprendicesPage() {
     }),
   ]);
 
+  const aprendicesSerializados = aprendices.map((a) => ({
+    ...a,
+    fechaInicioEtapaProductiva: a.fechaInicioEtapaProductiva?.toISOString() ?? null,
+    fechaFinEtapaProductiva: a.fechaFinEtapaProductiva?.toISOString() ?? null,
+  }));
+
   return (
     <div className="flex flex-1 justify-center px-4 py-10">
-      <CoordinadorAprendicesPanel initialAprendices={aprendices} fichas={fichas} />
+      <CoordinadorAprendicesPanel initialAprendices={aprendicesSerializados} fichas={fichas} />
     </div>
   );
 }

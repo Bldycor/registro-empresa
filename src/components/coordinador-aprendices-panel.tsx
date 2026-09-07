@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AprendizCreatePanel } from "@/components/aprendiz-create-panel";
+import { DatePickerField } from "@/components/date-picker-field";
 import {
   ComunaValues,
   comunaLabel,
@@ -32,6 +33,8 @@ type Aprendiz = {
   estado: EstadoAprendizValue;
   alternativaEtapaProductiva: AlternativaEtapaProductivaValue | null;
   fichaId: string | null;
+  fechaInicioEtapaProductiva: string | null;
+  fechaFinEtapaProductiva: string | null;
   ficha: FichaConInstructor | null;
 };
 
@@ -46,6 +49,8 @@ type GestionForm = {
   estado: EstadoAprendizValue;
   alternativaEtapaProductiva: string;
   fichaId: string;
+  fechaInicioEtapaProductiva: string;
+  fechaFinEtapaProductiva: string;
 };
 
 const inputClass =
@@ -63,6 +68,8 @@ function gestionVaciaDe(aprendiz: Aprendiz): GestionForm {
     estado: aprendiz.estado,
     alternativaEtapaProductiva: aprendiz.alternativaEtapaProductiva ?? "",
     fichaId: aprendiz.fichaId ?? "",
+    fechaInicioEtapaProductiva: aprendiz.fechaInicioEtapaProductiva?.slice(0, 10) ?? "",
+    fechaFinEtapaProductiva: aprendiz.fechaFinEtapaProductiva?.slice(0, 10) ?? "",
   };
 }
 
@@ -143,6 +150,8 @@ export function CoordinadorAprendicesPanel({
         estado: gestionForm.estado,
         alternativaEtapaProductiva: gestionForm.alternativaEtapaProductiva || null,
         fichaId: gestionForm.fichaId || null,
+        fechaInicioEtapaProductiva: gestionForm.fechaInicioEtapaProductiva || null,
+        fechaFinEtapaProductiva: gestionForm.fechaFinEtapaProductiva || null,
       }),
     });
 
@@ -461,6 +470,19 @@ export function CoordinadorAprendicesPanel({
                             {alternativaEtapaProductivaLabel[aprendiz.alternativaEtapaProductiva]}
                           </span>
                         )}
+                        {aprendiz.fechaInicioEtapaProductiva ? (
+                          <span className="rounded-full border border-zinc-200 px-2 py-0.5 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
+                            EP: {new Date(aprendiz.fechaInicioEtapaProductiva).toLocaleDateString("es-CO", { timeZone: "UTC" })}
+                            {aprendiz.fechaFinEtapaProductiva &&
+                              ` – ${new Date(aprendiz.fechaFinEtapaProductiva).toLocaleDateString("es-CO", { timeZone: "UTC" })}`}
+                          </span>
+                        ) : (
+                          aprendiz.fichaId && (
+                            <span className="rounded-full border border-dashed border-zinc-300 px-2 py-0.5 text-xs text-zinc-400 dark:border-zinc-700 dark:text-zinc-500">
+                              EP: sin fecha
+                            </span>
+                          )
+                        )}
                       </div>
                       <div className="mt-1 flex gap-3">
                         <button
@@ -601,6 +623,22 @@ export function CoordinadorAprendicesPanel({
                             ))}
                           </select>
                         </label>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <DatePickerField
+                          label="Fecha de inicio de Etapa Productiva"
+                          labelClassName="text-xs text-zinc-600 dark:text-zinc-400"
+                          value={gestionForm.fechaInicioEtapaProductiva}
+                          onChange={(v) => updateGestion("fechaInicioEtapaProductiva", v)}
+                        />
+                        <DatePickerField
+                          label="Fecha de fin de Etapa Productiva"
+                          labelClassName="text-xs text-zinc-600 dark:text-zinc-400"
+                          value={gestionForm.fechaFinEtapaProductiva}
+                          onChange={(v) => updateGestion("fechaFinEtapaProductiva", v)}
+                          min={gestionForm.fechaInicioEtapaProductiva || undefined}
+                        />
                       </div>
 
                       {gestionError && <p className="text-sm text-red-600">{gestionError}</p>}

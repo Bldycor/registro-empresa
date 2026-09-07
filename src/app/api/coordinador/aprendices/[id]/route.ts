@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { AprendizGestionSchema } from "@/lib/validations";
+import { validarFechaInicioEtapaProductiva } from "@/lib/etapa-productiva-fechas";
 import type { Prisma } from "@/generated/prisma/client";
 
 const APRENDIZ_SELECT = {
@@ -16,6 +17,8 @@ const APRENDIZ_SELECT = {
   estado: true,
   alternativaEtapaProductiva: true,
   fichaId: true,
+  fechaInicioEtapaProductiva: true,
+  fechaFinEtapaProductiva: true,
   ficha: {
     select: {
       id: true,
@@ -72,10 +75,45 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
   }
 
-  if (g.fichaId) {
-    const ficha = await prisma.ficha.findUnique({ where: { id: g.fichaId } });
-    if (!ficha) {
-      return NextResponse.json({ error: { fichaId: ["La ficha seleccionada no existe."] } }, { status: 400 });
+  let fichaParaValidar: {
+    fechaInicioProductiva: Date | null;
+    fechaLimiteIniciarEP: Date | null;
+  } | null = null;
+
+  if (g.fichaId !== undefined) {
+    if (g.fichaId) {
+      const ficha = await prisma.ficha.findUnique({
+        where: { id: g.fichaId },
+        select: { fechaInicioProductiva: true, fechaLimiteIniciarEP: true },
+      });
+      if (!ficha) {
+        return NextResponse.json({ error: { fichaId: ["La ficha seleccionada no existe."] } }, { status: 400 });
+      }
+      fichaParaValidar = ficha;
+    }
+  } else if (existing.fichaId) {
+    fichaParaValidar = await prisma.ficha.findUnique({
+      where: { id: existing.fichaId },
+      select: { fechaInicioProductiva: true, fechaLimiteIniciarEP: true },
+    });
+  }
+
+  if (g.fechaInicioEtapaProductiva) {
+    const alternativaEfectiva =
+      g.alternativaEtapaProductiva !== undefined
+        ? g.alternativaEtapaProductiva
+        : existing.alternativaEtapaProductiva;
+    const errorFecha = validarFechaInicioEtapaProductiva({
+      fechaInicioPropuesta: new Date(g.fechaInicioEtapaProductiva),
+      fechaInicioProductivaFicha: fichaParaValidar?.fechaInicioProductiva ?? null,
+      fechaLimiteIniciarEPFicha: fichaParaValidar?.fechaLimiteIniciarEP ?? null,
+      esVinculoLaboral: alternativaEfectiva === "VINCULO_LABORAL",
+    });
+    if (errorFecha) {
+      return NextResponse.json(
+        { error: { fechaInicioEtapaProductiva: [errorFecha] } },
+        { status: 400 },
+      );
     }
   }
 
@@ -93,6 +131,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
   if (g.fichaId !== undefined) {
     data.ficha = g.fichaId ? { connect: { id: g.fichaId } } : { disconnect: true };
+  }
+  if (g.fechaInicioEtapaProductiva !== undefined) {
+    data.fechaInicioEtapaProductiva = g.fechaInicioEtapaProductiva
+      ? new Date(g.fechaInicioEtapaProductiva)
+      : null;
+  }
+  if (g.fechaFinEtapaProductiva !== undefined) {
+    data.fechaFinEtapaProductiva = g.fechaFinEtapaProductiva ? new Date(g.fechaFinEtapaProductiva) : null;
   }
 
   const aprendiz = await prisma.user.update({

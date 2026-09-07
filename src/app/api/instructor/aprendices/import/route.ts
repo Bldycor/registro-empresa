@@ -5,6 +5,7 @@ import { requireApiUser } from "@/lib/auth-guards";
 import { parseAprendizImportText } from "@/lib/aprendiz-import";
 import { generarPasswordTemporal } from "@/lib/temp-password";
 import { sendWelcomeEmail } from "@/lib/mailer";
+import { calcularFechasEtapaProductivaDesdeFicha } from "@/lib/etapa-productiva-fechas";
 
 // Importación masiva de aprendices desde una hoja de cálculo, solo en fichas asignadas al
 // instructor. Mismo patrón "solo crea" que fichas/instructores: si la cédula o el correo ya
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
   const fichasCodigos = Array.from(new Set(filas.map((f) => f.fichaCodigo)));
   const fichas = await prisma.ficha.findMany({
     where: { codigo: { in: fichasCodigos } },
-    select: { id: true, codigo: true, instructorId: true },
+    select: { id: true, codigo: true, instructorId: true, fechaInicioProductiva: true },
   });
   const fichaPorCodigo = new Map(fichas.map((f) => [f.codigo, f]));
 
@@ -77,6 +78,7 @@ export async function POST(request: Request) {
 
     const password = generarPasswordTemporal(fila.cedula);
     const passwordHash = await bcrypt.hash(password, 10);
+    const fechasEP = calcularFechasEtapaProductivaDesdeFicha(ficha.fechaInicioProductiva);
 
     try {
       await prisma.user.create({
@@ -90,6 +92,8 @@ export async function POST(request: Request) {
           role: "APRENDIZ",
           fichaId: ficha.id,
           alternativaEtapaProductiva: fila.alternativaEtapaProductiva,
+          fechaInicioEtapaProductiva: fechasEP.fechaInicioEtapaProductiva,
+          fechaFinEtapaProductiva: fechasEP.fechaFinEtapaProductiva,
           passwordHash,
           creadoPorId: user.id,
         },

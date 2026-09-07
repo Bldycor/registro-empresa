@@ -216,6 +216,13 @@ export function AprendizCreatePanel({
           </Field>
         </div>
 
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          Las fechas de inicio y fin de Etapa Productiva se calculan solas a partir de la fecha de
+          la ficha seleccionada — no hace falta escribirlas acá. Si este aprendiz en particular
+          empieza en otra fecha (cada empresa lo recibe cuando puede), corrígelo después en
+          &quot;Aprendices&quot;, individualmente o para toda la ficha.
+        </p>
+
         {errors._root && <p className="text-sm text-red-600">{errors._root[0]}</p>}
 
         <button
@@ -253,7 +260,9 @@ export function AprendizCreatePanel({
           <strong>INSTRUCTOR</strong> se ignoran, ya viven en la ficha). Solo se crean cuentas
           nuevas — si la cédula o el correo ya existen, o {restriccionFichaTexto}, esa fila no se
           modifica y queda reportada aparte. Cada cuenta nueva recibe una contraseña temporal por
-          correo.
+          correo. Las fechas de Etapa Productiva se calculan solas desde la fecha de cada ficha —
+          no hace falta incluirlas en la hoja; se corrigen después si algún aprendiz empezó en otra
+          fecha.
         </p>
         <textarea
           value={importText}

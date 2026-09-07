@@ -5,6 +5,7 @@ import { requireApiUser } from "@/lib/auth-guards";
 import { CreateAprendizSchema } from "@/lib/validations";
 import { generarPasswordTemporal } from "@/lib/temp-password";
 import { sendWelcomeEmail } from "@/lib/mailer";
+import { calcularFechasEtapaProductivaDesdeFicha } from "@/lib/etapa-productiva-fechas";
 
 // Crea un aprendiz individual desde el panel de Coordinador/Admin — a diferencia del mismo
 // formulario en el panel del Instructor, acá no hay restricción de "solo mis fichas asignadas":
@@ -21,13 +22,17 @@ export async function POST(request: Request) {
   }
   const d = parsed.data;
 
-  const ficha = await prisma.ficha.findUnique({ where: { id: d.fichaId }, select: { id: true } });
+  const ficha = await prisma.ficha.findUnique({
+    where: { id: d.fichaId },
+    select: { id: true, fechaInicioProductiva: true },
+  });
   if (!ficha) {
     return NextResponse.json(
       { error: { fichaId: ["Esa ficha ya no existe."] } },
       { status: 404 },
     );
   }
+  const fechasEP = calcularFechasEtapaProductivaDesdeFicha(ficha.fechaInicioProductiva);
 
   const duplicado = await prisma.user.findFirst({
     where: { OR: [{ email: d.email }, { cedula: d.cedula }] },
@@ -62,6 +67,8 @@ export async function POST(request: Request) {
       role: "APRENDIZ",
       fichaId: d.fichaId,
       alternativaEtapaProductiva: d.alternativaEtapaProductiva,
+      fechaInicioEtapaProductiva: fechasEP.fechaInicioEtapaProductiva,
+      fechaFinEtapaProductiva: fechasEP.fechaFinEtapaProductiva,
       passwordHash,
       creadoPorId: user.id,
     },
@@ -77,6 +84,8 @@ export async function POST(request: Request) {
       estado: true,
       alternativaEtapaProductiva: true,
       fichaId: true,
+      fechaInicioEtapaProductiva: true,
+      fechaFinEtapaProductiva: true,
       ficha: { select: { id: true, codigo: true } },
     },
   });

@@ -23,6 +23,8 @@ export async function GET() {
       estado: true,
       alternativaEtapaProductiva: true,
       fichaId: true,
+      fechaInicioEtapaProductiva: true,
+      fechaFinEtapaProductiva: true,
       ficha: {
         select: {
           id: true,
