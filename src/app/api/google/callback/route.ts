@@ -1,5 +1,3 @@
-import { promises as fs } from "fs";
-import path from "path";
 import { auth } from "@/auth";
 import { getOAuthClient } from "@/lib/google-calendar";
 
@@ -39,24 +37,14 @@ export async function GET(request: Request) {
     );
   }
 
-  const envPath = path.join(process.cwd(), ".env");
-  let envContent = "";
-  try {
-    envContent = await fs.readFile(envPath, "utf-8");
-  } catch {
-    envContent = "";
-  }
-
-  const line = `GOOGLE_REFRESH_TOKEN="${tokens.refresh_token}"`;
-  envContent = envContent.includes("GOOGLE_REFRESH_TOKEN=")
-    ? envContent.replace(/GOOGLE_REFRESH_TOKEN=".*"/g, line)
-    : `${envContent.trimEnd()}\n${line}\n`;
-
-  await fs.writeFile(envPath, envContent, "utf-8");
-
+  // No se escribe a disco: en producción (Vercel) el sistema de archivos es de solo lectura, y
+  // las variables de entorno se administran desde el dashboard/CLI de Vercel, no desde un .env en
+  // el servidor. Se muestra el token para copiarlo y pegarlo ahí a mano (GOOGLE_REFRESH_TOKEN).
   return textResponse(
     "Conexión con Google Calendar completada correctamente.\n\n" +
-      "El token quedó guardado en el archivo .env del servidor.\n" +
-      "Reinicia el servidor de desarrollo para que tome el cambio. Ya puedes cerrar esta pestaña."
+      `GOOGLE_REFRESH_TOKEN="${tokens.refresh_token}"\n\n` +
+      "Copia ese valor y actualízalo como variable de entorno (en Vercel: Settings → Environment " +
+      "Variables → GOOGLE_REFRESH_TOKEN), luego vuelve a desplegar. En local, pégalo en tu .env.local " +
+      "y reinicia el servidor de desarrollo. Ya puedes cerrar esta pestaña."
   );
 }
