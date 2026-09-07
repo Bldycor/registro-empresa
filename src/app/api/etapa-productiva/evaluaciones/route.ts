@@ -165,9 +165,13 @@ export async function POST(request: Request) {
     (v): v is string => Boolean(v)
   );
 
-  let videollamadaUrl: string;
+  let videollamadaUrl: string | null = null;
   let googleEventId: string | null = null;
 
+  // El evento de Google Calendar (si está configurado) solo resuelve el enlace de Meet — ya no es
+  // el único canal de notificación: si falla (token expirado, API caída), la reunión ya quedó
+  // guardada arriba y no debe perderse por un problema de Calendar, así que se degrada al enlace
+  // Jitsi de respaldo en vez de tumbar la petición.
   if (isGoogleCalendarConfigured()) {
     const eventInput = {
       summary: `${titulo} - ${aprendizNombre}`,
@@ -177,14 +181,25 @@ export async function POST(request: Request) {
       horaFin: d.horaFin,
       attendees: destinatarios,
     };
-    const result = existing?.googleEventId
-      ? await updateCalendarMeetEvent({ ...eventInput, eventId: existing.googleEventId })
-      : await createCalendarMeetEvent(eventInput);
+    try {
+      const result = existing?.googleEventId
+        ? await updateCalendarMeetEvent({ ...eventInput, eventId: existing.googleEventId })
+        : await createCalendarMeetEvent(eventInput);
+      videollamadaUrl = result.meetLink ?? result.eventLink ?? null;
+      googleEventId = result.eventId;
+    } catch (err) {
+      console.error("[evaluaciones] No se pudo crear/actualizar el evento de Google Calendar:", err);
+    }
+  }
+  if (!videollamadaUrl) {
+    videollamadaUrl = getVideoConferenceUrl(evaluacion.id, "Evaluacion");
+  }
 
-    videollamadaUrl = result.meetLink ?? result.eventLink ?? getVideoConferenceUrl(evaluacion.id, "Evaluacion");
-    googleEventId = result.eventId;
-  } else {
-    const result = await sendCitacionEmail({
+  // Correo propio de la institución con el enlace real ya resuelto — se envía siempre, tanto si
+  // hubo evento de Google Calendar como si no, para no depender de que la invitación de Calendar
+  // (ajena a nuestro control) llegue a los destinatarios.
+  try {
+    await sendCitacionEmail({
       reunionId: evaluacion.id,
       titulo,
       prefijoSala: "Evaluacion",
@@ -193,8 +208,10 @@ export async function POST(request: Request) {
       fecha: d.fecha,
       horaInicio: d.horaInicio,
       horaFin: d.horaFin,
+      videollamadaUrl,
     });
-    videollamadaUrl = result.videollamadaUrl;
+  } catch (err) {
+    console.error("[evaluaciones] No se pudo enviar el correo de citación:", err);
   }
 
   const actualizada = await prisma.evaluacion.update({

@@ -45,6 +45,14 @@ function buildIcsEvent(attributes: EventAttributes): Promise<string> {
   });
 }
 
+// `EMAIL_FROM` puede venir en formato "Nombre <correo@dominio.com>" (válido para el header `from`
+// de nodemailer) — pero el validador de `ics` exige `organizer.email` como dirección desnuda, sin
+// el nombre ni los `<>`, o rechaza el evento entero con "organizer.email must be a valid email".
+function direccionDesnuda(from: string): string {
+  const match = from.match(/<([^>]+)>/);
+  return match ? match[1].trim() : from.trim();
+}
+
 function parseStartAndDuration(fecha: string, horaInicio: string, horaFin: string) {
   const [year, month, day] = fecha.split("-").map(Number);
   const [hStart, mStart] = horaInicio.split(":").map(Number);
@@ -131,6 +139,7 @@ export async function sendCitacionEmail({
   fecha,
   horaInicio,
   horaFin,
+  videollamadaUrl: videollamadaUrlOverride,
 }: {
   reunionId: string;
   titulo?: string;
@@ -140,11 +149,15 @@ export async function sendCitacionEmail({
   fecha: string;
   horaInicio: string;
   horaFin: string;
+  // Enlace real ya resuelto (p. ej. Google Meet) para que el correo enlace exactamente a la
+  // misma videollamada que ve el aprendiz en la app — si se omite, se genera el enlace Jitsi de
+  // respaldo a partir de `reunionId`/`prefijoSala`.
+  videollamadaUrl?: string;
 }) {
   const from = process.env.EMAIL_FROM || "no-responder@registro-empresa.local";
   const to = Array.from(new Set(destinatarios.filter(Boolean)));
 
-  const videollamadaUrl = getVideoConferenceUrl(reunionId, prefijoSala);
+  const videollamadaUrl = videollamadaUrlOverride || getVideoConferenceUrl(reunionId, prefijoSala);
   const { start, duration } = parseStartAndDuration(fecha, horaInicio, horaFin);
 
   const fechaLegible = new Date(`${fecha}T00:00:00`).toLocaleDateString("es-CO", {
@@ -161,7 +174,7 @@ export async function sendCitacionEmail({
     description: `Videollamada de ${titulo.toLowerCase()} (etapa productiva).\n\nUnirse: ${videollamadaUrl}`,
     location: videollamadaUrl,
     url: videollamadaUrl,
-    organizer: { name: "Registro Empresa", email: from },
+    organizer: { name: "Registro Empresa", email: direccionDesnuda(from) },
     attendees: to.map((email) => ({
       email,
       rsvp: true,
