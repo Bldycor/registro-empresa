@@ -19,6 +19,7 @@ const APRENDIZ_SELECT = {
   fichaId: true,
   fechaInicioEtapaProductiva: true,
   fechaFinEtapaProductiva: true,
+  totalBitacoras: true,
   ficha: {
     select: {
       id: true,
@@ -139,6 +140,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
   if (g.fechaFinEtapaProductiva !== undefined) {
     data.fechaFinEtapaProductiva = g.fechaFinEtapaProductiva ? new Date(g.fechaFinEtapaProductiva) : null;
+  }
+  if (g.totalBitacoras !== undefined) {
+    data.totalBitacoras = g.totalBitacoras;
   }
 
   const aprendiz = await prisma.user.update({

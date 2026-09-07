@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 
   const aprendiz = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { fechaInicioEtapaProductiva: true },
+    select: { fechaInicioEtapaProductiva: true, totalBitacoras: true },
   });
   if (!aprendiz?.fechaInicioEtapaProductiva) {
     return NextResponse.json(
@@ -75,6 +75,18 @@ export async function POST(request: Request) {
         },
       },
       { status: 409 }
+    );
+  }
+  if (d.numero > aprendiz.totalBitacoras) {
+    return NextResponse.json(
+      {
+        error: {
+          _root: [
+            `Tu Etapa Productiva solo tiene ${aprendiz.totalBitacoras} bitácoras — la número ${d.numero} no aplica.`,
+          ],
+        },
+      },
+      { status: 400 },
     );
   }
 

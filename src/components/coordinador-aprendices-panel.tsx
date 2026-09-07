@@ -10,6 +10,7 @@ import {
   estadoAprendizLabel,
   AlternativaEtapaProductivaValues,
   alternativaEtapaProductivaLabel,
+  TotalBitacorasValues,
   type ComunaValue,
   type EstadoAprendizValue,
   type AlternativaEtapaProductivaValue,
@@ -35,6 +36,7 @@ type Aprendiz = {
   fichaId: string | null;
   fechaInicioEtapaProductiva: string | null;
   fechaFinEtapaProductiva: string | null;
+  totalBitacoras: number;
   ficha: FichaConInstructor | null;
 };
 
@@ -51,6 +53,7 @@ type GestionForm = {
   fichaId: string;
   fechaInicioEtapaProductiva: string;
   fechaFinEtapaProductiva: string;
+  totalBitacoras: number;
 };
 
 const inputClass =
@@ -70,6 +73,7 @@ function gestionVaciaDe(aprendiz: Aprendiz): GestionForm {
     fichaId: aprendiz.fichaId ?? "",
     fechaInicioEtapaProductiva: aprendiz.fechaInicioEtapaProductiva?.slice(0, 10) ?? "",
     fechaFinEtapaProductiva: aprendiz.fechaFinEtapaProductiva?.slice(0, 10) ?? "",
+    totalBitacoras: aprendiz.totalBitacoras,
   };
 }
 
@@ -152,6 +156,7 @@ export function CoordinadorAprendicesPanel({
         fichaId: gestionForm.fichaId || null,
         fechaInicioEtapaProductiva: gestionForm.fechaInicioEtapaProductiva || null,
         fechaFinEtapaProductiva: gestionForm.fechaFinEtapaProductiva || null,
+        totalBitacoras: gestionForm.totalBitacoras,
       }),
     });
 
@@ -639,6 +644,20 @@ export function CoordinadorAprendicesPanel({
                           onChange={(v) => updateGestion("fechaFinEtapaProductiva", v)}
                           min={gestionForm.fechaInicioEtapaProductiva || undefined}
                         />
+                        <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
+                          Total de bitácoras
+                          <select
+                            value={gestionForm.totalBitacoras}
+                            onChange={(e) => updateGestion("totalBitacoras", Number(e.target.value))}
+                            className={inputClass}
+                          >
+                            {TotalBitacorasValues.map((v) => (
+                              <option key={v} value={v}>
+                                {v} (Etapa Productiva de {v === 12 ? "6" : "3"} meses)
+                              </option>
+                            ))}
+                          </select>
+                        </label>
                       </div>
 
                       {gestionError && <p className="text-sm text-red-600">{gestionError}</p>}

@@ -4,10 +4,11 @@ import { requireApiUser } from "@/lib/auth-guards";
 import { FechasEtapaProductivaSchema } from "@/lib/validations";
 import { validarFechaInicioEtapaProductiva } from "@/lib/etapa-productiva-fechas";
 
-// Corrige las fechas de inicio/fin de Etapa Productiva de UN aprendiz de las fichas asignadas al
-// instructor — el sistema ya las calculó al crear la cuenta desde `Ficha.fechaInicioProductiva`
-// (ver src/lib/etapa-productiva-fechas.ts), pero cada aprendiz puede iniciar en una fecha real
-// distinta según cuándo lo reciba la empresa. Único campo editable acá; el resto de los datos del
+// Corrige las fechas de inicio/fin de Etapa Productiva, y el total de bitácoras (6 o 12), de UN
+// aprendiz de las fichas asignadas al instructor — el sistema ya calculó ambas cosas al crear la
+// cuenta (ver src/lib/etapa-productiva-fechas.ts), pero cada aprendiz puede iniciar en una fecha
+// real distinta según cuándo lo reciba la empresa, o necesitar menos bitácoras si su Etapa
+// Productiva es más corta. Único lugar donde se editan estos campos; el resto de los datos del
 // aprendiz los gestiona Coordinación.
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { user, response } = await requireApiUser(["INSTRUCTOR"]);
@@ -73,8 +74,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             ? new Date(d.fechaFinEtapaProductiva)
             : null
           : undefined,
+      totalBitacoras: d.totalBitacoras,
     },
-    select: { id: true, fechaInicioEtapaProductiva: true, fechaFinEtapaProductiva: true },
+    select: {
+      id: true,
+      fechaInicioEtapaProductiva: true,
+      fechaFinEtapaProductiva: true,
+      totalBitacoras: true,
+    },
   });
 
   return NextResponse.json({ aprendiz: actualizado });

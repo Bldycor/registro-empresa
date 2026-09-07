@@ -66,12 +66,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const resultado = await prisma.user.updateMany({
     where: { fichaId: id, role: "APRENDIZ" },
-    data: { fechaInicioEtapaProductiva, fechaFinEtapaProductiva },
+    data: {
+      fechaInicioEtapaProductiva,
+      fechaFinEtapaProductiva,
+      totalBitacoras: d.totalBitacoras,
+    },
   });
 
   return NextResponse.json({
     actualizados: resultado.count,
     fechaInicioEtapaProductiva: fechaInicioEtapaProductiva.toISOString(),
     fechaFinEtapaProductiva: fechaFinEtapaProductiva.toISOString(),
+    totalBitacoras: d.totalBitacoras,
   });
 }

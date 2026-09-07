@@ -7,7 +7,8 @@
 // Plazos oficiales confirmados con el usuario:
 //   1. Alternativa EP y Formalización: inmediatamente al iniciar la Etapa Productiva.
 //   2. Concertación (Momento 1): 15 días después de iniciar.
-//   3. Bitácoras: cada 15 días, 12 en total (ya cubierto por src/lib/bitacora-fechas.ts).
+//   3. Bitácoras: cada 15 días, 12 en total por defecto — 6 si la Etapa Productiva es corta (ver
+//      User.totalBitacoras; el cálculo de fechas está en src/lib/bitacora-fechas.ts).
 //   4. Evaluaciones: Momento 2 a los ~2 meses (60 días); Momento 3, 10-15 días antes del cierre.
 //   5. Certificación del empresario: hasta la fecha de fin de la Etapa Productiva.
 
@@ -72,6 +73,8 @@ export function calcularSeguimiento(input: {
   // sigue contando como atrasada, solo que ya fue resuelta tarde.
   concertacionFecha: Date | null;
   bitacoras: { numero: number; estado: EstadoEvidencia }[];
+  // 6 o 12 (ver User.totalBitacoras) — varía por aprendiz, no siempre son 12.
+  totalBitacoras: number;
   evaluacion2Aprobada: boolean;
   evaluacion3Aprobada: boolean;
   certificacionAprobada: boolean;
@@ -117,7 +120,7 @@ export function calcularSeguimiento(input: {
       cantidadAtrasada: 0,
     };
   } else {
-    const fechasLimite = calcularFechasLimiteBitacoras(fechaInicioEP);
+    const fechasLimite = calcularFechasLimiteBitacoras(fechaInicioEP, input.totalBitacoras);
     const porNumero = new Map(input.bitacoras.map((b) => [b.numero, b]));
     let atrasadas = 0;
     let proxima = false;

@@ -328,6 +328,13 @@ const fechaEtapaProductivaOpcional = z
 // Etapa Productiva son por aprendiz (no por ficha) — se pueden fijar o corregir aquí uno a uno,
 // además de sincronizarse desde la evidencia "Selección de Alternativa" cuando el aprendiz la
 // diligencia (la última aprobada gana).
+// Cuántas bitácoras le corresponden al aprendiz — 12 (estándar, 6 meses) o 6 (Etapa Productiva
+// corta, 3 meses). Afecta las fechas límite calculadas y las alertas de seguimiento (ver
+// src/lib/bitacora-fechas.ts y src/lib/seguimiento-evidencias.ts).
+export const TotalBitacorasValues = [6, 12] as const;
+export type TotalBitacorasValue = (typeof TotalBitacorasValues)[number];
+const totalBitacorasOpcional = z.union([z.literal(6), z.literal(12)]).optional();
+
 export const AprendizGestionSchema = z
   .object({
     nombres: z.string().trim().min(2, "Ingresa los nombres.").optional(),
@@ -342,6 +349,7 @@ export const AprendizGestionSchema = z
     fichaId: z.string().trim().nullable().optional(),
     fechaInicioEtapaProductiva: fechaEtapaProductivaOpcional,
     fechaFinEtapaProductiva: fechaEtapaProductivaOpcional,
+    totalBitacoras: totalBitacorasOpcional,
   })
   .refine(
     (data) =>
@@ -356,10 +364,12 @@ export type AprendizGestionInput = z.infer<typeof AprendizGestionSchema>;
 // El instructor corrige las fechas de Etapa Productiva de UN aprendiz de su ficha (el sistema ya
 // las calculó al crear la cuenta — ver src/lib/etapa-productiva-fechas.ts). Ambas opcionales:
 // puede fijar solo una, o borrar las dos (null) si la ficha todavía no tiene fecha institucional.
+// El total de bitácoras (6/12) se corrige en el mismo formulario, por eso vive en este schema.
 export const FechasEtapaProductivaSchema = z
   .object({
     fechaInicioEtapaProductiva: fechaEtapaProductivaOpcional,
     fechaFinEtapaProductiva: fechaEtapaProductivaOpcional,
+    totalBitacoras: totalBitacorasOpcional,
   })
   .refine(
     (data) =>
@@ -375,13 +385,14 @@ export type FechasEtapaProductivaInput = z.infer<typeof FechasEtapaProductivaSch
 // de una de sus fichas de una sola vez — para corregir en bloque una ficha completa en vez de
 // aprendiz por aprendiz. La fecha de inicio es obligatoria acá (no tendría sentido "limpiar" a
 // todo un grupo); si no se da fecha de fin, se calcula sola (+180 días, ver
-// src/lib/etapa-productiva-fechas.ts).
+// src/lib/etapa-productiva-fechas.ts). El total de bitácoras también se puede aplicar en bloque.
 export const FechasEtapaProductivaFichaSchema = z
   .object({
     fechaInicioEtapaProductiva: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/, "Selecciona una fecha de inicio válida."),
     fechaFinEtapaProductiva: fechaEtapaProductivaOpcional,
+    totalBitacoras: totalBitacorasOpcional,
   })
   .refine(
     (data) => !data.fechaFinEtapaProductiva || data.fechaFinEtapaProductiva > data.fechaInicioEtapaProductiva,
@@ -594,8 +605,10 @@ export const BitacoraActividadSchema = z.object({
 
 export type BitacoraActividadInput = z.infer<typeof BitacoraActividadSchema>;
 
-// Evidencia (c): Bitácora quincenal del aprendiz. `numero` (1-12) identifica cuál de las
-// bitácoras se está diligenciando; la fecha límite se calcula en el servidor, no se recibe acá.
+// Evidencia (c): Bitácora quincenal del aprendiz. `numero` identifica cuál de las bitácoras se
+// está diligenciando; la fecha límite se calcula en el servidor, no se recibe acá. El tope real
+// (6 o 12, ver `User.totalBitacoras`) varía por aprendiz, así que se valida en el route handler,
+// no acá — el límite de 12 es solo un techo razonable contra datos claramente inválidos.
 export const BitacoraSchema = z.object({
   numero: z.number().int().min(1).max(12),
   periodoDesde: z.string().trim().nullable().optional(),

@@ -10,7 +10,7 @@ export default async function BitacorasPage() {
 
   const aprendiz = await prisma.user.findUnique({
     where: { id: currentUser.id },
-    select: { fechaInicioEtapaProductiva: true },
+    select: { fechaInicioEtapaProductiva: true, totalBitacoras: true },
   });
 
   return (
@@ -20,7 +20,7 @@ export default async function BitacorasPage() {
           Bitácoras
         </h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Registro quincenal de actividades durante tu Etapa Productiva (formato GFPI-F-147) — 12
+          Registro quincenal de actividades durante tu Etapa Productiva (formato GFPI-F-147) — {aprendiz?.totalBitacoras ?? 12}{" "}
           bitácoras, cada 15 días desde tu fecha de inicio.
         </p>
       </div>
@@ -36,6 +36,7 @@ export default async function BitacorasPage() {
         <BitacorasPanelServer
           userId={currentUser.id}
           fechaInicioEtapaProductiva={aprendiz.fechaInicioEtapaProductiva}
+          totalBitacoras={aprendiz.totalBitacoras}
         />
       )}
     </div>
@@ -45,9 +46,11 @@ export default async function BitacorasPage() {
 async function BitacorasPanelServer({
   userId,
   fechaInicioEtapaProductiva,
+  totalBitacoras,
 }: {
   userId: string;
   fechaInicioEtapaProductiva: Date;
+  totalBitacoras: number;
 }) {
   const [bitacoras, fechasLimite] = [
     await prisma.bitacora.findMany({
@@ -55,7 +58,7 @@ async function BitacorasPanelServer({
       orderBy: { numero: "asc" },
       include: { actividades: true },
     }),
-    calcularFechasLimiteBitacoras(fechaInicioEtapaProductiva),
+    calcularFechasLimiteBitacoras(fechaInicioEtapaProductiva, totalBitacoras),
   ];
 
   const bitacoraPorNumero = new Map(bitacoras.map((b) => [b.numero, b]));

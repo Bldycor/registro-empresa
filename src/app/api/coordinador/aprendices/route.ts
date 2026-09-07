@@ -25,6 +25,7 @@ export async function GET() {
       fichaId: true,
       fechaInicioEtapaProductiva: true,
       fechaFinEtapaProductiva: true,
+      totalBitacoras: true,
       ficha: {
         select: {
           id: true,

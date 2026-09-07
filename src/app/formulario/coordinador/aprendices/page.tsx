@@ -24,6 +24,7 @@ export default async function CoordinadorAprendicesPage() {
         fichaId: true,
         fechaInicioEtapaProductiva: true,
         fechaFinEtapaProductiva: true,
+        totalBitacoras: true,
         ficha: {
           select: {
             id: true,

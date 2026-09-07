@@ -275,6 +275,12 @@ model User {
   fechaInicioEtapaProductiva DateTime?
   fechaFinEtapaProductiva    DateTime?
 
+  // Cuántas bitácoras le corresponden a este aprendiz — 12 (quincenales, 6 meses) es lo estándar,
+  // pero una Etapa Productiva más corta (3 meses) solo necesita 6. Lo corrige el instructor
+  // individualmente o para toda una ficha (mismo patrón que las fechas de EP) — afecta tanto las
+  // fechas límite calculadas (`src/lib/bitacora-fechas.ts`) como las alertas de seguimiento.
+  totalBitacoras Int @default(12)
+
   // Modalidad ("alternativa") de Etapa Productiva vigente. Se mantiene sincronizada desde la
   // solicitud de `SeleccionAlternativaEP` más reciente que quede APROBADA (selección o
   // modificación) — no se edita directamente en otro formulario.

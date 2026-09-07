@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { DatePickerField } from "@/components/date-picker-field";
 import { fechaMinimaInicioEtapaProductiva } from "@/lib/etapa-productiva-fechas";
-import type { AlternativaEtapaProductivaValue } from "@/lib/validations";
+import { TotalBitacorasValues, type AlternativaEtapaProductivaValue } from "@/lib/validations";
 
 type FichaFechas = {
   fechaInicioProductiva: string | null;
@@ -21,6 +21,7 @@ type Aprendiz = {
   alternativaEtapaProductiva: AlternativaEtapaProductivaValue | null;
   fechaInicioEtapaProductiva: string | null;
   fechaFinEtapaProductiva: string | null;
+  totalBitacoras: number;
   ficha:
     | ({
         id: string;
@@ -156,7 +157,7 @@ export function InstructorAprendicesPanel({
                       }
                       className="text-xs font-medium text-zinc-600 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
                     >
-                      {fichaConFormulario === ficha.id ? "Cancelar" : "Cambiar fechas de toda la ficha"}
+                      {fichaConFormulario === ficha.id ? "Cancelar" : "Cambiar fechas / bitácoras de la ficha"}
                     </button>
                   </div>
                 </div>
@@ -261,6 +262,7 @@ function AprendizRow({
             ) : (
               "sin fecha definida"
             )}
+            {` · ${aprendiz.totalBitacoras} bitácoras`}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -270,7 +272,7 @@ function AprendizRow({
               onClick={onToggleEditar}
               className="text-xs font-medium text-zinc-600 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
             >
-              {editando ? "Cancelar" : "Editar fechas"}
+              {editando ? "Cancelar" : "Editar fechas / bitácoras"}
             </button>
           )}
           <span
@@ -290,6 +292,7 @@ function AprendizRow({
           aprendizId={aprendiz.id}
           fechaInicioInicial={aprendiz.fechaInicioEtapaProductiva?.slice(0, 10) ?? ""}
           fechaFinInicial={aprendiz.fechaFinEtapaProductiva?.slice(0, 10) ?? ""}
+          totalBitacorasInicial={aprendiz.totalBitacoras}
           ficha={aprendiz.ficha}
           esVinculoLaboral={aprendiz.alternativaEtapaProductiva === "VINCULO_LABORAL"}
           onGuardado={onGuardado}
@@ -303,6 +306,7 @@ function AprendizFechasForm({
   aprendizId,
   fechaInicioInicial,
   fechaFinInicial,
+  totalBitacorasInicial,
   ficha,
   esVinculoLaboral,
   onGuardado,
@@ -310,12 +314,14 @@ function AprendizFechasForm({
   aprendizId: string;
   fechaInicioInicial: string;
   fechaFinInicial: string;
+  totalBitacorasInicial: number;
   ficha: FichaFechas;
   esVinculoLaboral: boolean;
   onGuardado: (cambios: Partial<Aprendiz>) => void;
 }) {
   const [fechaInicio, setFechaInicio] = useState(fechaInicioInicial);
   const [fechaFin, setFechaFin] = useState(fechaFinInicial);
+  const [totalBitacoras, setTotalBitacoras] = useState(totalBitacorasInicial);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -335,6 +341,7 @@ function AprendizFechasForm({
       body: JSON.stringify({
         fechaInicioEtapaProductiva: fechaInicio || null,
         fechaFinEtapaProductiva: fechaFin || null,
+        totalBitacoras,
       }),
     });
     const data = await res.json();
@@ -354,6 +361,7 @@ function AprendizFechasForm({
     onGuardado({
       fechaInicioEtapaProductiva: data.aprendiz.fechaInicioEtapaProductiva,
       fechaFinEtapaProductiva: data.aprendiz.fechaFinEtapaProductiva,
+      totalBitacoras: data.aprendiz.totalBitacoras,
     });
   }
 
@@ -376,6 +384,20 @@ function AprendizFechasForm({
           max={maximaInicio ? aFechaInput(maximaInicio) : undefined}
         />
         <DatePickerField label="Fecha de fin" value={fechaFin} onChange={setFechaFin} min={fechaInicio || undefined} />
+        <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
+          Total de bitácoras
+          <select
+            value={totalBitacoras}
+            onChange={(e) => setTotalBitacoras(Number(e.target.value))}
+            className={inputClass}
+          >
+            {TotalBitacorasValues.map((v) => (
+              <option key={v} value={v}>
+                {v} (Etapa Productiva de {v === 12 ? "6" : "3"} meses)
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
       <button
@@ -384,7 +406,7 @@ function AprendizFechasForm({
         disabled={loading}
         className="w-fit rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
       >
-        {loading ? "Guardando..." : "Guardar fechas"}
+        {loading ? "Guardando..." : "Guardar cambios"}
       </button>
     </div>
   );
@@ -399,6 +421,7 @@ function FichaFechasForm({
 }) {
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
+  const [totalBitacoras, setTotalBitacoras] = useState<"" | "6" | "12">("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aplicados, setAplicados] = useState<number | null>(null);
@@ -423,6 +446,7 @@ function FichaFechasForm({
       body: JSON.stringify({
         fechaInicioEtapaProductiva: fechaInicio,
         fechaFinEtapaProductiva: fechaFin || null,
+        totalBitacoras: totalBitacoras ? Number(totalBitacoras) : undefined,
       }),
     });
     const data = await res.json();
@@ -443,15 +467,16 @@ function FichaFechasForm({
     onAplicado({
       fechaInicioEtapaProductiva: data.fechaInicioEtapaProductiva,
       fechaFinEtapaProductiva: data.fechaFinEtapaProductiva,
+      ...(data.totalBitacoras !== undefined ? { totalBitacoras: data.totalBitacoras } : {}),
     });
   }
 
   return (
     <div className="mt-2 flex flex-col gap-2 rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
       <p className="text-xs text-zinc-500 dark:text-zinc-400">
-        Aplica la misma fecha de inicio a todos los aprendices de esta ficha — útil si toda la
-        cohorte arrancó su Etapa Productiva el mismo día. La fecha de fin se calcula sola (+6
-        meses) si no la das.
+        Aplica la misma fecha de inicio (y, si quieres, el mismo total de bitácoras) a todos los
+        aprendices de esta ficha — útil si toda la cohorte arrancó su Etapa Productiva el mismo
+        día. La fecha de fin se calcula sola (+6 meses) si no la das.
         {(minimaInicio || maximaInicio) && " Fecha de inicio permitida"}
         {minimaInicio && ` desde ${aFechaCorta(minimaInicio.toISOString())}`}
         {maximaInicio && ` hasta ${aFechaCorta(maximaInicio.toISOString())}`}
@@ -468,6 +493,21 @@ function FichaFechasForm({
           max={maximaInicio ? aFechaInput(maximaInicio) : undefined}
         />
         <DatePickerField label="Fecha de fin (opcional)" value={fechaFin} onChange={setFechaFin} min={fechaInicio || undefined} />
+        <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
+          Total de bitácoras (opcional)
+          <select
+            value={totalBitacoras}
+            onChange={(e) => setTotalBitacoras(e.target.value as "" | "6" | "12")}
+            className={inputClass}
+          >
+            <option value="">No cambiar</option>
+            {TotalBitacorasValues.map((v) => (
+              <option key={v} value={v}>
+                {v} (Etapa Productiva de {v === 12 ? "6" : "3"} meses)
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
       {aplicados !== null && (

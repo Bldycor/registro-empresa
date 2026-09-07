@@ -23,6 +23,7 @@ export default async function InstructorAprendicesPage() {
         alternativaEtapaProductiva: true,
         fechaInicioEtapaProductiva: true,
         fechaFinEtapaProductiva: true,
+        totalBitacoras: true,
         ficha: {
           select: {
             id: true,
@@ -71,7 +72,7 @@ export default async function InstructorAprendicesPage() {
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             Puedes consultar a todos los aprendices, pero solo puedes evaluar, crear cuentas y
-            corregir fechas de Etapa Productiva en tus fichas asignadas.
+            corregir fechas y total de bitácoras de Etapa Productiva en tus fichas asignadas.
           </p>
         </div>
 
