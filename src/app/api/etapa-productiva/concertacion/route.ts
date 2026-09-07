@@ -82,6 +82,12 @@ export async function POST(request: Request) {
     );
   }
 
+  if (existing?.estado === "APROBADA") {
+    return NextResponse.json(
+      { error: "Tu instructor ya finalizó la valoración de este momento — no se puede reagendar." },
+      { status: 409 }
+    );
+  }
   if (!user) {
     return NextResponse.json({ error: "Usuario no encontrado." }, { status: 404 });
   }

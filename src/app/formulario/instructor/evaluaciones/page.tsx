@@ -13,8 +13,8 @@ export default async function InstructorEvaluacionesPage() {
           Evaluaciones
         </h1>
         <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
-          Registra la rúbrica de Momento 2 (seguimiento) y Momento 3 (cierre) de los aprendices de
-          tus fichas asignadas, tras la reunión agendada.
+          Registra la valoración de Momento 1 (concertación), Momento 2 (seguimiento) y Momento 3
+          (cierre) de los aprendices de tus fichas asignadas, tras la reunión agendada.
         </p>
         <InstructorEvaluacionesPanel />
       </div>

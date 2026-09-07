@@ -226,6 +226,17 @@ enum ValoracionVariable {
   POR_MEJORAR
 }
 
+// Las 5 variables de la valoración del Momento 1 (Concertación/Planeación) — no forman parte del
+// formato GFPI-F-023 (que no valora el Momento 1), pero el instructor las evalúa igual que las
+// rúbricas de los Momentos 2/3, con la misma escala (ValoracionVariable).
+enum VariablePlaneacionEP {
+  COMPETENCIAS_RESULTADOS_DEFINIDOS
+  ACTIVIDADES_EVIDENCIAS_PLANTEADAS
+  AFILIACION_ARL
+  HORARIO_ACORDADO
+  PARTICIPACION_COFORMADOR
+}
+
 enum JuicioEtapaProductiva {
   APROBADO
   NO_APROBADO
@@ -337,6 +348,7 @@ model User {
   bitacorasAval               Bitacora[]                    @relation("AvalBitacora")
   evaluacionesAval            Evaluacion[]                  @relation("AvalEvaluacion")
   certificacionesAval         CertificacionEmpresario[]     @relation("AvalCertificacion")
+  concertacionesAval          ConcertacionFuncion[]         @relation("AvalConcertacion")
 }
 
 // Ficha SENA. La precarga el coordinador académico (carga masiva por código) antes de que los
@@ -504,8 +516,10 @@ model FormalizacionEtapaProductiva {
 
 // Primer micro proceso de la etapa productiva: concertación de funciones (= Momento 1 —
 // Planeación, formato GFPI-F-023). Cada aprendiz agenda una única fecha/franja; se valida que no
-// choque con la de otro aprendiz. El Momento 1 real no lleva calificación (a diferencia de los
-// Momentos 2 y 3) — el campo `calificacion` hereda de Fase 0 y no se usa aquí.
+// choque con la de otro aprendiz. El formato oficial no trae una rúbrica para este momento, pero
+// el instructor sí lo valora en la app (ver `variables`, `VariablePlaneacionEP`) — igual que los
+// Momentos 2 y 3 — sobre la calidad de la planeación acordada, no sobre desempeño (aún no
+// arranca la etapa productiva). El campo `calificacion` hereda de Fase 0 (A/D/P) y no se usa aquí.
 model ConcertacionFuncion {
   id     String @id @default(cuid())
   userId String @unique
@@ -534,10 +548,31 @@ model ConcertacionFuncion {
   calificacion  Calificacion?
   observaciones String? // Observaciones del instructor al calificar
 
+  // Valoración del instructor sobre la planeación acordada (aval), independiente de `calificacion`.
+  estado       EstadoEvidencia @default(PENDIENTE)
+  avaladoPorId String?
+  avaladoPor   User?           @relation("AvalConcertacion", fields: [avaladoPorId], references: [id], onDelete: SetNull)
+  fechaAval    DateTime?
+  variables    ConcertacionVariable[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([fecha])
+}
+
+// Una fila por cada una de las 5 variables de la valoración del Momento 1 (Concertación), para el
+// aval del instructor — mismo patrón que `EvaluacionVariable`, ver `VariablePlaneacionEP`.
+model ConcertacionVariable {
+  id             String              @id @default(cuid())
+  concertacionId String
+  concertacion   ConcertacionFuncion @relation(fields: [concertacionId], references: [id], onDelete: Cascade)
+
+  variable      VariablePlaneacionEP
+  valoracion    ValoracionVariable?
+  observaciones String?
+
+  @@unique([concertacionId, variable])
 }
 
 // Momentos 2 y 3 (Seguimiento y Evaluación final, formato GFPI-F-023), más los seguimientos

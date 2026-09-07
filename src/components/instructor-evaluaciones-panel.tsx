@@ -10,16 +10,18 @@ import {
   modalidadEjecucionEPLabel,
 } from "@/lib/validations";
 import { VARIABLES_TECNICAS, VARIABLES_ACTITUDINALES, variableLabel } from "@/lib/evaluacion-variables";
+import { VARIABLES_PLANEACION, variablePlaneacionLabel } from "@/lib/concertacion-variables";
 
 type Variable = {
   variable: string;
-  categoria: "TECNICO" | "ACTITUDINAL";
+  categoria?: "TECNICO" | "ACTITUDINAL";
   valoracion: "SATISFACTORIO" | "POR_MEJORAR" | null;
   observaciones: string | null;
 };
 
 type Evaluacion = {
   id: string;
+  tipo: "CONCERTACION" | "EVALUACION";
   numero: number;
   fecha: string | null;
   horaInicio: string | null;
@@ -33,6 +35,12 @@ type Evaluacion = {
   estado: "PENDIENTE" | "APROBADA" | "RECHAZADA";
   variables: Variable[];
   user: { id: string; nombres: string; apellidos: string; cedula: string; ficha: { codigo: string } | null };
+};
+
+const momentoLabel: Record<number, string> = {
+  1: "Momento 1 · Concertación",
+  2: "Momento 2 · Seguimiento",
+  3: "Momento 3 · Cierre",
 };
 
 const inputClass =
@@ -108,7 +116,8 @@ export function InstructorEvaluacionesPanel() {
                     </span>
                   </p>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    Momento {ev.numero} · {ev.fecha ? formatoFecha(ev.fecha) : "sin fecha"}
+                    {momentoLabel[ev.numero] ?? `Momento ${ev.numero}`} ·{" "}
+                    {ev.fecha ? formatoFecha(ev.fecha) : "sin fecha"}
                     {ev.horaInicio && ` · ${ev.horaInicio}-${ev.horaFin}`}
                     {ev.modalidad && ` · ${modalidadEjecucionEPLabel[ev.modalidad]}`}
                   </p>
@@ -159,11 +168,17 @@ function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved:
     setValores((prev) => ({ ...prev, [variable]: { ...prev[variable], [campo]: valor } }));
   }
 
+  const esConcertacion = evaluacion.tipo === "CONCERTACION";
+
   async function guardar(finalizar: boolean) {
     setLoading(finalizar ? "finalizar" : "borrador");
     setError(null);
 
-    const res = await fetch(`/api/instructor/evaluaciones/${evaluacion.id}`, {
+    const endpoint = esConcertacion
+      ? `/api/instructor/concertacion/${evaluacion.id}`
+      : `/api/instructor/evaluaciones/${evaluacion.id}`;
+
+    const res = await fetch(endpoint, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -172,9 +187,13 @@ function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved:
           valoracion: v.valoracion || null,
           observaciones: v.observaciones || null,
         })),
-        retroalimentacionInstructor: retroInstructor || null,
-        retroalimentacionCoformador: retroCoformador || null,
-        juicioFinal: juicioFinal || null,
+        ...(esConcertacion
+          ? {}
+          : {
+              retroalimentacionInstructor: retroInstructor || null,
+              retroalimentacionCoformador: retroCoformador || null,
+              juicioFinal: juicioFinal || null,
+            }),
         finalizar,
       }),
     });
@@ -184,7 +203,7 @@ function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved:
     if (!res.ok) {
       const data = await res.json();
       setError(
-        data.error?._root?.[0] ?? data.error?.juicioFinal?.[0] ?? "No se pudo guardar la evaluación."
+        data.error?._root?.[0] ?? data.error?.juicioFinal?.[0] ?? "No se pudo guardar la valoración."
       );
       return;
     }
@@ -205,35 +224,50 @@ function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved:
         </a>
       )}
 
-      <RubricaGrupo
-        titulo="Técnicas"
-        variables={VARIABLES_TECNICAS}
-        valores={valores}
-        onChange={actualizar}
-        disabled={bloqueado}
-      />
-      <RubricaGrupo
-        titulo="Actitudinales"
-        variables={VARIABLES_ACTITUDINALES}
-        valores={valores}
-        onChange={actualizar}
-        disabled={bloqueado}
-      />
-
-      <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Retroalimentación al aprendiz
-        </label>
-        <textarea
-          value={retroInstructor}
-          onChange={(e) => setRetroInstructor(e.target.value)}
+      {esConcertacion ? (
+        <RubricaGrupo
+          titulo="Planeación acordada"
+          variables={VARIABLES_PLANEACION}
+          labels={variablePlaneacionLabel}
+          valores={valores}
+          onChange={actualizar}
           disabled={bloqueado}
-          rows={2}
-          className={inputClass}
         />
-      </div>
+      ) : (
+        <>
+          <RubricaGrupo
+            titulo="Técnicas"
+            variables={VARIABLES_TECNICAS}
+            labels={variableLabel}
+            valores={valores}
+            onChange={actualizar}
+            disabled={bloqueado}
+          />
+          <RubricaGrupo
+            titulo="Actitudinales"
+            variables={VARIABLES_ACTITUDINALES}
+            labels={variableLabel}
+            valores={valores}
+            onChange={actualizar}
+            disabled={bloqueado}
+          />
 
-      {evaluacion.numero === 3 && (
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Retroalimentación al aprendiz
+            </label>
+            <textarea
+              value={retroInstructor}
+              onChange={(e) => setRetroInstructor(e.target.value)}
+              disabled={bloqueado}
+              rows={2}
+              className={inputClass}
+            />
+          </div>
+        </>
+      )}
+
+      {!esConcertacion && evaluacion.numero === 3 && (
         <>
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -289,7 +323,7 @@ function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved:
             disabled={loading !== null}
             className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
           >
-            {loading === "finalizar" ? "Finalizando..." : "Finalizar evaluación"}
+            {loading === "finalizar" ? "Finalizando..." : esConcertacion ? "Finalizar valoración" : "Finalizar evaluación"}
           </button>
           <button
             type="button"
@@ -302,7 +336,8 @@ function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved:
         </div>
       ) : (
         <p className="text-sm text-emerald-700 dark:text-emerald-500">
-          Evaluación finalizada — ya no se puede editar.
+          {esConcertacion ? "Valoración finalizada" : "Evaluación finalizada"} — ya no se puede
+          editar.
         </p>
       )}
     </div>
@@ -312,12 +347,14 @@ function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved:
 function RubricaGrupo({
   titulo,
   variables,
+  labels,
   valores,
   onChange,
   disabled,
 }: {
   titulo: string;
-  variables: string[];
+  variables: readonly string[];
+  labels: Record<string, string>;
   valores: Record<string, { valoracion: string; observaciones: string }>;
   onChange: (variable: string, campo: "valoracion" | "observaciones", valor: string) => void;
   disabled: boolean;
@@ -331,9 +368,7 @@ function RubricaGrupo({
         {variables.map((variable) => (
           <div key={variable} className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-sm text-zinc-800 dark:text-zinc-200">
-                {variableLabel[variable as keyof typeof variableLabel]}
-              </span>
+              <span className="text-sm text-zinc-800 dark:text-zinc-200">{labels[variable]}</span>
               <select
                 value={valores[variable]?.valoracion ?? ""}
                 onChange={(e) => onChange(variable, "valoracion", e.target.value)}

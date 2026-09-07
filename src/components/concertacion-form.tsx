@@ -4,11 +4,18 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ConcertacionSchema, type ConcertacionInput } from "@/lib/validations";
+import { ConcertacionSchema, type ConcertacionInput, valoracionVariableLabel } from "@/lib/validations";
 import { DatePicker } from "@/components/date-picker";
 import { TimeSlotPicker } from "@/components/time-slot-picker";
+import { VARIABLES_PLANEACION, variablePlaneacionLabel } from "@/lib/concertacion-variables";
 
 const emptyValues: ConcertacionInput = { fecha: "", horaInicio: "", horaFin: "" };
+
+type ConcertacionVariableData = {
+  variable: string;
+  valoracion: "SATISFACTORIO" | "POR_MEJORAR" | null;
+  observaciones: string | null;
+};
 
 function formatFechaLegible(fecha: string) {
   return new Date(`${fecha}T00:00:00`).toLocaleDateString("es-CO", {
@@ -22,9 +29,13 @@ function formatFechaLegible(fecha: string) {
 export function ConcertacionForm({
   initialData,
   videollamadaUrl,
+  estado,
+  variables,
 }: {
   initialData: ConcertacionInput | null;
   videollamadaUrl: string | null;
+  estado?: "PENDIENTE" | "APROBADA" | "RECHAZADA";
+  variables?: ConcertacionVariableData[];
 }) {
   const router = useRouter();
   const [saved, setSaved] = useState(false);
@@ -152,14 +163,27 @@ export function ConcertacionForm({
           </div>
         )}
 
+        {estado === "APROBADA" ? (
+          <div className="mt-6">
+            <RubricaResultados variables={variables ?? []} />
+          </div>
+        ) : (
+          <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">
+            Tu instructor todavía no ha registrado la valoración de este momento. Cuando la
+            finalice, verás aquí el resultado.
+          </p>
+        )}
+
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <button
-            type="button"
-            onClick={() => setEditando(true)}
-            className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-          >
-            Actualizar cita
-          </button>
+          {estado !== "APROBADA" && (
+            <button
+              type="button"
+              onClick={() => setEditando(true)}
+              className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              Actualizar cita
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {
@@ -241,6 +265,51 @@ export function ConcertacionForm({
           )}
         </div>
       </form>
+    </div>
+  );
+}
+
+function RubricaResultados({ variables }: { variables: ConcertacionVariableData[] }) {
+  const porVariable = new Map(variables.map((v) => [v.variable, v]));
+
+  return (
+    <div>
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        Valoración de tu instructor
+      </p>
+      <ul className="flex flex-col gap-2">
+        {VARIABLES_PLANEACION.map((variable) => {
+          const v = porVariable.get(variable);
+          return (
+            <li
+              key={variable}
+              className="rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-800"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-zinc-800 dark:text-zinc-200">
+                  {variablePlaneacionLabel[variable]}
+                </span>
+                {v?.valoracion ? (
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      v.valoracion === "SATISFACTORIO"
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400"
+                        : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400"
+                    }`}
+                  >
+                    {valoracionVariableLabel[v.valoracion]}
+                  </span>
+                ) : (
+                  <span className="shrink-0 text-xs text-zinc-400">Sin valorar</span>
+                )}
+              </div>
+              {v?.observaciones && (
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{v.observaciones}</p>
+              )}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

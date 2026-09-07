@@ -11,7 +11,10 @@ export default async function EtapaProductivaPage() {
 
   const [profile, concertacion, evaluaciones, aprendiz] = await Promise.all([
     prisma.companyProfile.findUnique({ where: { userId: currentUser.id } }),
-    prisma.concertacionFuncion.findUnique({ where: { userId: currentUser.id } }),
+    prisma.concertacionFuncion.findUnique({
+      where: { userId: currentUser.id },
+      include: { variables: true },
+    }),
     prisma.evaluacion.findMany({
       where: { userId: currentUser.id, numero: { in: [2, 3] }, esExtraordinario: false },
       include: { variables: true },
@@ -83,6 +86,14 @@ export default async function EtapaProductivaPage() {
               : null
           }
           videollamadaUrl={concertacion?.videollamadaUrl ?? null}
+          estado={(concertacion?.estado as "PENDIENTE" | "APROBADA" | "RECHAZADA") ?? "PENDIENTE"}
+          variables={
+            concertacion?.variables.map((v) => ({
+              variable: v.variable,
+              valoracion: v.valoracion,
+              observaciones: v.observaciones,
+            })) ?? []
+          }
         />
       </div>
 

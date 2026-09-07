@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { toMinutes } from "@/lib/time";
+import { VARIABLES_PLANEACION } from "@/lib/concertacion-variables";
 
 // Las 16 comunas oficiales de Medellín (enum `Comuna` de prisma/schema.prisma), con su nombre
 // legible para los desplegables. Reemplaza el antiguo campo de "barrio" en texto libre.
@@ -711,3 +712,22 @@ export const EvaluacionRubricaSchema = z.object({
 });
 
 export type EvaluacionRubricaInput = z.infer<typeof EvaluacionRubricaSchema>;
+
+// El instructor también valora el Momento 1 (Concertación) — 5 variables sobre la calidad de la
+// planeación acordada, ver `VariablePlaneacionEP`/`concertacion-variables.ts`. Mismo patrón de
+// "borrador" vs "finalizar" que `EvaluacionRubricaSchema`, sin retroalimentación ni juicio final
+// (esos solo aplican al cierre de la etapa productiva, Momento 3).
+export const ConcertacionRubricaSchema = z.object({
+  variables: z
+    .array(
+      z.object({
+        variable: z.enum(VARIABLES_PLANEACION),
+        valoracion: z.enum(ValoracionVariableValues).nullable().optional(),
+        observaciones: z.string().trim().nullable().optional(),
+      })
+    )
+    .length(VARIABLES_PLANEACION.length, "Faltan variables de la valoración."),
+  finalizar: z.boolean(),
+});
+
+export type ConcertacionRubricaInput = z.infer<typeof ConcertacionRubricaSchema>;
