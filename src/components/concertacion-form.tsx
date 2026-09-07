@@ -31,11 +31,15 @@ export function ConcertacionForm({
   videollamadaUrl,
   estado,
   variables,
+  competenciasDesarrollar,
+  resultadosAprendizaje,
 }: {
   initialData: ConcertacionInput | null;
   videollamadaUrl: string | null;
   estado?: "PENDIENTE" | "APROBADA" | "RECHAZADA";
   variables?: ConcertacionVariableData[];
+  competenciasDesarrollar?: string | null;
+  resultadosAprendizaje?: string | null;
 }) {
   const router = useRouter();
   const [saved, setSaved] = useState(false);
@@ -164,7 +168,38 @@ export function ConcertacionForm({
         )}
 
         {estado === "APROBADA" ? (
-          <div className="mt-6">
+          <div className="mt-6 flex flex-col gap-5">
+            {(competenciasDesarrollar || resultadosAprendizaje) && (
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  Competencias y resultados de aprendizaje concertados
+                </p>
+                {competenciasDesarrollar && (
+                  <div className="mb-2">
+                    <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      Competencias
+                    </p>
+                    <ul className="list-inside list-disc text-sm text-zinc-800 dark:text-zinc-200">
+                      {competenciasDesarrollar.split("\n").map((c) => (
+                        <li key={c}>{c}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {resultadosAprendizaje && (
+                  <div>
+                    <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      Resultados de aprendizaje
+                    </p>
+                    <ul className="list-inside list-disc text-sm text-zinc-800 dark:text-zinc-200">
+                      {resultadosAprendizaje.split("\n").map((r) => (
+                        <li key={r}>{r}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
             <RubricaResultados variables={variables ?? []} />
           </div>
         ) : (

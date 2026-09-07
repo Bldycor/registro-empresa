@@ -9,8 +9,14 @@ import {
   juicioEtapaProductivaLabel,
   modalidadEjecucionEPLabel,
 } from "@/lib/validations";
-import { VARIABLES_TECNICAS, VARIABLES_ACTITUDINALES, variableLabel } from "@/lib/evaluacion-variables";
+import {
+  VARIABLES_TECNICAS,
+  VARIABLES_ACTITUDINALES,
+  TODAS_LAS_VARIABLES,
+  variableLabel,
+} from "@/lib/evaluacion-variables";
 import { VARIABLES_PLANEACION, variablePlaneacionLabel } from "@/lib/concertacion-variables";
+import { agruparCompetencias, type CompetenciaCatalogo } from "@/lib/competencia-catalogo";
 
 type Variable = {
   variable: string;
@@ -34,6 +40,11 @@ type Evaluacion = {
   retroalimentacionAprendiz: string | null;
   estado: "PENDIENTE" | "APROBADA" | "RECHAZADA";
   variables: Variable[];
+  // Solo para tipo CONCERTACION: el programa de la ficha (para consultar el catálogo de
+  // competencias) y lo ya concertado, guardado como texto (una competencia/RA por línea).
+  programa?: string | null;
+  competenciasDesarrollar?: string | null;
+  resultadosAprendizaje?: string | null;
   user: { id: string; nombres: string; apellidos: string; cedula: string; ficha: { codigo: string } | null };
 };
 
@@ -147,14 +158,21 @@ export function InstructorEvaluacionesPanel() {
 }
 
 function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved: () => void }) {
+  // Se siembra desde la lista completa de variables esperadas (no desde `evaluacion.variables`)
+  // porque, a diferencia de `EvaluacionVariable`, las filas de `ConcertacionVariable` no se
+  // precrean al agendar la cita — una concertación recién agendada llega con `variables: []`, y
+  // sembrar solo desde ahí dejaría el payload sin las variables que el servidor exige.
   const [valores, setValores] = useState<Record<string, { valoracion: string; observaciones: string }>>(
-    () =>
-      Object.fromEntries(
-        evaluacion.variables.map((v) => [
-          v.variable,
-          { valoracion: v.valoracion ?? "", observaciones: v.observaciones ?? "" },
-        ])
-      )
+    () => {
+      const llaves = evaluacion.tipo === "CONCERTACION" ? VARIABLES_PLANEACION : TODAS_LAS_VARIABLES;
+      const existentes = new Map(evaluacion.variables.map((v) => [v.variable, v]));
+      return Object.fromEntries(
+        llaves.map((variable) => {
+          const v = existentes.get(variable);
+          return [variable, { valoracion: v?.valoracion ?? "", observaciones: v?.observaciones ?? "" }];
+        })
+      );
+    }
   );
   const [retroInstructor, setRetroInstructor] = useState(evaluacion.retroalimentacionInstructor ?? "");
   const [retroCoformador, setRetroCoformador] = useState(evaluacion.retroalimentacionCoformador ?? "");
@@ -162,13 +180,38 @@ function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved:
   const [loading, setLoading] = useState<"borrador" | "finalizar" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const esConcertacion = evaluacion.tipo === "CONCERTACION";
+
+  const [catalogo, setCatalogo] = useState<CompetenciaCatalogo[] | null>(null);
+  const [seleccionadas, setSeleccionadas] = useState<Set<string>>(
+    () => new Set((evaluacion.resultadosAprendizaje ?? "").split("\n").filter(Boolean))
+  );
+
+  useEffect(() => {
+    if (!esConcertacion || !evaluacion.programa) return;
+    fetch(`/api/instructor/competencias?programa=${encodeURIComponent(evaluacion.programa)}`)
+      .then((res) => res.json())
+      .then((data) => setCatalogo(data.competencias ?? []))
+      .catch(() => setCatalogo([]));
+  }, [esConcertacion, evaluacion.programa]);
+
   const bloqueado = evaluacion.estado === "APROBADA";
 
   function actualizar(variable: string, campo: "valoracion" | "observaciones", valor: string) {
     setValores((prev) => ({ ...prev, [variable]: { ...prev[variable], [campo]: valor } }));
   }
 
-  const esConcertacion = evaluacion.tipo === "CONCERTACION";
+  function alternarCompetencia(c: CompetenciaCatalogo) {
+    setSeleccionadas((prev) => {
+      const next = new Set(prev);
+      if (next.has(c.resultadoAprendizaje)) {
+        next.delete(c.resultadoAprendizaje);
+      } else {
+        next.add(c.resultadoAprendizaje);
+      }
+      return next;
+    });
+  }
 
   async function guardar(finalizar: boolean) {
     setLoading(finalizar ? "finalizar" : "borrador");
@@ -177,6 +220,8 @@ function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved:
     const endpoint = esConcertacion
       ? `/api/instructor/concertacion/${evaluacion.id}`
       : `/api/instructor/evaluaciones/${evaluacion.id}`;
+
+    const competenciasElegidas = (catalogo ?? []).filter((c) => seleccionadas.has(c.resultadoAprendizaje));
 
     const res = await fetch(endpoint, {
       method: "PATCH",
@@ -188,7 +233,13 @@ function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved:
           observaciones: v.observaciones || null,
         })),
         ...(esConcertacion
-          ? {}
+          ? {
+              competenciasDesarrollar:
+                Array.from(new Set(competenciasElegidas.map((c) => c.nombreCompetencia))).join("\n") ||
+                null,
+              resultadosAprendizaje:
+                competenciasElegidas.map((c) => c.resultadoAprendizaje).join("\n") || null,
+            }
           : {
               retroalimentacionInstructor: retroInstructor || null,
               retroalimentacionCoformador: retroCoformador || null,
@@ -225,14 +276,22 @@ function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved:
       )}
 
       {esConcertacion ? (
-        <RubricaGrupo
-          titulo="Planeación acordada"
-          variables={VARIABLES_PLANEACION}
-          labels={variablePlaneacionLabel}
-          valores={valores}
-          onChange={actualizar}
-          disabled={bloqueado}
-        />
+        <>
+          <CompetenciasSelector
+            catalogo={catalogo}
+            seleccionadas={seleccionadas}
+            onToggle={alternarCompetencia}
+            disabled={bloqueado}
+          />
+          <RubricaGrupo
+            titulo="Planeación acordada"
+            variables={VARIABLES_PLANEACION}
+            labels={variablePlaneacionLabel}
+            valores={valores}
+            onChange={actualizar}
+            disabled={bloqueado}
+          />
+        </>
       ) : (
         <>
           <RubricaGrupo
@@ -393,6 +452,62 @@ function RubricaGrupo({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function CompetenciasSelector({
+  catalogo,
+  seleccionadas,
+  onToggle,
+  disabled,
+}: {
+  catalogo: CompetenciaCatalogo[] | null;
+  seleccionadas: Set<string>;
+  onToggle: (c: CompetenciaCatalogo) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        Competencias y resultados de aprendizaje concertados
+      </p>
+      {catalogo === null && (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">Cargando catálogo…</p>
+      )}
+      {catalogo !== null && catalogo.length === 0 && (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          El programa de esta ficha todavía no tiene catálogo de competencias importado.
+        </p>
+      )}
+      {catalogo !== null && catalogo.length > 0 && (
+        <div className="flex flex-col gap-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+          {agruparCompetencias(catalogo).map(([nombreCompetencia, items]) => (
+            <div key={nombreCompetencia}>
+              <p className="mb-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                {nombreCompetencia}
+              </p>
+              <div className="flex flex-col gap-1 pl-1">
+                {items.map((c) => (
+                  <label
+                    key={c.id}
+                    className="flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={seleccionadas.has(c.resultadoAprendizaje)}
+                      onChange={() => onToggle(c)}
+                      disabled={disabled}
+                      className="mt-0.5"
+                    />
+                    {c.resultadoAprendizaje}
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

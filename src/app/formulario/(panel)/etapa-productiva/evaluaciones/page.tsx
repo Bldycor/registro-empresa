@@ -87,6 +87,8 @@ export default async function EtapaProductivaPage() {
           }
           videollamadaUrl={concertacion?.videollamadaUrl ?? null}
           estado={(concertacion?.estado as "PENDIENTE" | "APROBADA" | "RECHAZADA") ?? "PENDIENTE"}
+          competenciasDesarrollar={concertacion?.competenciasDesarrollar ?? null}
+          resultadosAprendizaje={concertacion?.resultadosAprendizaje ?? null}
           variables={
             concertacion?.variables.map((v) => ({
               variable: v.variable,

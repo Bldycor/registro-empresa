@@ -33,11 +33,19 @@ const CONCERTACION_SELECT = {
   videollamadaUrl: true,
   estado: true,
   fechaAval: true,
+  competenciasDesarrollar: true,
+  resultadosAprendizaje: true,
   variables: {
     select: { variable: true, valoracion: true, observaciones: true },
   },
   user: {
-    select: { id: true, nombres: true, apellidos: true, cedula: true, ficha: { select: { codigo: true } } },
+    select: {
+      id: true,
+      nombres: true,
+      apellidos: true,
+      cedula: true,
+      ficha: { select: { codigo: true, programa: true } },
+    },
   },
 } satisfies Prisma.ConcertacionFuncionSelect;
 
@@ -79,6 +87,9 @@ export async function GET() {
       retroalimentacionAprendiz: null,
       estado: c.estado,
       fechaAval: c.fechaAval,
+      programa: c.user.ficha?.programa ?? null,
+      competenciasDesarrollar: c.competenciasDesarrollar,
+      resultadosAprendizaje: c.resultadosAprendizaje,
       variables: c.variables,
       user: c.user,
     })),

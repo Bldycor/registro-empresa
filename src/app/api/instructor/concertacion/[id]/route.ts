@@ -3,10 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { ConcertacionRubricaSchema } from "@/lib/validations";
 
-// El instructor valora el Momento 1 (Concertación): 5 variables sobre la calidad de la
+// El instructor valora el Momento 1 (Concertación): 6 variables sobre la calidad de la
 // planeación acordada. Mismo patrón que la evaluación de Momentos 2/3 — "Guardar borrador" deja
 // todo editable (estado PENDIENTE); "Finalizar valoración" la cierra (estado APROBADA) y exige
-// las 5 variables valoradas. Usa upsert por variable porque, a diferencia de `EvaluacionVariable`,
+// las 6 variables valoradas. Usa upsert por variable porque, a diferencia de `EvaluacionVariable`,
 // las filas de `ConcertacionVariable` no se precrean al agendar la cita.
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { user, response } = await requireApiUser(["INSTRUCTOR"]);
@@ -39,7 +39,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const faltantes = d.variables.filter((v) => !v.valoracion);
     if (faltantes.length > 0) {
       return NextResponse.json(
-        { error: { _root: ["Valora las 5 variables antes de finalizar."] } },
+        { error: { _root: ["Valora las 6 variables antes de finalizar."] } },
         { status: 400 }
       );
     }
@@ -61,6 +61,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     prisma.concertacionFuncion.update({
       where: { id },
       data: {
+        competenciasDesarrollar: d.competenciasDesarrollar || null,
+        resultadosAprendizaje: d.resultadosAprendizaje || null,
         estado: d.finalizar ? "APROBADA" : "PENDIENTE",
         avaladoPorId: d.finalizar ? user.id : null,
         fechaAval: d.finalizar ? new Date() : null,
@@ -74,6 +76,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       id: true,
       estado: true,
       fechaAval: true,
+      competenciasDesarrollar: true,
+      resultadosAprendizaje: true,
       variables: { select: { variable: true, valoracion: true, observaciones: true } },
     },
   });

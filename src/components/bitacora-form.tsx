@@ -5,13 +5,7 @@ import { useRouter } from "next/navigation";
 import { FileUploadField } from "@/components/file-upload-field";
 import { DatePickerField } from "@/components/date-picker-field";
 import { NivelRiesgoARLValues, nivelRiesgoARLLabel } from "@/lib/validations";
-
-type CompetenciaCatalogo = {
-  id: string;
-  tipo: "TECNICA" | "BASICA_CLAVE";
-  nombreCompetencia: string;
-  resultadoAprendizaje: string;
-};
+import { agruparCompetencias, type CompetenciaCatalogo } from "@/lib/competencia-catalogo";
 
 type Actividad = {
   descripcion: string;
@@ -40,16 +34,6 @@ const actividadVacia: Actividad = {
 
 const inputClass =
   "rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950";
-
-function agruparCompetencias(catalogo: CompetenciaCatalogo[]) {
-  const grupos = new Map<string, CompetenciaCatalogo[]>();
-  for (const c of catalogo) {
-    const lista = grupos.get(c.nombreCompetencia) ?? [];
-    lista.push(c);
-    grupos.set(c.nombreCompetencia, lista);
-  }
-  return Array.from(grupos.entries());
-}
 
 function booleanAString(v: boolean | null): string {
   return v === true ? "SI" : v === false ? "NO" : "";

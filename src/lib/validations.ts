@@ -713,7 +713,7 @@ export const EvaluacionRubricaSchema = z.object({
 
 export type EvaluacionRubricaInput = z.infer<typeof EvaluacionRubricaSchema>;
 
-// El instructor también valora el Momento 1 (Concertación) — 5 variables sobre la calidad de la
+// El instructor también valora el Momento 1 (Concertación) — 6 variables sobre la calidad de la
 // planeación acordada, ver `VariablePlaneacionEP`/`concertacion-variables.ts`. Mismo patrón de
 // "borrador" vs "finalizar" que `EvaluacionRubricaSchema`, sin retroalimentación ni juicio final
 // (esos solo aplican al cierre de la etapa productiva, Momento 3).
@@ -727,6 +727,12 @@ export const ConcertacionRubricaSchema = z.object({
       })
     )
     .length(VARIABLES_PLANEACION.length, "Faltan variables de la valoración."),
+  // Competencias y resultados de aprendizaje concertados con el aprendiz, elegidos del catálogo
+  // de su programa (ver `/api/instructor/competencias`) — texto ya combinado (una por línea), no
+  // estructurado, porque `ConcertacionFuncion.competenciasDesarrollar`/`resultadosAprendizaje` son
+  // campos de texto libre.
+  competenciasDesarrollar: z.string().trim().nullable().optional(),
+  resultadosAprendizaje: z.string().trim().nullable().optional(),
   finalizar: z.boolean(),
 });
 

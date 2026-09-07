@@ -226,12 +226,13 @@ enum ValoracionVariable {
   POR_MEJORAR
 }
 
-// Las 5 variables de la valoración del Momento 1 (Concertación/Planeación) — no forman parte del
+// Las 6 variables de la valoración del Momento 1 (Concertación/Planeación) — no forman parte del
 // formato GFPI-F-023 (que no valora el Momento 1), pero el instructor las evalúa igual que las
 // rúbricas de los Momentos 2/3, con la misma escala (ValoracionVariable).
 enum VariablePlaneacionEP {
   COMPETENCIAS_RESULTADOS_DEFINIDOS
-  ACTIVIDADES_EVIDENCIAS_PLANTEADAS
+  ACTIVIDADES_PLANTEADAS
+  EVIDENCIAS_PLANTEADAS
   AFILIACION_ARL
   HORARIO_ACORDADO
   PARTICIPACION_COFORMADOR
@@ -561,7 +562,7 @@ model ConcertacionFuncion {
   @@index([fecha])
 }
 
-// Una fila por cada una de las 5 variables de la valoración del Momento 1 (Concertación), para el
+// Una fila por cada una de las 6 variables de la valoración del Momento 1 (Concertación), para el
 // aval del instructor — mismo patrón que `EvaluacionVariable`, ver `VariablePlaneacionEP`.
 model ConcertacionVariable {
   id             String              @id @default(cuid())
