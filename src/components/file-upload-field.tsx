@@ -32,6 +32,7 @@ export function FileUploadField({
   onChange,
   error,
   required,
+  onUploadingChange,
 }: {
   label: string;
   pathPrefix: string;
@@ -39,6 +40,12 @@ export function FileUploadField({
   onChange: (url: string) => void;
   error?: string;
   required?: boolean;
+  // El formulario que envuelve este campo no tiene otra forma de saber si hay una subida en
+  // curso — sin esto, un envío justo después de elegir el archivo (común en conexión móvil, el
+  // caso que justamente motivó `multipart`/reintentos arriba) manda el formulario con
+  // `archivoUrl` todavía vacío, y el aprendiz cree que ya quedó enviado cuando en realidad el
+  // servidor lo rechazó.
+  onUploadingChange?: (uploading: boolean) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
@@ -48,6 +55,7 @@ export function FileUploadField({
 
   async function handleFile(file: File) {
     setLoading(true);
+    onUploadingChange?.(true);
     setProgreso(null);
     setUploadError(null);
     setArchivoPendiente(file);
@@ -66,6 +74,7 @@ export function FileUploadField({
         onChange(result.url);
         setArchivoPendiente(null);
         setLoading(false);
+        onUploadingChange?.(false);
         setProgreso(null);
         return;
       } catch (err) {
@@ -83,6 +92,7 @@ export function FileUploadField({
       "No se pudo subir el archivo tras varios intentos. Verifica tu conexión y usa el botón Reintentar, o recarga la página si el problema sigue."
     );
     setLoading(false);
+    onUploadingChange?.(false);
   }
 
   return (

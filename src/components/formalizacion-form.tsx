@@ -30,6 +30,7 @@ export function FormalizacionForm({
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [subiendoArchivo, setSubiendoArchivo] = useState(false);
 
   function update<K extends keyof FormFields>(key: K, value: FormFields[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -43,6 +44,7 @@ export function FormalizacionForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (subiendoArchivo) return;
     setErrors({});
     setSuccess(false);
     setLoading(true);
@@ -124,6 +126,7 @@ export function FormalizacionForm({
           onChange={(url) => update("archivoUrl", url)}
           error={errors.archivoUrl?.[0]}
           required
+          onUploadingChange={setSubiendoArchivo}
         />
 
         {errors._root && <p className="text-sm text-red-600">{errors._root[0]}</p>}
@@ -136,10 +139,16 @@ export function FormalizacionForm({
         <div className="mt-4 flex items-center justify-between border-t border-zinc-100 pt-4 dark:border-zinc-800">
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || subiendoArchivo}
             className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
-            {loading ? "Enviando…" : initial ? "Reemplazar documento" : "Enviar documento"}
+            {loading
+              ? "Enviando…"
+              : subiendoArchivo
+                ? "Subiendo archivo…"
+                : initial
+                  ? "Reemplazar documento"
+                  : "Enviar documento"}
           </button>
           <button
             type="button"
