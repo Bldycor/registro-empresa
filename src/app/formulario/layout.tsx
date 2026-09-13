@@ -69,9 +69,11 @@ export default async function FormularioLayout({
             prisma.user.findUnique({
               where: { id: userId },
               select: {
+                estado: true,
                 fechaInicioEtapaProductiva: true,
                 fechaFinEtapaProductiva: true,
                 totalBitacoras: true,
+                bitacoraInicioTramo: true,
                 ficha: { select: { fechaLimiteIniciarEP: true } },
                 seleccionesAlternativa: { select: { estado: true }, orderBy: { createdAt: "desc" }, take: 1 },
                 formalizacionEtapaProductiva: { select: { estado: true } },
@@ -97,6 +99,8 @@ export default async function FormularioLayout({
                 concertacionFecha: aprendiz.concertacionFuncion?.fecha ?? null,
                 bitacoras: aprendiz.bitacoras,
                 totalBitacoras: aprendiz.totalBitacoras,
+                bitacoraInicioTramo: aprendiz.bitacoraInicioTramo,
+                practicaInterrumpida: aprendiz.estado === "PRACTICA_INTERRUMPIDA",
                 evaluacion2Aprobada: aprendiz.evaluaciones.some((e) => e.numero === 2 && e.estado === "APROBADA"),
                 evaluacion3Aprobada: aprendiz.evaluaciones.some((e) => e.numero === 3 && e.estado === "APROBADA"),
                 certificacionAprobada: aprendiz.certificacionEmpresario?.estado === "APROBADA",

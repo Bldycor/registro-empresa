@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
-import { SeleccionAlternativaSchema } from "@/lib/validations";
+import { SeleccionAlternativaSchema, MAX_CAMBIOS_ALTERNATIVA } from "@/lib/validations";
 
 const SELECCION_SELECT = {
   id: true,
@@ -46,6 +46,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
   const d = parsed.data;
+
+  // Tope de la guía GFPI-G-040 §9.3.1: hasta tres (3) modificaciones de alternativa en todo el
+  // proceso formativo. Se cuentan las ya avaladas — las rechazadas o pendientes no gastan cupo.
+  if (d.tipoSolicitud === "MODIFICACION") {
+    const cambiosAprobados = await prisma.seleccionAlternativaEP.count({
+      where: { userId: user.id, tipoSolicitud: "MODIFICACION", estado: "APROBADA" },
+    });
+    if (cambiosAprobados >= MAX_CAMBIOS_ALTERNATIVA) {
+      return NextResponse.json(
+        {
+          error: {
+            _root: [
+              `Ya usaste los ${MAX_CAMBIOS_ALTERNATIVA} cambios de alternativa permitidos durante tu proceso formativo (guía GFPI-G-040). Consulta con tu Coordinación Académica.`,
+            ],
+          },
+        },
+        { status: 409 },
+      );
+    }
+  }
 
   const seleccion = await prisma.seleccionAlternativaEP.create({
     data: {

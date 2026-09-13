@@ -11,6 +11,29 @@ export function calcularFechaFinEtapaProductiva(fechaInicio: Date): Date {
   return new Date(fechaInicio.getTime() + DURACION_ETAPA_PRODUCTIVA_DIAS * 24 * 60 * 60 * 1000);
 }
 
+const MS_DIA = 24 * 60 * 60 * 1000;
+
+export function diasEntre(desde: Date, hasta: Date): number {
+  return Math.max(0, Math.round((hasta.getTime() - desde.getTime()) / MS_DIA));
+}
+
+// Días que le faltan al aprendiz para completar la Etapa Productiva, descontando lo que ya
+// ejecutó y certificó en tramos anteriores (alternativas que interrumpió). Guía GFPI-G-040
+// §9.3.1: "es necesario asegurar que el tiempo ya ejecutado en la primera alternativa sea
+// contabilizado y sumado a la nueva opción seleccionada". Nunca menos de un día: si ya cumplió
+// los 180, el tramo nuevo se reduce al mínimo en vez de quedar con fecha fin anterior al inicio.
+export function diasPendientesEtapaProductiva(diasEjecutadosPrevios: number): number {
+  return Math.max(1, DURACION_ETAPA_PRODUCTIVA_DIAS - Math.max(0, diasEjecutadosPrevios));
+}
+
+// Fecha fin del tramo vigente: cubre solo el tiempo que le falta, no siempre los 180 días.
+export function calcularFechaFinConTiempoPrevio(
+  fechaInicio: Date,
+  diasEjecutadosPrevios: number,
+): Date {
+  return new Date(fechaInicio.getTime() + diasPendientesEtapaProductiva(diasEjecutadosPrevios) * MS_DIA);
+}
+
 export function calcularFechasEtapaProductivaDesdeFicha(fechaInicioProductivaFicha: Date | null): {
   fechaInicioEtapaProductiva: Date | null;
   fechaFinEtapaProductiva: Date | null;

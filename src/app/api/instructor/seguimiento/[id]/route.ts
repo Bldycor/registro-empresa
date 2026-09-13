@@ -36,6 +36,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       fechaInicioEtapaProductiva: true,
       fechaFinEtapaProductiva: true,
       totalBitacoras: true,
+      bitacoraInicioTramo: true,
       ficha: { select: { instructorId: true, fechaLimiteIniciarEP: true } },
       seleccionesAlternativa: {
         select: { estado: true },
@@ -97,6 +98,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     concertacionFecha: aprendiz.concertacionFuncion?.fecha ?? null,
     bitacoras: aprendiz.bitacoras,
     totalBitacoras: aprendiz.totalBitacoras,
+    bitacoraInicioTramo: aprendiz.bitacoraInicioTramo,
     evaluacion2Aprobada: aprendiz.evaluaciones.some((e) => e.numero === 2 && e.estado === "APROBADA"),
     evaluacion3Aprobada: aprendiz.evaluaciones.some((e) => e.numero === 3 && e.estado === "APROBADA"),
     certificacionAprobada: aprendiz.certificacionEmpresario?.estado === "APROBADA",

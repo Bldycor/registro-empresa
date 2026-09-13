@@ -22,6 +22,7 @@ export async function GET() {
       fechaInicioEtapaProductiva: true,
       fechaFinEtapaProductiva: true,
       totalBitacoras: true,
+      bitacoraInicioTramo: true,
       ficha: { select: { codigo: true, programa: true, fechaLimiteIniciarEP: true } },
       seleccionesAlternativa: {
         select: { estado: true },
@@ -53,6 +54,8 @@ export async function GET() {
       concertacionFecha: a.concertacionFuncion?.fecha ?? null,
       bitacoras: a.bitacoras,
       totalBitacoras: a.totalBitacoras,
+      bitacoraInicioTramo: a.bitacoraInicioTramo,
+      practicaInterrumpida: a.estado === "PRACTICA_INTERRUMPIDA",
       evaluacion2Aprobada: a.evaluaciones.some((e) => e.numero === 2 && e.estado === "APROBADA"),
       evaluacion3Aprobada: a.evaluaciones.some((e) => e.numero === 3 && e.estado === "APROBADA"),
       certificacionAprobada: a.certificacionEmpresario?.estado === "APROBADA",

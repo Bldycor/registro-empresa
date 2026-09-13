@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
+import { calcularFechaFinConTiempoPrevio } from "@/lib/etapa-productiva-fechas";
 import { z } from "zod";
 
 const AvalSchema = z.object({
@@ -41,13 +42,30 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     });
 
     if (d.estado === "APROBADA") {
+      const aprendiz = await tx.user.findUnique({
+        where: { id: updated.userId },
+        select: { estado: true, diasEjecutadosPrevios: true },
+      });
+      const diasPrevios = aprendiz?.diasEjecutadosPrevios ?? 0;
+
+      // Si el aprendiz ya ejecutó tiempo en una alternativa que interrumpió, el tramo nuevo solo
+      // cubre lo que le falta para completar los 180 días del diseño curricular — guía
+      // GFPI-G-040 §9.3.1: el tiempo ya cumplido "sea contabilizado y sumado a la nueva opción".
+      // La fecha fin que venga en la solicitud se respeta solo cuando no hay tiempo previo.
+      const fechaFin =
+        diasPrevios > 0 && updated.fechaInicioEjecucion
+          ? calcularFechaFinConTiempoPrevio(updated.fechaInicioEjecucion, diasPrevios)
+          : updated.fechaFinEjecucion;
+
       await tx.user.update({
         where: { id: updated.userId },
         data: {
           alternativaEtapaProductiva: updated.alternativa,
           subtipoAlternativaEtapaProductiva: updated.subtipoAlternativa,
           fechaInicioEtapaProductiva: updated.fechaInicioEjecucion,
-          fechaFinEtapaProductiva: updated.fechaFinEjecucion,
+          fechaFinEtapaProductiva: fechaFin,
+          // Avalar la nueva alternativa es lo que reanuda la práctica interrumpida.
+          ...(aprendiz?.estado === "PRACTICA_INTERRUMPIDA" ? { estado: "ACTIVO" as const } : {}),
         },
       });
     }

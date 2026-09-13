@@ -253,6 +253,71 @@ export const tipoSolicitudAlternativaLabel: Record<TipoSolicitudAlternativaValue
   MODIFICACION: "Modificación",
 };
 
+// Máximo de cambios de alternativa que la guía GFPI-G-040 §9.3.1 le permite a un aprendiz
+// durante todo su proceso formativo ("hasta tres (3) modificaciones"), siempre con aval de
+// Coordinación. Se valida al crear la solicitud, no al avalarla.
+export const MAX_CAMBIOS_ALTERNATIVA = 3;
+
+// Motivos por los que se puede interrumpir el tramo de Etapa Productiva en curso. Los seis
+// primeros son las causales justificadas que enumera la guía GFPI-G-040 §9.3.1 para avalar el
+// cambio de alternativa; los tres siguientes, las novedades de §9.3 que la suspenden.
+export const MotivoInterrupcionEPValues = [
+  "LIQUIDACION_EMPRESA",
+  "SALUD_CERTIFICADA",
+  "ASUNTOS_JUDICIALES",
+  "SERVICIO_MILITAR",
+  "DESPLAZAMIENTO_GEOGRAFICO",
+  "TERMINACION_ANTICIPADA_CONTRATO",
+  "LICENCIA_MATERNIDAD",
+  "INCAPACIDAD",
+  "FUERZA_MAYOR",
+  "RENUNCIA_VOLUNTARIA",
+  "OTRO",
+] as const;
+export type MotivoInterrupcionEPValue = (typeof MotivoInterrupcionEPValues)[number];
+
+export const motivoInterrupcionEPLabel: Record<MotivoInterrupcionEPValue, string> = {
+  LIQUIDACION_EMPRESA: "Liquidación o cierre de la empresa",
+  SALUD_CERTIFICADA: "Salud (certificada por la EPS)",
+  ASUNTOS_JUDICIALES: "Asuntos judiciales",
+  SERVICIO_MILITAR: "Prestación del servicio militar",
+  DESPLAZAMIENTO_GEOGRAFICO: "Desplazamiento a otra región, ciudad o país",
+  TERMINACION_ANTICIPADA_CONTRATO: "Terminación anticipada del contrato por el ente co-formador",
+  LICENCIA_MATERNIDAD: "Licencia de maternidad",
+  INCAPACIDAD: "Incapacidad médica",
+  FUERZA_MAYOR: "Caso fortuito o fuerza mayor",
+  RENUNCIA_VOLUNTARIA: "Renuncia voluntaria del aprendiz",
+  OTRO: "Otro motivo",
+};
+
+// Reporte de interrupción del tramo de Etapa Productiva en curso (guía GFPI-G-040 §9.3/§9.3.1).
+// Lo radica el propio aprendiz; el certificado de práctica parcial del ente co-formador es el
+// soporte del tiempo ya cumplido, que después se descuenta del tramo siguiente.
+export const InterrupcionEPSchema = z
+  .object({
+    fechaInterrupcion: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Selecciona la fecha del último día de práctica."),
+    motivo: z.enum(MotivoInterrupcionEPValues, { message: "Selecciona el motivo." }),
+    motivoDetalle: z.string().trim().max(500).nullable().optional(),
+    certificadoUrl: z.string().trim().nullable().optional(),
+  })
+  .refine((d) => d.motivo !== "OTRO" || Boolean(d.motivoDetalle?.trim()), {
+    message: "Describe el motivo.",
+    path: ["motivoDetalle"],
+  });
+
+export type InterrupcionEPInput = z.infer<typeof InterrupcionEPSchema>;
+
+// Aval de Coordinación sobre la interrupción. `diasEjecutados` llega por separado porque el
+// certificado del ente co-formador manda sobre el calendario: Coordinación puede corregir los
+// días sugeridos antes de acumularlos (§9.3.1, "analizarán la cantidad de horas que ejecutó").
+export const AvalInterrupcionEPSchema = z.object({
+  estado: z.enum(["APROBADA", "RECHAZADA"]),
+  diasEjecutados: z.number().int().min(0).max(400).optional(),
+  observacionesAval: z.string().trim().nullable().optional(),
+});
+
 // Evidencia (a): Selección/Modificación de Alternativa de Etapa Productiva (formato GFPI-F-165),
 // modo individual — el propio aprendiz la diligencia desde su panel.
 export const SeleccionAlternativaSchema = z
@@ -306,11 +371,17 @@ export type SeleccionAlternativaGrupalInput = z.infer<typeof SeleccionAlternativ
 // Estado del aprendiz durante/después de la Etapa Productiva (enum `EstadoAprendiz`). ACTIVO →
 // POR_CERTIFICAR (lo marca el instructor, ver panel de Seguimiento) → CERTIFICADO (paso manual
 // de Coordinación — la certificación de estudio se emite fuera del sistema).
-export const EstadoAprendizValues = ["ACTIVO", "POR_CERTIFICAR", "CERTIFICADO"] as const;
+export const EstadoAprendizValues = [
+  "ACTIVO",
+  "PRACTICA_INTERRUMPIDA",
+  "POR_CERTIFICAR",
+  "CERTIFICADO",
+] as const;
 export type EstadoAprendizValue = (typeof EstadoAprendizValues)[number];
 
 export const estadoAprendizLabel: Record<EstadoAprendizValue, string> = {
   ACTIVO: "Activo",
+  PRACTICA_INTERRUMPIDA: "Práctica interrumpida",
   POR_CERTIFICAR: "Por certificar",
   CERTIFICADO: "Certificado",
 };

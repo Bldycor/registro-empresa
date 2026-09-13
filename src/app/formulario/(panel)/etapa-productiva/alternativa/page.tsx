@@ -2,14 +2,16 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-guards";
 import { SeleccionAlternativaForm } from "@/components/seleccion-alternativa-form";
+import { InterrupcionEPForm } from "@/components/interrupcion-ep-form";
 import { comunaLabel, alternativaEtapaProductivaLabel } from "@/lib/validations";
+import { diasPendientesEtapaProductiva } from "@/lib/etapa-productiva-fechas";
 
 export const dynamic = "force-dynamic";
 
 export default async function AlternativaPage() {
   const currentUser = await requireUser(["APRENDIZ"]);
 
-  const [user, selecciones] = await Promise.all([
+  const [user, selecciones, interrupciones] = await Promise.all([
     prisma.user.findUnique({
       where: { id: currentUser.id },
       select: {
@@ -17,9 +19,11 @@ export default async function AlternativaPage() {
         apellidos: true,
         cedula: true,
         comuna: true,
+        estado: true,
         alternativaEtapaProductiva: true,
         fechaInicioEtapaProductiva: true,
         fechaFinEtapaProductiva: true,
+        diasEjecutadosPrevios: true,
         ficha: { select: { codigo: true, instructor: { select: { nombres: true, apellidos: true } } } },
       },
     }),
@@ -38,9 +42,24 @@ export default async function AlternativaPage() {
         createdAt: true,
       },
     }),
+    prisma.interrupcionEtapaProductiva.findMany({
+      where: { userId: currentUser.id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        fechaInterrupcion: true,
+        diasEjecutados: true,
+        motivo: true,
+        motivoDetalle: true,
+        estado: true,
+        observacionesAval: true,
+      },
+    }),
   ]);
 
   if (!user) redirect("/login");
+
+  const diasPendientes = diasPendientesEtapaProductiva(user.diasEjecutadosPrevios);
 
   return (
     <div className="flex flex-1 flex-col items-center gap-8 px-4 py-10">
@@ -82,7 +101,31 @@ export default async function AlternativaPage() {
         </dl>
       </div>
 
-      <SeleccionAlternativaForm tieneAlternativaVigente={Boolean(user.alternativaEtapaProductiva)} />
+      {user.estado === "PRACTICA_INTERRUMPIDA" && (
+        <div className="w-full max-w-2xl rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+          <p className="font-medium">Tu práctica está interrumpida.</p>
+          <p className="mt-1">
+            Coordinación te contabilizó {user.diasEjecutadosPrevios} día(s) ya cumplidos. Para
+            retomar, envía una <strong>Modificación</strong> con la nueva alternativa: solo te
+            faltan <strong>{diasPendientes} días</strong> para completar la Etapa Productiva, así
+            que tus bitácoras y evaluaciones se reprograman sobre ese tiempo restante.
+          </p>
+        </div>
+      )}
+
+      <SeleccionAlternativaForm
+        tieneAlternativaVigente={Boolean(user.alternativaEtapaProductiva)}
+        diasPendientes={user.diasEjecutadosPrevios > 0 ? diasPendientes : null}
+      />
+
+      <InterrupcionEPForm
+        tieneAlternativaVigente={Boolean(user.alternativaEtapaProductiva)}
+        fechaInicioEP={user.fechaInicioEtapaProductiva?.toISOString().slice(0, 10) ?? null}
+        historial={interrupciones.map((i) => ({
+          ...i,
+          fechaInterrupcion: i.fechaInterrupcion.toISOString(),
+        }))}
+      />
 
       {selecciones.length > 0 && (
         <div className="w-full max-w-2xl">

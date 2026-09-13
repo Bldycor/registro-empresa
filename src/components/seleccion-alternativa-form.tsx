@@ -25,6 +25,12 @@ type FormFields = {
   archivoUrl: string;
 };
 
+function sumarDias(fecha: string, dias: number): string {
+  const [y, m, d] = fecha.split("-").map(Number);
+  const resultado = new Date(Date.UTC(y, m - 1, d + dias));
+  return resultado.toISOString().slice(0, 10);
+}
+
 const initialState: FormFields = {
   tipoSolicitud: "",
   alternativa: "",
@@ -36,8 +42,13 @@ const initialState: FormFields = {
 
 export function SeleccionAlternativaForm({
   tieneAlternativaVigente,
+  // Solo viene con valor cuando el aprendiz ya ejecutó tiempo en una alternativa anterior que
+  // interrumpió (guía GFPI-G-040 §9.3.1: ese tiempo se contabiliza y se suma a la nueva opción).
+  // Sirve para que no proponga otra vez seis meses completos en las fechas de ejecución.
+  diasPendientes = null,
 }: {
   tieneAlternativaVigente: boolean;
+  diasPendientes?: number | null;
 }) {
   const router = useRouter();
   const [form, setForm] = useState<FormFields>({
@@ -103,6 +114,13 @@ export function SeleccionAlternativaForm({
         Enviar solicitud
       </h2>
 
+      {diasPendientes !== null && (
+        <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+          Te faltan {diasPendientes} días de Etapa Productiva. Al elegir la fecha de inicio, la
+          fecha fin se calcula sola con ese tiempo restante.
+        </p>
+      )}
+
       <div className="flex flex-col gap-4">
         <Field label="Tipo de solicitud" error={errors.tipoSolicitud?.[0]}>
           <select
@@ -164,7 +182,16 @@ export function SeleccionAlternativaForm({
             label="Fecha inicio de ejecución"
             required
             value={form.fechaInicioEjecucion}
-            onChange={(v) => update("fechaInicioEjecucion", v)}
+            onChange={(v) => {
+              // Al retomar, la fecha fin se propone sola con el tiempo que falta — escribirla a
+              // mano es la vía fácil para volver a pedir seis meses completos por error.
+              const fin = diasPendientes && v ? sumarDias(v, diasPendientes) : null;
+              setForm((prev) => ({
+                ...prev,
+                fechaInicioEjecucion: v,
+                ...(fin ? { fechaFinEjecucion: fin } : {}),
+              }));
+            }}
             error={errors.fechaInicioEjecucion?.[0]}
             max={form.fechaFinEjecucion || undefined}
           />

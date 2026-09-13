@@ -12,7 +12,7 @@
 //   4. Evaluaciones: Momento 2 a los ~2 meses (60 días); Momento 3, 10-15 días antes del cierre.
 //   5. Certificación del empresario: hasta la fecha de fin de la Etapa Productiva.
 
-import { calcularFechasLimiteBitacoras } from "@/lib/bitacora-fechas";
+import { calcularSlotsBitacoras } from "@/lib/bitacora-fechas";
 import type { EstadoEvidencia } from "@/generated/prisma/enums";
 
 export const DIAS_ALERTA_PROXIMA = 5;
@@ -75,6 +75,11 @@ export function calcularSeguimiento(input: {
   bitacoras: { numero: number; estado: EstadoEvidencia }[];
   // 6 o 12 (ver User.totalBitacoras) — varía por aprendiz, no siempre son 12.
   totalBitacoras: number;
+  // Número de bitácora con el que arranca el tramo vigente (1 si nunca interrumpió su EP).
+  bitacoraInicioTramo?: number;
+  // El aprendiz interrumpió su práctica y aún no tiene alternativa nueva avalada: el reloj de
+  // plazos está detenido (guía GFPI-G-040 §9.3), así que no se le cuentan atrasos.
+  practicaInterrumpida?: boolean;
   evaluacion2Aprobada: boolean;
   evaluacion3Aprobada: boolean;
   certificacionAprobada: boolean;
@@ -120,13 +125,19 @@ export function calcularSeguimiento(input: {
       cantidadAtrasada: 0,
     };
   } else {
-    const fechasLimite = calcularFechasLimiteBitacoras(fechaInicioEP, input.totalBitacoras);
+    const slots = calcularSlotsBitacoras(
+      fechaInicioEP,
+      input.totalBitacoras,
+      input.bitacoraInicioTramo ?? 1,
+    );
     const porNumero = new Map(input.bitacoras.map((b) => [b.numero, b]));
     let atrasadas = 0;
     let proxima = false;
-    let aprobadas = 0;
-    fechasLimite.forEach((limite, idx) => {
-      const numero = idx + 1;
+    // Las de tramos anteriores ya entregadas cuentan como cumplidas para el total del programa.
+    let aprobadas = input.bitacoras.filter(
+      (b) => b.numero < (input.bitacoraInicioTramo ?? 1) && b.estado === "APROBADA",
+    ).length;
+    slots.forEach(({ numero, fechaLimite: limite }) => {
       const b = porNumero.get(numero);
       if (b?.estado === "APROBADA") {
         aprobadas++;
@@ -141,7 +152,7 @@ export function calcularSeguimiento(input: {
     // "completa" solo cuando las 12 quedaron realmente aprobadas — no basta con que ninguna esté
     // atrasada/próxima todavía (eso es "pendiente", en curso), o el chip nunca reflejaría que el
     // aprendiz ya terminó bitácoras del todo.
-    const todasAprobadas = aprobadas === fechasLimite.length;
+    const todasAprobadas = aprobadas === input.totalBitacoras;
     const estado: EstadoSeguimiento = todasAprobadas
       ? "completa"
       : atrasadas > 0
@@ -210,7 +221,19 @@ export function calcularSeguimiento(input: {
     return `A tiempo · vence en ${item.dias}d`;
   }
 
-  return [
+  // Con la práctica interrumpida el reloj de plazos está detenido: lo que aún no está avalado
+  // queda "pendiente" (no atrasado) hasta que Coordinación avale la nueva alternativa y arranque
+  // el tramo siguiente. Lo ya cumplido se conserva como completo.
+  function conPracticaDetenida(items: ChecklistItem[]): ChecklistItem[] {
+    if (!input.practicaInterrumpida) return items;
+    return items.map((item) =>
+      item.estado === "completa"
+        ? item
+        : { ...item, estado: "pendiente", detalle: "Práctica interrumpida", cantidadAtrasada: 0 },
+    );
+  }
+
+  return conPracticaDetenida([
     {
       clave: "alternativa",
       etiqueta: "Alternativa EP",
@@ -245,5 +268,5 @@ export function calcularSeguimiento(input: {
       href: "/formulario/instructor/certificacion",
       cantidadAtrasada: certificacion.estado === "atrasada" ? 1 : 0,
     },
-  ];
+  ]);
 }

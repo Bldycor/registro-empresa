@@ -24,6 +24,11 @@ enum Role {
 
 enum EstadoAprendiz {
   ACTIVO
+  // El aprendiz interrumpió (renunció, lo liquidaron, se trasladó, etc.) el tramo de Etapa
+  // Productiva que venía ejecutando y todavía no tiene avalada una alternativa nueva para
+  // retomarla. El tiempo ya cumplido queda acumulado en `diasEjecutadosPrevios` y se descuenta
+  // del tramo siguiente — ver `InterrupcionEtapaProductiva` y la guía GFPI-G-040 §7 y §9.3.
+  PRACTICA_INTERRUMPIDA
   // El instructor lo marca así uno a uno (ver checklist de Seguimiento), solo cuando las 6
   // evidencias de Etapa Productiva ya quedaron avaladas/aprobadas — dispara el correo con la
   // ficha de requisitos institucionales de certificación. Coordinación lo revisa y hace el paso
@@ -226,6 +231,24 @@ enum ValoracionVariable {
   POR_MEJORAR
 }
 
+// Motivos por los que un aprendiz puede interrumpir el tramo de Etapa Productiva que venía
+// ejecutando. Los seis primeros son las causales que la guía GFPI-G-040 §9.3.1 nombra
+// explícitamente como justificadas para avalar un cambio de alternativa; los tres siguientes
+// son las novedades de §9.3 que suspenden temporalmente la ejecución.
+enum MotivoInterrupcionEP {
+  LIQUIDACION_EMPRESA
+  SALUD_CERTIFICADA
+  ASUNTOS_JUDICIALES
+  SERVICIO_MILITAR
+  DESPLAZAMIENTO_GEOGRAFICO
+  TERMINACION_ANTICIPADA_CONTRATO
+  LICENCIA_MATERNIDAD
+  INCAPACIDAD
+  FUERZA_MAYOR
+  RENUNCIA_VOLUNTARIA
+  OTRO
+}
+
 // Las 6 variables de la valoración del Momento 1 (Concertación/Planeación) — no forman parte del
 // formato GFPI-F-023 (que no valora el Momento 1), pero el instructor las evalúa igual que las
 // rúbricas de los Momentos 2/3, con la misma escala (ValoracionVariable).
@@ -293,6 +316,19 @@ model User {
   // fechas límite calculadas (`src/lib/bitacora-fechas.ts`) como las alertas de seguimiento.
   totalBitacoras Int @default(12)
 
+  // Días de Etapa Productiva ya ejecutados y certificados en tramos ANTERIORES (alternativas que
+  // el aprendiz interrumpió y no alcanzó a terminar). La guía GFPI-G-040 §9.3.1 exige que ese
+  // tiempo se contabilice y se sume a la nueva alternativa: por eso la fecha fin del tramo
+  // vigente se calcula como inicio + (180 − diasEjecutadosPrevios), no siempre 180 días.
+  // Solo lo acumula el aval de una `InterrupcionEtapaProductiva`, nunca se edita a mano.
+  diasEjecutadosPrevios Int @default(0)
+
+  // Número de bitácora con el que arranca el tramo VIGENTE. Al retomar la EP con otra
+  // alternativa la numeración continúa (no se reinicia en 1): las bitácoras anteriores a este
+  // número ya se entregaron en el tramo previo y conservan sus fechas; de aquí en adelante las
+  // fechas límite se recalculan quincenalmente desde la nueva fecha de inicio.
+  bitacoraInicioTramo Int @default(1)
+
   // Modalidad ("alternativa") de Etapa Productiva vigente. Se mantiene sincronizada desde la
   // solicitud de `SeleccionAlternativaEP` más reciente que quede APROBADA (selección o
   // modificación) — no se edita directamente en otro formulario.
@@ -350,6 +386,8 @@ model User {
   evaluacionesAval            Evaluacion[]                  @relation("AvalEvaluacion")
   certificacionesAval         CertificacionEmpresario[]     @relation("AvalCertificacion")
   concertacionesAval          ConcertacionFuncion[]         @relation("AvalConcertacion")
+  interrupcionesEP            InterrupcionEtapaProductiva[] @relation("AprendizInterrupciones")
+  interrupcionesEPAval        InterrupcionEtapaProductiva[] @relation("AvalInterrupcionEP")
 }
 
 // Ficha SENA. La precarga el coordinador académico (carga masiva por código) antes de que los
@@ -478,6 +516,46 @@ model SeleccionAlternativaEP {
 
 // Envoltorio de un envío grupal de `SeleccionAlternativaEP` (varios aprendices de una misma
 // ficha, con la misma alternativa, diligenciado en conjunto por el instructor/coordinador).
+// Interrupción de un tramo de Etapa Productiva (guía GFPI-G-040 §7, §9.3 y §9.3.1). El aprendiz
+// reporta que no pudo terminar la EP con la alternativa vigente (renuncia, liquidación de la
+// empresa, salud, traslado…), adjuntando el certificado de práctica parcial que expide el ente
+// co-formador con el tiempo realmente cumplido. Coordinación lo avala; al avalarlo, esos días se
+// suman a `User.diasEjecutadosPrevios` y el aprendiz queda en estado PRACTICA_INTERRUMPIDA hasta
+// que se le avale una nueva `SeleccionAlternativaEP` (tipoSolicitud = MODIFICACION), cuyo tramo
+// solo cubrirá el tiempo que le falta para completar los 180 días del diseño curricular.
+model InterrupcionEtapaProductiva {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("AprendizInterrupciones", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Alternativa que se estaba ejecutando cuando se interrumpió, y fechas reales del tramo.
+  alternativa       AlternativaEtapaProductiva
+  fechaInicioTramo  DateTime
+  fechaInterrupcion DateTime
+
+  // Días efectivamente cumplidos en el tramo, según el certificado del ente co-formador. Se
+  // sugiere calculado (fechaInterrupcion − fechaInicioTramo) pero lo confirma Coordinación al
+  // avalar, porque el certificado manda sobre el calendario.
+  diasEjecutados Int
+
+  motivo         MotivoInterrupcionEP
+  motivoDetalle  String?
+  // Certificado de práctica parcial emitido por la empresa/entidad — requisito explícito de
+  // §9.3.1 para poder contabilizar el tiempo ya ejecutado.
+  certificadoUrl String?
+
+  estado            EstadoEvidencia @default(PENDIENTE)
+  avaladoPorId      String?
+  avaladoPor        User?           @relation("AvalInterrupcionEP", fields: [avaladoPorId], references: [id], onDelete: SetNull)
+  fechaAval         DateTime?
+  observacionesAval String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
 model SeleccionAlternativaGrupo {
   id     String @id @default(cuid())
   fichaId String

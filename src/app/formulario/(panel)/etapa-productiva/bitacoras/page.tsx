@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-guards";
-import { calcularFechasLimiteBitacoras, calcularPeriodoBitacora } from "@/lib/bitacora-fechas";
+import { calcularSlotsBitacoras, calcularPeriodoBitacora } from "@/lib/bitacora-fechas";
 import { BitacorasAprendizPanel, type BitacoraSlot } from "@/components/bitacoras-aprendiz-panel";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,11 @@ export default async function BitacorasPage() {
 
   const aprendiz = await prisma.user.findUnique({
     where: { id: currentUser.id },
-    select: { fechaInicioEtapaProductiva: true, totalBitacoras: true },
+    select: {
+      fechaInicioEtapaProductiva: true,
+      totalBitacoras: true,
+      bitacoraInicioTramo: true,
+    },
   });
 
   return (
@@ -37,6 +41,7 @@ export default async function BitacorasPage() {
           userId={currentUser.id}
           fechaInicioEtapaProductiva={aprendiz.fechaInicioEtapaProductiva}
           totalBitacoras={aprendiz.totalBitacoras}
+          bitacoraInicioTramo={aprendiz.bitacoraInicioTramo}
         />
       )}
     </div>
@@ -47,21 +52,34 @@ async function BitacorasPanelServer({
   userId,
   fechaInicioEtapaProductiva,
   totalBitacoras,
+  bitacoraInicioTramo,
 }: {
   userId: string;
   fechaInicioEtapaProductiva: Date;
   totalBitacoras: number;
+  bitacoraInicioTramo: number;
 }) {
-  const [bitacoras, fechasLimite] = [
-    await prisma.bitacora.findMany({
-      where: { userId },
-      orderBy: { numero: "asc" },
-      include: { actividades: true },
-    }),
-    calcularFechasLimiteBitacoras(fechaInicioEtapaProductiva, totalBitacoras),
-  ];
+  const bitacoras = await prisma.bitacora.findMany({
+    where: { userId },
+    orderBy: { numero: "asc" },
+    include: { actividades: true },
+  });
 
   const bitacoraPorNumero = new Map(bitacoras.map((b) => [b.numero, b]));
+
+  // Las bitácoras anteriores al tramo vigente (si el aprendiz interrumpió y retomó su EP con otra
+  // alternativa) ya fueron entregadas: se listan con la fecha límite con la que se crearon, no se
+  // recalculan contra la nueva fecha de inicio.
+  const slotsPrevios = Array.from({ length: bitacoraInicioTramo - 1 }, (_, i) => {
+    const numero = i + 1;
+    const existente = bitacoraPorNumero.get(numero);
+    return { numero, fechaLimite: existente?.fechaLimite ?? fechaInicioEtapaProductiva };
+  });
+
+  const slots = [
+    ...slotsPrevios,
+    ...calcularSlotsBitacoras(fechaInicioEtapaProductiva, totalBitacoras, bitacoraInicioTramo),
+  ];
 
   // Para prellenar una bitácora nueva: la más reciente ya enviada ANTES de `numero` (no
   // necesariamente numero-1, por si el aprendiz se saltó alguna).
@@ -73,10 +91,13 @@ async function BitacorasPanelServer({
     return null;
   }
 
-  const slots: BitacoraSlot[] = fechasLimite.map((fechaLimite, idx) => {
-    const numero = idx + 1;
+  const slotsPanel: BitacoraSlot[] = slots.map(({ numero, fechaLimite }) => {
     const existente = bitacoraPorNumero.get(numero);
-    const periodoSugerido = calcularPeriodoBitacora(fechaInicioEtapaProductiva, numero);
+    const periodoSugerido = calcularPeriodoBitacora(
+      fechaInicioEtapaProductiva,
+      numero,
+      bitacoraInicioTramo,
+    );
     const previa = !existente ? buscarPrevia(numero) : null;
 
     return {
@@ -123,5 +144,5 @@ async function BitacorasPanelServer({
     };
   });
 
-  return <BitacorasAprendizPanel slots={slots} />;
+  return <BitacorasAprendizPanel slots={slotsPanel} />;
 }
