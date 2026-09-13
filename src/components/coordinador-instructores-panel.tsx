@@ -15,6 +15,7 @@ type AprendizNombre = { id: string; nombres: string; apellidos: string };
 type Ficha = {
   id: string;
   codigo: string;
+  programa: string | null;
   _count?: { aprendices: number };
   aprendices?: AprendizNombre[];
 };
@@ -87,6 +88,34 @@ export function CoordinadorInstructoresPanel({
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [fichaExpandidaId, setFichaExpandidaId] = useState<string | null>(null);
+
+  const [filtroAprendiz, setFiltroAprendiz] = useState("");
+  const [filtroCoordinacion, setFiltroCoordinacion] = useState<"" | CoordinacionValue>("");
+  const [filtroPrograma, setFiltroPrograma] = useState("");
+
+  // Catálogo de programas realmente en uso (no el catálogo institucional completo) — solo los
+  // que ya tiene alguna ficha asignada a algún instructor, para que el filtro no ofrezca opciones
+  // que hoy no devuelven nada.
+  const programasDisponibles = Array.from(
+    new Set(
+      instructores.flatMap((i) => i.fichasAsignadas.map((f) => f.programa).filter((p): p is string => Boolean(p)))
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  const instructoresFiltrados = instructores.filter((i) => {
+    if (filtroCoordinacion && i.coordinacion !== filtroCoordinacion) return false;
+    if (filtroPrograma && !i.fichasAsignadas.some((f) => f.programa === filtroPrograma)) return false;
+    const textoAprendiz = filtroAprendiz.trim().toLowerCase();
+    if (textoAprendiz) {
+      const tieneAprendiz = i.fichasAsignadas.some((f) =>
+        (f.aprendices ?? []).some((a) =>
+          `${a.nombres} ${a.apellidos}`.toLowerCase().includes(textoAprendiz)
+        )
+      );
+      if (!tieneAprendiz) return false;
+    }
+    return true;
+  });
 
   function update<K extends keyof FormFields>(key: K, value: FormFields[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -472,18 +501,57 @@ export function CoordinadorInstructoresPanel({
       </form>
 
       <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
-          <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-            {instructores.length} instructor(es) registrado(s)
-          </h2>
+        <div className="space-y-3 border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+              {instructoresFiltrados.length} de {instructores.length} instructor(es)
+            </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                value={filtroAprendiz}
+                onChange={(e) => setFiltroAprendiz(e.target.value)}
+                placeholder="Buscar por aprendiz a cargo"
+                className={`${inputClass} w-52 text-xs`}
+              />
+              <select
+                value={filtroCoordinacion}
+                onChange={(e) => setFiltroCoordinacion(e.target.value as "" | CoordinacionValue)}
+                className={`${inputClass} text-xs`}
+              >
+                <option value="">Todas las coordinaciones</option>
+                {CoordinacionValues.map((v) => (
+                  <option key={v} value={v}>
+                    {coordinacionLabel[v]}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={filtroPrograma}
+                onChange={(e) => setFiltroPrograma(e.target.value)}
+                className={`${inputClass} text-xs`}
+              >
+                <option value="">Todos los programas</option>
+                {programasDisponibles.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
         {instructores.length === 0 ? (
           <p className="px-6 py-6 text-sm text-zinc-500 dark:text-zinc-400">
             Todavía no has registrado ningún instructor.
           </p>
+        ) : instructoresFiltrados.length === 0 ? (
+          <p className="px-6 py-6 text-sm text-zinc-500 dark:text-zinc-400">
+            Ningún instructor coincide con el filtro.
+          </p>
         ) : (
           <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
-            {instructores.map((instructor) => {
+            {instructoresFiltrados.map((instructor) => {
               const isDeleting = deletingId === instructor.id;
               return (
                 <li key={instructor.id}>

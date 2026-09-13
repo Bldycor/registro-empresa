@@ -28,6 +28,7 @@ export async function GET() {
         select: {
           id: true,
           codigo: true,
+          programa: true,
           _count: { select: { aprendices: true } },
           aprendices: {
             select: { id: true, nombres: true, apellidos: true },
