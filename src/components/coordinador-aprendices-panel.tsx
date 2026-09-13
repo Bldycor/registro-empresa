@@ -11,16 +11,29 @@ import {
   AlternativaEtapaProductivaValues,
   alternativaEtapaProductivaLabel,
   TotalBitacorasValues,
+  CoordinacionValues,
+  coordinacionLabel,
   type ComunaValue,
   type EstadoAprendizValue,
   type AlternativaEtapaProductivaValue,
+  type CoordinacionValue,
 } from "@/lib/validations";
 
 type Ficha = { id: string; codigo: string };
 
-type FichaConInstructor = Ficha & {
-  instructor: { nombres: string; apellidos: string } | null;
+type Instructor = {
+  id: string;
+  nombres: string;
+  apellidos: string;
+  coordinacion: CoordinacionValue | null;
 };
+
+type FichaConInstructor = Ficha & {
+  programa: string | null;
+  instructor: Instructor | null;
+};
+
+const SIN_PROGRAMA = "Sin programa asignado";
 
 type Aprendiz = {
   id: string;
@@ -80,9 +93,11 @@ function gestionVaciaDe(aprendiz: Aprendiz): GestionForm {
 export function CoordinadorAprendicesPanel({
   initialAprendices,
   fichas,
+  instructores,
 }: {
   initialAprendices: Aprendiz[];
   fichas: Ficha[];
+  instructores: Instructor[];
 }) {
   const [aprendices, setAprendices] = useState<Aprendiz[]>(initialAprendices);
 
@@ -90,6 +105,8 @@ export function CoordinadorAprendicesPanel({
   const [soloSinFicha, setSoloSinFicha] = useState(false);
   const [filtroFichaId, setFiltroFichaId] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<"" | EstadoAprendizValue>("");
+  const [filtroInstructorId, setFiltroInstructorId] = useState("");
+  const [filtroCoordinacion, setFiltroCoordinacion] = useState<"" | CoordinacionValue>("");
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [gestionForm, setGestionForm] = useState<GestionForm | null>(null);
@@ -111,6 +128,8 @@ export function CoordinadorAprendicesPanel({
     if (soloSinFicha && a.fichaId) return false;
     if (!soloSinFicha && filtroFichaId && a.fichaId !== filtroFichaId) return false;
     if (filtroEstado && a.estado !== filtroEstado) return false;
+    if (filtroInstructorId && a.ficha?.instructor?.id !== filtroInstructorId) return false;
+    if (filtroCoordinacion && a.ficha?.instructor?.coordinacion !== filtroCoordinacion) return false;
     const texto = filtroTexto.trim().toLowerCase();
     if (texto) {
       const nombreCompleto = `${a.nombres} ${a.apellidos}`.toLowerCase();
@@ -118,6 +137,24 @@ export function CoordinadorAprendicesPanel({
     }
     return true;
   });
+
+  // Agrupados por programa de formación (el de la ficha) para que el coordinador vea de un
+  // vistazo cuántos aprendices tiene cada programa, en vez de una sola lista plana — los sin
+  // ficha (o con ficha sin programa cargado) caen en un grupo aparte al final.
+  const gruposPorPrograma = (() => {
+    const mapa = new Map<string, Aprendiz[]>();
+    for (const a of aprendicesFiltrados) {
+      const clave = a.ficha?.programa ?? SIN_PROGRAMA;
+      const lista = mapa.get(clave) ?? [];
+      lista.push(a);
+      mapa.set(clave, lista);
+    }
+    return Array.from(mapa.entries()).sort(([progA], [progB]) => {
+      if (progA === SIN_PROGRAMA) return 1;
+      if (progB === SIN_PROGRAMA) return -1;
+      return progA.localeCompare(progB);
+    });
+  })();
 
   function startEdit(aprendiz: Aprendiz) {
     setEditingId(aprendiz.id);
@@ -335,6 +372,30 @@ export function CoordinadorAprendicesPanel({
                   </option>
                 ))}
               </select>
+              <select
+                value={filtroInstructorId}
+                onChange={(e) => setFiltroInstructorId(e.target.value)}
+                className={`${inputClass} text-xs`}
+              >
+                <option value="">Todos los instructores</option>
+                {instructores.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.nombres} {i.apellidos}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={filtroCoordinacion}
+                onChange={(e) => setFiltroCoordinacion(e.target.value as "" | CoordinacionValue)}
+                className={`${inputClass} text-xs`}
+              >
+                <option value="">Todas las coordinaciones</option>
+                {CoordinacionValues.map((v) => (
+                  <option key={v} value={v}>
+                    {coordinacionLabel[v]}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -411,8 +472,14 @@ export function CoordinadorAprendicesPanel({
             Ningún aprendiz coincide con el filtro.
           </p>
         ) : (
-          <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
-            {aprendicesFiltrados.map((aprendiz) => {
+          <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
+            {gruposPorPrograma.map(([programa, grupo]) => (
+              <div key={programa}>
+                <p className="bg-zinc-50 px-6 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:bg-zinc-950/40 dark:text-zinc-400">
+                  {programa} · {grupo.length} aprendiz{grupo.length === 1 ? "" : "es"}
+                </p>
+                <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                  {grupo.map((aprendiz) => {
               const isEditing = editingId === aprendiz.id;
               const isDeleting = deletingId === aprendiz.id;
 
@@ -718,8 +785,11 @@ export function CoordinadorAprendicesPanel({
                   )}
                 </li>
               );
-            })}
-          </ul>
+                  })}
+                </ul>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

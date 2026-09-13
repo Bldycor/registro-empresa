@@ -30,7 +30,8 @@ export async function GET() {
         select: {
           id: true,
           codigo: true,
-          instructor: { select: { nombres: true, apellidos: true } },
+          programa: true,
+          instructor: { select: { id: true, nombres: true, apellidos: true, coordinacion: true } },
         },
       },
     },

@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export default async function CoordinadorAprendicesPage() {
   await requireUser(["COORDINADOR", "ADMIN"]);
 
-  const [aprendices, fichas] = await Promise.all([
+  const [aprendices, fichas, instructores] = await Promise.all([
     prisma.user.findMany({
       where: { role: "APRENDIZ" },
       select: {
@@ -29,7 +29,8 @@ export default async function CoordinadorAprendicesPage() {
           select: {
             id: true,
             codigo: true,
-            instructor: { select: { nombres: true, apellidos: true } },
+            programa: true,
+            instructor: { select: { id: true, nombres: true, apellidos: true, coordinacion: true } },
           },
         },
       },
@@ -38,6 +39,11 @@ export default async function CoordinadorAprendicesPage() {
     prisma.ficha.findMany({
       select: { id: true, codigo: true },
       orderBy: { codigo: "asc" },
+    }),
+    prisma.user.findMany({
+      where: { role: "INSTRUCTOR" },
+      select: { id: true, nombres: true, apellidos: true, coordinacion: true },
+      orderBy: [{ nombres: "asc" }, { apellidos: "asc" }],
     }),
   ]);
 
@@ -49,7 +55,11 @@ export default async function CoordinadorAprendicesPage() {
 
   return (
     <div className="flex flex-1 justify-center px-4 py-10">
-      <CoordinadorAprendicesPanel initialAprendices={aprendicesSerializados} fichas={fichas} />
+      <CoordinadorAprendicesPanel
+        initialAprendices={aprendicesSerializados}
+        fichas={fichas}
+        instructores={instructores}
+      />
     </div>
   );
 }
