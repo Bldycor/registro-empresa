@@ -12,7 +12,15 @@ const FORMALIZACION_SELECT = {
   observaciones: true,
   fechaAval: true,
   createdAt: true,
-  user: { select: { id: true, nombres: true, apellidos: true, cedula: true, ficha: { select: { codigo: true } } } },
+  user: {
+    select: {
+      id: true,
+      nombres: true,
+      apellidos: true,
+      cedula: true,
+      ficha: { select: { codigo: true, programa: true } },
+    },
+  },
 } satisfies Prisma.FormalizacionEtapaProductivaSelect;
 
 // Lista las formalizaciones de los aprendices asignados al instructor (misma regla que el resto

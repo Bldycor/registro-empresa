@@ -21,6 +21,7 @@ type Aprendiz = {
   apellidos: string;
   cedula: string;
   ficha: string | null;
+  programa: string | null;
   estadoAprendiz: EstadoAprendiz;
   fechaInicioEtapaProductiva: string | null;
   checklist: ChecklistItem[];
@@ -83,6 +84,8 @@ export function InstructorSeguimientoPanel() {
   const [filtro, setFiltro] = useState<"ATRASADOS" | "POR_CERTIFICAR" | "AL_DIA" | "TODOS">(
     "ATRASADOS",
   );
+  const [filtroTexto, setFiltroTexto] = useState("");
+  const [filtroPrograma, setFiltroPrograma] = useState("");
   const [pendiente, setPendiente] = useState<string | null>(null);
   const [errores, setErrores] = useState<Record<string, string>>({});
 
@@ -133,11 +136,24 @@ export function InstructorSeguimientoPanel() {
     (a) => a.atrasos === 0 && !elegiblePorCertificar(a) && a.estadoAprendiz !== "CERTIFICADO",
   ).length;
 
+  const programasDisponibles = Array.from(
+    new Set(aprendices.map((a) => a.programa).filter((p): p is string => Boolean(p)))
+  ).sort((a, b) => a.localeCompare(b));
+
   const visibles = aprendices.filter((a) => {
-    if (filtro === "ATRASADOS") return a.atrasos > 0;
-    if (filtro === "POR_CERTIFICAR") return a.atrasos === 0 && elegiblePorCertificar(a);
-    if (filtro === "AL_DIA")
-      return a.atrasos === 0 && !elegiblePorCertificar(a) && a.estadoAprendiz !== "CERTIFICADO";
+    if (filtro === "ATRASADOS" && !(a.atrasos > 0)) return false;
+    if (filtro === "POR_CERTIFICAR" && !(a.atrasos === 0 && elegiblePorCertificar(a))) return false;
+    if (
+      filtro === "AL_DIA" &&
+      !(a.atrasos === 0 && !elegiblePorCertificar(a) && a.estadoAprendiz !== "CERTIFICADO")
+    )
+      return false;
+    if (filtroPrograma && a.programa !== filtroPrograma) return false;
+    const texto = filtroTexto.trim().toLowerCase();
+    if (texto) {
+      const nombreCompleto = `${a.nombres} ${a.apellidos}`.toLowerCase();
+      if (!nombreCompleto.includes(texto) && !a.cedula.includes(texto)) return false;
+    }
     return true;
   });
 
@@ -154,10 +170,29 @@ export function InstructorSeguimientoPanel() {
         <StatBadge tono="rojo" etiqueta="con atrasos" cantidad={conAtrasos} />
         <StatBadge tono="azul" etiqueta="por certificar" cantidad={porCertificar} />
         <StatBadge tono="verde" etiqueta="al día" cantidad={alDia} />
+        <input
+          type="text"
+          value={filtroTexto}
+          onChange={(e) => setFiltroTexto(e.target.value)}
+          placeholder="Buscar por aprendiz o cédula"
+          className="ml-auto rounded-md border border-zinc-300 px-3 py-1.5 text-sm w-48 dark:border-zinc-700 dark:bg-zinc-950"
+        />
+        <select
+          value={filtroPrograma}
+          onChange={(e) => setFiltroPrograma(e.target.value)}
+          className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+        >
+          <option value="">Todos los programas</option>
+          {programasDisponibles.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
         <select
           value={filtro}
           onChange={(e) => setFiltro(e.target.value as typeof filtro)}
-          className="ml-auto rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+          className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950"
         >
           <option value="ATRASADOS">Con atrasos</option>
           <option value="POR_CERTIFICAR">Por certificar</option>

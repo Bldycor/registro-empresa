@@ -45,7 +45,13 @@ type Evaluacion = {
   programa?: string | null;
   competenciasDesarrollar?: string | null;
   resultadosAprendizaje?: string | null;
-  user: { id: string; nombres: string; apellidos: string; cedula: string; ficha: { codigo: string } | null };
+  user: {
+    id: string;
+    nombres: string;
+    apellidos: string;
+    cedula: string;
+    ficha: { codigo: string; programa: string | null } | null;
+  };
 };
 
 const momentoLabel: Record<number, string> = {
@@ -64,6 +70,8 @@ function formatoFecha(iso: string): string {
 export function InstructorEvaluacionesPanel() {
   const [items, setItems] = useState<Evaluacion[] | null>(null);
   const [filtro, setFiltro] = useState<"PENDIENTES" | "EVALUADAS" | "TODAS">("PENDIENTES");
+  const [filtroTexto, setFiltroTexto] = useState("");
+  const [filtroPrograma, setFiltroPrograma] = useState("");
   const [expandidoId, setExpandidoId] = useState<string | null>(null);
 
   function load() {
@@ -81,9 +89,19 @@ export function InstructorEvaluacionesPanel() {
   const pendientes = items.filter((e) => e.estado !== "APROBADA").length;
   const evaluadas = items.filter((e) => e.estado === "APROBADA").length;
 
+  const programasDisponibles = Array.from(
+    new Set(items.map((e) => e.user.ficha?.programa).filter((p): p is string => Boolean(p)))
+  ).sort((a, b) => a.localeCompare(b));
+
   const visibles = items.filter((e) => {
-    if (filtro === "PENDIENTES") return e.estado !== "APROBADA";
-    if (filtro === "EVALUADAS") return e.estado === "APROBADA";
+    if (filtro === "PENDIENTES" && e.estado === "APROBADA") return false;
+    if (filtro === "EVALUADAS" && e.estado !== "APROBADA") return false;
+    if (filtroPrograma && e.user.ficha?.programa !== filtroPrograma) return false;
+    const texto = filtroTexto.trim().toLowerCase();
+    if (texto) {
+      const nombreCompleto = `${e.user.nombres} ${e.user.apellidos}`.toLowerCase();
+      if (!nombreCompleto.includes(texto) && !e.user.cedula.includes(texto)) return false;
+    }
     return true;
   });
 
@@ -92,10 +110,29 @@ export function InstructorEvaluacionesPanel() {
       <div className="flex flex-wrap items-center gap-2">
         <StatBadge tono="ambar" etiqueta="pendientes" cantidad={pendientes} />
         <StatBadge tono="verde" etiqueta="evaluadas" cantidad={evaluadas} />
+        <input
+          type="text"
+          value={filtroTexto}
+          onChange={(e) => setFiltroTexto(e.target.value)}
+          placeholder="Buscar por aprendiz o cédula"
+          className={`${inputClass} ml-auto w-48`}
+        />
+        <select
+          value={filtroPrograma}
+          onChange={(e) => setFiltroPrograma(e.target.value)}
+          className={inputClass}
+        >
+          <option value="">Todos los programas</option>
+          {programasDisponibles.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
         <select
           value={filtro}
           onChange={(e) => setFiltro(e.target.value as typeof filtro)}
-          className={`${inputClass} ml-auto`}
+          className={inputClass}
         >
           <option value="PENDIENTES">Pendientes</option>
           <option value="EVALUADAS">Evaluadas</option>

@@ -18,7 +18,7 @@ const CERTIFICACION_SELECT = {
       apellidos: true,
       cedula: true,
       fechaFinEtapaProductiva: true,
-      ficha: { select: { codigo: true } },
+      ficha: { select: { codigo: true, programa: true } },
     },
   },
 } satisfies Prisma.CertificacionEmpresarioSelect;

@@ -24,9 +24,12 @@ type Bitacora = {
     nombres: string;
     apellidos: string;
     cedula: string;
-    ficha: { codigo: string } | null;
+    ficha: { codigo: string; programa: string | null } | null;
   };
 };
+
+const inputClass =
+  "rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950";
 
 function siNo(v: boolean | null): string {
   return v === true ? "Sí" : v === false ? "No" : "Sin definir";
@@ -41,6 +44,8 @@ export function BitacorasPanel() {
   const [filtro, setFiltro] = useState<"TODAS" | "PENDIENTE" | "APROBADA" | "RECHAZADA">(
     "PENDIENTE"
   );
+  const [filtroTexto, setFiltroTexto] = useState("");
+  const [filtroPrograma, setFiltroPrograma] = useState("");
   const [observaciones, setObservaciones] = useState<Record<string, string>>({});
   const [expandidoId, setExpandidoId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -74,7 +79,20 @@ export function BitacorasPanel() {
     RECHAZADA: items.filter((s) => s.estado === "RECHAZADA").length,
   };
 
-  const visibles = items.filter((s) => filtro === "TODAS" || s.estado === filtro);
+  const programasDisponibles = Array.from(
+    new Set(items.map((s) => s.user.ficha?.programa).filter((p): p is string => Boolean(p)))
+  ).sort((a, b) => a.localeCompare(b));
+
+  const visibles = items.filter((s) => {
+    if (filtro !== "TODAS" && s.estado !== filtro) return false;
+    if (filtroPrograma && s.user.ficha?.programa !== filtroPrograma) return false;
+    const texto = filtroTexto.trim().toLowerCase();
+    if (texto) {
+      const nombreCompleto = `${s.user.nombres} ${s.user.apellidos}`.toLowerCase();
+      if (!nombreCompleto.includes(texto) && !s.user.cedula.includes(texto)) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-4">
@@ -83,10 +101,29 @@ export function BitacorasPanel() {
         <StatBadge tono="verde" etiqueta="aprobadas" cantidad={contadores.APROBADA} />
         <StatBadge tono="rojo" etiqueta="rechazadas" cantidad={contadores.RECHAZADA} />
 
+        <input
+          type="text"
+          value={filtroTexto}
+          onChange={(e) => setFiltroTexto(e.target.value)}
+          placeholder="Buscar por aprendiz o cédula"
+          className={`${inputClass} ml-auto w-48`}
+        />
+        <select
+          value={filtroPrograma}
+          onChange={(e) => setFiltroPrograma(e.target.value)}
+          className={inputClass}
+        >
+          <option value="">Todos los programas</option>
+          {programasDisponibles.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
         <select
           value={filtro}
           onChange={(e) => setFiltro(e.target.value as typeof filtro)}
-          className="ml-auto rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+          className={inputClass}
         >
           <option value="PENDIENTE">Pendientes</option>
           <option value="APROBADA">Aprobadas</option>

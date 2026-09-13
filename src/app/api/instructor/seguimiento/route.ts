@@ -22,7 +22,7 @@ export async function GET() {
       fechaInicioEtapaProductiva: true,
       fechaFinEtapaProductiva: true,
       totalBitacoras: true,
-      ficha: { select: { codigo: true, fechaLimiteIniciarEP: true } },
+      ficha: { select: { codigo: true, programa: true, fechaLimiteIniciarEP: true } },
       seleccionesAlternativa: {
         select: { estado: true },
         orderBy: { createdAt: "desc" },
@@ -72,6 +72,7 @@ export async function GET() {
       apellidos: a.apellidos,
       cedula: a.cedula,
       ficha: a.ficha?.codigo ?? null,
+      programa: a.ficha?.programa ?? null,
       estadoAprendiz: a.estado,
       fechaInicioEtapaProductiva: a.fechaInicioEtapaProductiva?.toISOString() ?? null,
       checklist,

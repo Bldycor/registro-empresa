@@ -22,7 +22,13 @@ const BITACORA_SELECT = {
     select: { id: true, descripcion: true, competencias: true, evidenciaCumplimiento: true },
   },
   user: {
-    select: { id: true, nombres: true, apellidos: true, cedula: true, ficha: { select: { codigo: true } } },
+    select: {
+      id: true,
+      nombres: true,
+      apellidos: true,
+      cedula: true,
+      ficha: { select: { codigo: true, programa: true } },
+    },
   },
 } satisfies Prisma.BitacoraSelect;
 

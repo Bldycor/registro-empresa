@@ -21,7 +21,13 @@ const EVALUACION_SELECT = {
     select: { variable: true, categoria: true, valoracion: true, observaciones: true },
   },
   user: {
-    select: { id: true, nombres: true, apellidos: true, cedula: true, ficha: { select: { codigo: true } } },
+    select: {
+      id: true,
+      nombres: true,
+      apellidos: true,
+      cedula: true,
+      ficha: { select: { codigo: true, programa: true } },
+    },
   },
 } satisfies Prisma.EvaluacionSelect;
 
