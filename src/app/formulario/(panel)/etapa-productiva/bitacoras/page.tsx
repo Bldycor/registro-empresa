@@ -97,6 +97,7 @@ async function BitacorasPanelServer({
       fechaInicioEtapaProductiva,
       numero,
       bitacoraInicioTramo,
+      totalBitacoras,
     );
     const previa = !existente ? buscarPrevia(numero) : null;
 

@@ -19,6 +19,11 @@ import type { EstadoEvidencia } from "@/generated/prisma/enums";
 
 export const DIAS_ALERTA_PROXIMA = 5;
 const DIAS_CONCERTACION = 15;
+
+// Número de bitácoras avaladas con el que la evidencia se da por cumplida. Los dos totales
+// válidos son 6 y 12 (ver `TotalBitacorasValues`), y cualquiera de los dos basta: llegar a seis
+// ya cumple, aunque al aprendiz se le hayan planeado doce.
+export const MIN_BITACORAS_CUMPLIMIENTO = 6;
 const DIAS_MOMENTO3_ANTES_DE_CIERRE = 10;
 
 export type EstadoSeguimiento = "completa" | "atrasada" | "proxima" | "pendiente";
@@ -166,10 +171,17 @@ export function calcularSeguimiento(input: {
       if (dias > 0) atrasadas++;
       else if (dias >= -DIAS_ALERTA_PROXIMA) proxima = true;
     });
-    // "completa" solo cuando las 12 quedaron realmente aprobadas — no basta con que ninguna esté
-    // atrasada/próxima todavía (eso es "pendiente", en curso), o el chip nunca reflejaría que el
-    // aprendiz ya terminó bitácoras del todo.
-    const todasAprobadas = aprobadas === input.totalBitacoras;
+    // Cumplimiento de bitácoras: se alcanza con 6 o con 12 (regla institucional), no con el total
+    // exacto planeado. 12 es el estándar de una Etapa Productiva de seis meses y 6 el de una
+    // corta, pero seis bitácoras avaladas ya dan por cumplida la evidencia — por eso el umbral es
+    // el menor entre lo planeado y ese mínimo.
+    //
+    // Antes la condición era `aprobadas === totalBitacoras`, igualdad estricta. Eso tenía dos
+    // efectos malos: un aprendiz que llegaba al mínimo pero no al total seguía sin poder
+    // certificarse, y uno con MÁS bitácoras aprobadas que las planeadas (por ejemplo al corregirle
+    // el total de 12 a 6) tampoco contaba como completo, porque nunca daba la igualdad exacta.
+    const umbralCumplimiento = Math.min(input.totalBitacoras, MIN_BITACORAS_CUMPLIMIENTO);
+    const todasAprobadas = aprobadas >= umbralCumplimiento;
     const estado: EstadoSeguimiento = todasAprobadas
       ? "completa"
       : atrasadas > 0
@@ -177,8 +189,12 @@ export function calcularSeguimiento(input: {
         : proxima
           ? "proxima"
           : "pendiente";
+    // Cuando cumple con menos de las planeadas se dice explícitamente cuántas lleva: "Al día" a
+    // secas haría pensar que entregó las doce, y el instructor necesita ver la diferencia.
     const detalle = todasAprobadas
-      ? "Al día"
+      ? aprobadas < input.totalBitacoras
+        ? `${aprobadas} de ${input.totalBitacoras} — cumple el mínimo`
+        : "Al día"
       : atrasadas > 0
         ? `${atrasadas} bitácora${atrasadas === 1 ? "" : "s"} atrasada${atrasadas === 1 ? "" : "s"}`
         : proxima
@@ -190,7 +206,9 @@ export function calcularSeguimiento(input: {
       estado,
       detalle,
       href: "/formulario/instructor/bitacoras",
-      cantidadAtrasada: atrasadas,
+      // Ya cumplida la evidencia, los cupos que quedaron sin entregar dejan de ser una deuda: no
+      // deben seguir sumando a la insignia roja del nav ni al conteo de atrasos del instructor.
+      cantidadAtrasada: todasAprobadas ? 0 : atrasadas,
     };
   }
 
