@@ -30,7 +30,7 @@ export async function GET() {
         take: 1,
       },
       formalizacionEtapaProductiva: { select: { estado: true } },
-      concertacionFuncion: { select: { fecha: true } },
+      concertacionFuncion: { select: { estado: true } },
       bitacoras: { select: { numero: true, estado: true } },
       evaluaciones: {
         where: { numero: { in: [2, 3] }, esExtraordinario: false },
@@ -51,7 +51,7 @@ export async function GET() {
       fechaLimiteIniciarEPFicha: a.ficha?.fechaLimiteIniciarEP ?? null,
       alternativaAprobada: a.seleccionesAlternativa[0]?.estado === "APROBADA",
       formalizacionAprobada: a.formalizacionEtapaProductiva?.estado === "APROBADA",
-      concertacionFecha: a.concertacionFuncion?.fecha ?? null,
+      concertacionAprobada: a.concertacionFuncion?.estado === "APROBADA",
       bitacoras: a.bitacoras,
       totalBitacoras: a.totalBitacoras,
       bitacoraInicioTramo: a.bitacoraInicioTramo,

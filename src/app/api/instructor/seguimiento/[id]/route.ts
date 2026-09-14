@@ -44,7 +44,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         take: 1,
       },
       formalizacionEtapaProductiva: { select: { estado: true } },
-      concertacionFuncion: { select: { fecha: true } },
+      concertacionFuncion: { select: { estado: true } },
       bitacoras: { select: { numero: true, estado: true } },
       evaluaciones: {
         where: { numero: { in: [2, 3] }, esExtraordinario: false },
@@ -113,7 +113,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     fechaLimiteIniciarEPFicha: aprendiz.ficha?.fechaLimiteIniciarEP ?? null,
     alternativaAprobada: aprendiz.seleccionesAlternativa[0]?.estado === "APROBADA",
     formalizacionAprobada: aprendiz.formalizacionEtapaProductiva?.estado === "APROBADA",
-    concertacionFecha: aprendiz.concertacionFuncion?.fecha ?? null,
+    concertacionAprobada: aprendiz.concertacionFuncion?.estado === "APROBADA",
     bitacoras: aprendiz.bitacoras,
     totalBitacoras: aprendiz.totalBitacoras,
     bitacoraInicioTramo: aprendiz.bitacoraInicioTramo,

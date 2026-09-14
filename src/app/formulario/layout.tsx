@@ -77,7 +77,7 @@ export default async function FormularioLayout({
                 ficha: { select: { fechaLimiteIniciarEP: true } },
                 seleccionesAlternativa: { select: { estado: true }, orderBy: { createdAt: "desc" }, take: 1 },
                 formalizacionEtapaProductiva: { select: { estado: true } },
-                concertacionFuncion: { select: { fecha: true } },
+                concertacionFuncion: { select: { estado: true } },
                 bitacoras: { select: { numero: true, estado: true } },
                 evaluaciones: {
                   where: { numero: { in: [2, 3] }, esExtraordinario: false },
@@ -96,7 +96,7 @@ export default async function FormularioLayout({
                 fechaLimiteIniciarEPFicha: aprendiz.ficha?.fechaLimiteIniciarEP ?? null,
                 alternativaAprobada: aprendiz.seleccionesAlternativa[0]?.estado === "APROBADA",
                 formalizacionAprobada: aprendiz.formalizacionEtapaProductiva?.estado === "APROBADA",
-                concertacionFecha: aprendiz.concertacionFuncion?.fecha ?? null,
+                concertacionAprobada: aprendiz.concertacionFuncion?.estado === "APROBADA",
                 bitacoras: aprendiz.bitacoras,
                 totalBitacoras: aprendiz.totalBitacoras,
                 bitacoraInicioTramo: aprendiz.bitacoraInicioTramo,

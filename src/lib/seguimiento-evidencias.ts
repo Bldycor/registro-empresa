@@ -85,10 +85,13 @@ export function calcularSeguimiento(input: {
   fechaLimiteIniciarEPFicha: Date | null;
   alternativaAprobada: boolean;
   formalizacionAprobada: boolean;
-  // Fecha de la reunión de Concertación ya agendada (null si no se ha agendado) — no basta con
-  // que exista el registro: si se agendó después del plazo (15 días desde el inicio de EP),
-  // sigue contando como atrasada, solo que ya fue resuelta tarde.
-  concertacionFecha: Date | null;
+  // Momento 1 ya valorado y avalado por el instructor. Antes esto se deducía de la puntualidad
+  // (si la reunión se agendó dentro de los 15 días del inicio), pero eso dejaba la evidencia
+  // "atrasada" para siempre a quien la hizo tarde: por completa que estuviera, nunca podía
+  // llegar a "Por certificar". El retraso queda registrado en la fecha de la propia evidencia;
+  // no tiene por qué convertirse en una deuda perpetua. Reportado en producción con un aprendiz
+  // que tenía las seis evidencias avaladas y aun así aparecía con una evaluación pendiente.
+  concertacionAprobada: boolean;
   bitacoras: { numero: number; estado: EstadoEvidencia }[];
   // 6 o 12 (ver User.totalBitacoras) — varía por aprendiz, no siempre son 12.
   totalBitacoras: number;
@@ -118,15 +121,12 @@ export function calcularSeguimiento(input: {
   const refConcertacion = fechaInicioEP
     ? new Date(fechaInicioEP.getTime() + DIAS_CONCERTACION * 86400000)
     : null;
-  // "Completa" solo si además se agendó a tiempo — un registro que existe pero se agendó
-  // después del plazo sigue contando como atrasada (se resolvió tarde, no a tiempo).
-  const concertacionATiempo = input.concertacionFecha
-    ? !refConcertacion || input.concertacionFecha.getTime() <= refConcertacion.getTime()
-    : false;
+  // Mismo criterio que las demás evidencias: completa cuando está avalada. Mientras no lo esté,
+  // la referencia son los 15 días de §9.2 para decidir si va atrasada, próxima o a tiempo.
   const concertacion = estadoPorFecha({
     hoy,
     referencia: refConcertacion,
-    completa: concertacionATiempo,
+    completa: input.concertacionAprobada,
   });
 
   // Bitácoras: no es un único punto — se cuentan cuántas de las 12 ya vencieron sin quedar
