@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { StatBadge } from "@/components/stat-badge";
+import { PlazoBadge } from "@/components/plazo-badge";
 import { nivelRiesgoARLLabel, type NivelRiesgoARLValue } from "@/lib/validations";
 
 type Bitacora = {
@@ -171,7 +172,12 @@ export function BitacorasPanel() {
                       </a>
                     )}
                   </div>
-                  <EstadoBadge estado={b.estado} />
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                    {/* La antigüedad corre desde que el aprendiz la entregó: es lo que el
+                        instructor lleva sin revisar, no lo que el aprendiz lleva sin enviar. */}
+                    {b.estado === "PENDIENTE" && <PlazoBadge desde={b.fechaEntrega} />}
+                    <EstadoBadge estado={b.estado} />
+                  </div>
                 </div>
 
                 <button

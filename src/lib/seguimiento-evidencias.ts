@@ -9,15 +9,16 @@
 //   2. Concertación (Momento 1): 15 días después de iniciar.
 //   3. Bitácoras: cada 15 días, 12 en total por defecto — 6 si la Etapa Productiva es corta (ver
 //      User.totalBitacoras; el cálculo de fechas está en src/lib/bitacora-fechas.ts).
-//   4. Evaluaciones: Momento 2 a los ~2 meses (60 días); Momento 3, 10-15 días antes del cierre.
+//   4. Evaluaciones: Momento 2 al 50% del tiempo planeado (guía GFPI-G-040 §9.2); Momento 3,
+//      10-15 días antes del cierre.
 //   5. Certificación del empresario: hasta la fecha de fin de la Etapa Productiva.
 
 import { calcularSlotsBitacoras } from "@/lib/bitacora-fechas";
+import { detalleDetencionPlazos } from "@/lib/validations";
 import type { EstadoEvidencia } from "@/generated/prisma/enums";
 
 export const DIAS_ALERTA_PROXIMA = 5;
 const DIAS_CONCERTACION = 15;
-const DIAS_MOMENTO2 = 60;
 const DIAS_MOMENTO3_ANTES_DE_CIERRE = 10;
 
 export type EstadoSeguimiento = "completa" | "atrasada" | "proxima" | "pendiente";
@@ -41,6 +42,22 @@ export type ChecklistItem = {
 
 function diffDias(desde: Date, hasta: Date): number {
   return Math.round((hasta.getTime() - desde.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+// Momento 2 (Seguimiento): la guía GFPI-G-040 §9.2 lo ubica "al 50% del tiempo planeado", no en
+// un día fijo. Mientras toda Etapa Productiva duraba seis meses, 60 días era una aproximación
+// razonable a esa mitad; dejó de serlo cuando un tramo puede durar menos —el aprendiz que retoma
+// tras interrumpir solo cumple el tiempo que le faltaba (ver `diasPendientesEtapaProductiva`)—,
+// porque el día 60 de un tramo de 75 cae casi en el cierre. Se conserva el valor fijo solo como
+// respaldo para cuando todavía no hay fecha fin definida.
+export const DIAS_MOMENTO2_SIN_FECHA_FIN = 60;
+
+function fechaMomento2(fechaInicioEP: Date | null, fechaFinEP: Date | null): Date | null {
+  if (!fechaInicioEP) return null;
+  if (!fechaFinEP || fechaFinEP.getTime() <= fechaInicioEP.getTime()) {
+    return new Date(fechaInicioEP.getTime() + DIAS_MOMENTO2_SIN_FECHA_FIN * 86400000);
+  }
+  return new Date((fechaInicioEP.getTime() + fechaFinEP.getTime()) / 2);
 }
 
 // Un solo punto con fecha límite (Alternativa, Formalización, Concertación, Certificación):
@@ -77,9 +94,9 @@ export function calcularSeguimiento(input: {
   totalBitacoras: number;
   // Número de bitácora con el que arranca el tramo vigente (1 si nunca interrumpió su EP).
   bitacoraInicioTramo?: number;
-  // El aprendiz interrumpió su práctica y aún no tiene alternativa nueva avalada: el reloj de
-  // plazos está detenido (guía GFPI-G-040 §9.3), así que no se le cuentan atrasos.
-  practicaInterrumpida?: boolean;
+  // Estado del aprendiz (`EstadoAprendiz`). Interesa solo para saber si su reloj de plazos está
+  // detenido — interrumpió, está aplazado o desertó (ver `detalleDetencionPlazos`).
+  estadoAprendiz?: string;
   evaluacion2Aprobada: boolean;
   evaluacion3Aprobada: boolean;
   certificacionAprobada: boolean;
@@ -177,7 +194,7 @@ export function calcularSeguimiento(input: {
     };
   }
 
-  const refMomento2 = fechaInicioEP ? new Date(fechaInicioEP.getTime() + DIAS_MOMENTO2 * 86400000) : null;
+  const refMomento2 = fechaMomento2(fechaInicioEP, fechaFinEP);
   const momento2 = estadoPorFecha({ hoy, referencia: refMomento2, completa: input.evaluacion2Aprobada });
 
   const refMomento3 = fechaFinEP
@@ -221,19 +238,22 @@ export function calcularSeguimiento(input: {
     return `A tiempo · vence en ${item.dias}d`;
   }
 
-  // Con la práctica interrumpida el reloj de plazos está detenido: lo que aún no está avalado
-  // queda "pendiente" (no atrasado) hasta que Coordinación avale la nueva alternativa y arranque
-  // el tramo siguiente. Lo ya cumplido se conserva como completo.
-  function conPracticaDetenida(items: ChecklistItem[]): ChecklistItem[] {
-    if (!input.practicaInterrumpida) return items;
+  // Con el reloj de plazos detenido (interrupción, aplazamiento o deserción) lo que aún no está
+  // avalado queda "pendiente" (no atrasado): el aprendiz no tiene cómo entregarlo hasta que
+  // arranque el tramo siguiente, o ya salió del proceso. Lo ya cumplido se conserva como
+  // completo — el histórico no se borra.
+  function conPlazosDetenidos(items: ChecklistItem[]): ChecklistItem[] {
+    const detalle =
+      detalleDetencionPlazos[input.estadoAprendiz as keyof typeof detalleDetencionPlazos];
+    if (!detalle) return items;
     return items.map((item) =>
       item.estado === "completa"
         ? item
-        : { ...item, estado: "pendiente", detalle: "Práctica interrumpida", cantidadAtrasada: 0 },
+        : { ...item, estado: "pendiente", detalle, cantidadAtrasada: 0 },
     );
   }
 
-  return conPracticaDetenida([
+  return conPlazosDetenidos([
     {
       clave: "alternativa",
       etiqueta: "Alternativa EP",

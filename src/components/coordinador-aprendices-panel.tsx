@@ -50,6 +50,14 @@ type Aprendiz = {
   fechaInicioEtapaProductiva: string | null;
   fechaFinEtapaProductiva: string | null;
   totalBitacoras: number;
+  fechaNacimiento: string | null;
+  rapsEtapaLectivaAprobados: boolean | null;
+  autorizacionMinTrabajoUrl: string | null;
+  fechaDesercion: string | null;
+  motivoDesercion: string | null;
+  // Lo calcula el endpoint al leer, no está guardado: es una señal para Coordinación, no un
+  // estado del aprendiz. Ver src/lib/desercion.ts.
+  riesgoDesercion?: { enRiesgo: boolean; causa: string | null };
   ficha: FichaConInstructor | null;
 };
 
@@ -67,6 +75,11 @@ type GestionForm = {
   fechaInicioEtapaProductiva: string;
   fechaFinEtapaProductiva: string;
   totalBitacoras: number;
+  fechaNacimiento: string;
+  // "" = sin verificar, "true"/"false" = verificado. Se guarda como string porque viene de un
+  // <select> de tres opciones, y `null` es un valor con significado propio en §9.1.1.
+  rapsEtapaLectivaAprobados: string;
+  autorizacionMinTrabajoUrl: string;
 };
 
 const inputClass =
@@ -87,6 +100,12 @@ function gestionVaciaDe(aprendiz: Aprendiz): GestionForm {
     fechaInicioEtapaProductiva: aprendiz.fechaInicioEtapaProductiva?.slice(0, 10) ?? "",
     fechaFinEtapaProductiva: aprendiz.fechaFinEtapaProductiva?.slice(0, 10) ?? "",
     totalBitacoras: aprendiz.totalBitacoras,
+    fechaNacimiento: aprendiz.fechaNacimiento?.slice(0, 10) ?? "",
+    rapsEtapaLectivaAprobados:
+      aprendiz.rapsEtapaLectivaAprobados === null || aprendiz.rapsEtapaLectivaAprobados === undefined
+        ? ""
+        : String(aprendiz.rapsEtapaLectivaAprobados),
+    autorizacionMinTrabajoUrl: aprendiz.autorizacionMinTrabajoUrl ?? "",
   };
 }
 
@@ -112,6 +131,14 @@ export function CoordinadorAprendicesPanel({
   const [gestionForm, setGestionForm] = useState<GestionForm | null>(null);
   const [gestionLoading, setGestionLoading] = useState(false);
   const [gestionError, setGestionError] = useState<string | null>(null);
+
+  // Declaración de deserción (guía GFPI-G-040 §9.1.1): es un acto administrativo, así que pasa
+  // por su propio diálogo con causa obligatoria y por su propio endpoint — nunca por el selector
+  // de estado con el que se corrige un correo.
+  const [desercionId, setDesercionId] = useState<string | null>(null);
+  const [desercionMotivo, setDesercionMotivo] = useState("");
+  const [desercionLoading, setDesercionLoading] = useState(false);
+  const [desercionError, setDesercionError] = useState<string | null>(null);
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -194,6 +221,12 @@ export function CoordinadorAprendicesPanel({
         fechaInicioEtapaProductiva: gestionForm.fechaInicioEtapaProductiva || null,
         fechaFinEtapaProductiva: gestionForm.fechaFinEtapaProductiva || null,
         totalBitacoras: gestionForm.totalBitacoras,
+        fechaNacimiento: gestionForm.fechaNacimiento || null,
+        rapsEtapaLectivaAprobados:
+          gestionForm.rapsEtapaLectivaAprobados === ""
+            ? null
+            : gestionForm.rapsEtapaLectivaAprobados === "true",
+        autorizacionMinTrabajoUrl: gestionForm.autorizacionMinTrabajoUrl || null,
       }),
     });
 
@@ -217,6 +250,40 @@ export function CoordinadorAprendicesPanel({
         .sort((a, b) => a.nombres.localeCompare(b.nombres))
     );
     cancelEdit();
+  }
+
+  async function guardarDesercion(aprendizId: string, desertor: boolean, motivo?: string) {
+    setDesercionLoading(true);
+    setDesercionError(null);
+
+    const res = await fetch(`/api/coordinador/aprendices/${aprendizId}/desercion`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ desertor, motivoDesercion: motivo ?? null }),
+    });
+    const data = await res.json();
+    setDesercionLoading(false);
+
+    if (!res.ok) {
+      const primerError =
+        typeof data.error === "string"
+          ? data.error
+          : Object.values(data.error ?? {})
+              .flat()
+              .find((m): m is string => typeof m === "string");
+      setDesercionError(primerError ?? "No se pudo guardar.");
+      return;
+    }
+
+    setAprendices((prev) =>
+      prev.map((a) => (a.id === aprendizId ? { ...a, ...data.aprendiz, riesgoDesercion: a.riesgoDesercion } : a)),
+    );
+    setDesercionId(null);
+    setDesercionMotivo("");
+  }
+
+  function revertirDesercion(aprendizId: string) {
+    void guardarDesercion(aprendizId, false);
   }
 
   function askDelete(aprendizId: string) {
@@ -537,6 +604,14 @@ export function CoordinadorAprendicesPanel({
                             Sin ficha asignada
                           </span>
                         )}
+                        {aprendiz.riesgoDesercion?.enRiesgo && (
+                          <span
+                            title={aprendiz.riesgoDesercion.causa ?? undefined}
+                            className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                          >
+                            Riesgo de deserción
+                          </span>
+                        )}
                         {aprendiz.alternativaEtapaProductiva && (
                           <span className="rounded-full border border-zinc-200 px-2 py-0.5 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
                             {alternativaEtapaProductivaLabel[aprendiz.alternativaEtapaProductiva]}
@@ -564,6 +639,25 @@ export function CoordinadorAprendicesPanel({
                         >
                           {isEditing ? "Cancelar" : "Editar datos"}
                         </button>
+                        {aprendiz.estado === "DESERTADO" ? (
+                          <button
+                            type="button"
+                            onClick={() => revertirDesercion(aprendiz.id)}
+                            className="text-xs font-medium text-zinc-600 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                          >
+                            Revertir deserción
+                          </button>
+                        ) : (
+                          aprendiz.estado !== "CERTIFICADO" && (
+                            <button
+                              type="button"
+                              onClick={() => setDesercionId(aprendiz.id)}
+                              className="text-xs font-medium text-amber-700 underline hover:text-amber-900 dark:text-amber-500"
+                            >
+                              Declarar deserción
+                            </button>
+                          )
+                        )}
                         <button
                           type="button"
                           onClick={() => askDelete(aprendiz.id)}
@@ -727,6 +821,49 @@ export function CoordinadorAprendicesPanel({
                         </label>
                       </div>
 
+                      <div className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                          Requisitos para avalar la Etapa Productiva
+                        </p>
+                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                          Guía GFPI-G-040 §9.1.1. Si falta alguno, la alternativa se puede avalar de
+                          todas formas, pero hay que dejar escrito por qué.
+                        </p>
+                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
+                            Resultados de aprendizaje de la etapa lectiva
+                            <select
+                              value={gestionForm.rapsEtapaLectivaAprobados}
+                              onChange={(e) =>
+                                updateGestion("rapsEtapaLectivaAprobados", e.target.value)
+                              }
+                              className={inputClass}
+                            >
+                              <option value="">Sin verificar</option>
+                              <option value="true">Aprobados al 100%</option>
+                              <option value="false">Tiene pendientes</option>
+                            </select>
+                          </label>
+                          <DatePickerField
+                            label="Fecha de nacimiento"
+                            labelClassName="text-xs text-zinc-600 dark:text-zinc-400"
+                            value={gestionForm.fechaNacimiento}
+                            onChange={(v) => updateGestion("fechaNacimiento", v)}
+                          />
+                        </div>
+                        <label className="mt-3 flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
+                          Autorización de MinTrabajo (GFPI-F-203) — solo si era menor al iniciar
+                          <input
+                            value={gestionForm.autorizacionMinTrabajoUrl}
+                            onChange={(e) =>
+                              updateGestion("autorizacionMinTrabajoUrl", e.target.value)
+                            }
+                            placeholder="Enlace al documento"
+                            className={inputClass}
+                          />
+                        </label>
+                      </div>
+
                       {gestionError && <p className="text-sm text-red-600">{gestionError}</p>}
 
                       <div className="flex gap-2">
@@ -741,6 +878,54 @@ export function CoordinadorAprendicesPanel({
                         <button
                           type="button"
                           onClick={cancelEdit}
+                          className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {desercionId === aprendiz.id && (
+                    <div className="space-y-3 border-y border-amber-200 bg-amber-50 px-6 py-4 dark:border-amber-900 dark:bg-amber-950/30">
+                      <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                        Declarar en deserción a {aprendiz.nombres} {aprendiz.apellidos}
+                      </p>
+                      <p className="text-xs text-amber-800 dark:text-amber-400">
+                        Su proceso queda cerrado y deja de acumular evidencias atrasadas. No se
+                        borra nada: si fue un error, la deserción se revierte y vuelve donde estaba.
+                      </p>
+                      {aprendiz.riesgoDesercion?.causa && (
+                        <p className="rounded-md bg-white px-3 py-2 text-xs text-amber-900 dark:bg-zinc-900 dark:text-amber-300">
+                          Causa detectada por el sistema: {aprendiz.riesgoDesercion.causa}
+                        </p>
+                      )}
+                      <textarea
+                        value={desercionMotivo}
+                        onChange={(e) => setDesercionMotivo(e.target.value)}
+                        rows={2}
+                        placeholder="Causa de la deserción (queda como constancia)"
+                        className={inputClass}
+                      />
+                      {desercionError && (
+                        <p className="text-sm text-red-700 dark:text-red-400">{desercionError}</p>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={desercionLoading}
+                          onClick={() => guardarDesercion(aprendiz.id, true, desercionMotivo)}
+                          className="rounded-md bg-amber-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-800 disabled:opacity-50"
+                        >
+                          {desercionLoading ? "Guardando..." : "Declarar deserción"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDesercionId(null);
+                            setDesercionMotivo("");
+                            setDesercionError(null);
+                          }}
                           className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
                         >
                           Cancelar

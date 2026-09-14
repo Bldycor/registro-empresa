@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { StatBadge } from "@/components/stat-badge";
+import { PlazoBadge } from "@/components/plazo-badge";
 
 type Certificacion = {
   id: string;
@@ -153,7 +154,10 @@ export function CertificacionPanel() {
                     </a>
                   )}
                 </div>
-                <EstadoBadge estado={s.estado} />
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                  {s.estado === "PENDIENTE" && <PlazoBadge desde={s.createdAt} />}
+                  <EstadoBadge estado={s.estado} />
+                </div>
               </div>
 
               {s.estado === "PENDIENTE" && (

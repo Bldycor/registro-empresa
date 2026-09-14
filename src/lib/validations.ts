@@ -318,6 +318,94 @@ export const AvalInterrupcionEPSchema = z.object({
   observacionesAval: z.string().trim().nullable().optional(),
 });
 
+// Novedades que suspenden temporalmente la Etapa Productiva sin terminarla (guía GFPI-G-040
+// §9.3). Distintas de las de interrupción: aquí el aprendiz vuelve con la misma alternativa.
+export const MotivoAplazamientoEPValues = [
+  "LICENCIA_MATERNIDAD",
+  "INCAPACIDAD_MEDICA",
+  "VACACIONES_COLECTIVAS",
+  "CESE_ACTIVIDAD_EMPRESA",
+  "FUERZA_MAYOR",
+  "OTRO",
+] as const;
+export type MotivoAplazamientoEPValue = (typeof MotivoAplazamientoEPValues)[number];
+
+export const motivoAplazamientoEPLabel: Record<MotivoAplazamientoEPValue, string> = {
+  LICENCIA_MATERNIDAD: "Licencia de maternidad",
+  INCAPACIDAD_MEDICA: "Incapacidad médica",
+  VACACIONES_COLECTIVAS: "Vacaciones colectivas de la empresa",
+  CESE_ACTIVIDAD_EMPRESA: "Cese de actividad de la empresa",
+  FUERZA_MAYOR: "Caso fortuito o fuerza mayor",
+  OTRO: "Otra novedad",
+};
+
+// Solicitud de aplazamiento radicada por el aprendiz.
+export const AplazamientoEPSchema = z
+  .object({
+    fechaSuspension: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Selecciona el último día de práctica antes de la novedad."),
+    fechaReanudacionPrevista: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Selecciona la fecha prevista de reanudación."),
+    motivo: z.enum(MotivoAplazamientoEPValues, { message: "Selecciona el motivo." }),
+    motivoDetalle: z.string().trim().max(500).nullable().optional(),
+    soporteUrl: z.string().trim().nullable().optional(),
+  })
+  .refine((d) => d.fechaReanudacionPrevista > d.fechaSuspension, {
+    message: "La reanudación debe ser posterior al último día de práctica.",
+    path: ["fechaReanudacionPrevista"],
+  })
+  .refine((d) => d.motivo !== "OTRO" || Boolean(d.motivoDetalle?.trim()), {
+    message: "Describe la novedad.",
+    path: ["motivoDetalle"],
+  });
+
+export type AplazamientoEPInput = z.infer<typeof AplazamientoEPSchema>;
+
+// Aval del Comité de Evaluación y Seguimiento. El acta es obligatoria al aprobar: el Comité es un
+// cuerpo colegiado y quien registra el aval en SEPA solo está transcribiendo su decisión, así que
+// sin número y fecha de acta el aplazamiento no tiene soporte institucional (§9.3).
+export const AvalAplazamientoEPSchema = z
+  .object({
+    estado: z.enum(["APROBADA", "RECHAZADA"]),
+    diasEjecutados: z.number().int().min(0).max(400).optional(),
+    observacionesAval: z.string().trim().nullable().optional(),
+    actaComite: z.string().trim().max(120).nullable().optional(),
+    fechaActaComite: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Selecciona la fecha del acta.")
+      .nullable()
+      .optional(),
+  })
+  .refine((d) => d.estado !== "APROBADA" || Boolean(d.actaComite?.trim()), {
+    message: "Registra el acta del Comité que autoriza el aplazamiento.",
+    path: ["actaComite"],
+  })
+  .refine((d) => d.estado !== "APROBADA" || Boolean(d.fechaActaComite), {
+    message: "Registra la fecha del acta del Comité.",
+    path: ["fechaActaComite"],
+  });
+
+// Registro de la reanudación: el aprendiz vuelve y arranca el tramo por el tiempo que le faltaba.
+export const ReanudacionEPSchema = z.object({
+  fechaReanudacionReal: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Selecciona la fecha real de reanudación."),
+});
+
+// Declaración (o reversión) de deserción por Coordinación — guía GFPI-G-040 §9.1.1. El motivo es
+// obligatorio al declararla: queda como constancia del acto administrativo.
+export const DesercionSchema = z
+  .object({
+    desertor: z.boolean(),
+    motivoDesercion: z.string().trim().max(500).nullable().optional(),
+  })
+  .refine((d) => !d.desertor || Boolean(d.motivoDesercion?.trim()), {
+    message: "Indica la causa de la deserción.",
+    path: ["motivoDesercion"],
+  });
+
 // Evidencia (a): Selección/Modificación de Alternativa de Etapa Productiva (formato GFPI-F-165),
 // modo individual — el propio aprendiz la diligencia desde su panel.
 export const SeleccionAlternativaSchema = z
@@ -374,16 +462,30 @@ export type SeleccionAlternativaGrupalInput = z.infer<typeof SeleccionAlternativ
 export const EstadoAprendizValues = [
   "ACTIVO",
   "PRACTICA_INTERRUMPIDA",
+  "APLAZADA",
   "POR_CERTIFICAR",
   "CERTIFICADO",
+  "DESERTADO",
 ] as const;
 export type EstadoAprendizValue = (typeof EstadoAprendizValues)[number];
 
 export const estadoAprendizLabel: Record<EstadoAprendizValue, string> = {
   ACTIVO: "Activo",
   PRACTICA_INTERRUMPIDA: "Práctica interrumpida",
+  APLAZADA: "Práctica aplazada",
   POR_CERTIFICAR: "Por certificar",
   CERTIFICADO: "Certificado",
+  DESERTADO: "Desertó",
+};
+
+// Estados en los que el reloj de plazos del aprendiz está detenido: no se le cuentan evidencias
+// atrasadas porque no tiene cómo entregarlas — está esperando una alternativa nueva o el fin de
+// una novedad (guía GFPI-G-040 §9.3), o ya salió del proceso. Un solo punto de verdad para que el
+// semáforo, las insignias del nav y los paneles no se contradigan entre sí.
+export const detalleDetencionPlazos: Partial<Record<EstadoAprendizValue, string>> = {
+  PRACTICA_INTERRUMPIDA: "Práctica interrumpida",
+  APLAZADA: "Práctica aplazada",
+  DESERTADO: "Desertó del proceso",
 };
 
 // Fecha "YYYY-MM-DD" (formato que ya usa DatePickerField), opcional/nullable: se puede dejar sin
@@ -422,6 +524,11 @@ export const AprendizGestionSchema = z
     fechaInicioEtapaProductiva: fechaEtapaProductivaOpcional,
     fechaFinEtapaProductiva: fechaEtapaProductivaOpcional,
     totalBitacoras: totalBitacorasOpcional,
+    // Requisitos de aval de §9.1.1 que verifica Coordinación. `rapsEtapaLectivaAprobados` admite
+    // null a propósito: "sin verificar" no es lo mismo que "no cumple".
+    fechaNacimiento: fechaEtapaProductivaOpcional,
+    rapsEtapaLectivaAprobados: z.boolean().nullable().optional(),
+    autorizacionMinTrabajoUrl: z.string().trim().nullable().optional(),
   })
   .refine(
     (data) =>

@@ -56,6 +56,7 @@ export async function POST(request: Request) {
       alternativaEtapaProductiva: true,
       fechaInicioEtapaProductiva: true,
       interrupcionesEP: { where: { estado: "PENDIENTE" }, select: { id: true }, take: 1 },
+      aplazamientosEP: { where: { estado: "PENDIENTE" }, select: { id: true }, take: 1 },
     },
   });
 
@@ -74,6 +75,26 @@ export async function POST(request: Request) {
   if (aprendiz.estado === "CERTIFICADO") {
     return NextResponse.json(
       { error: { _root: ["Tu proceso ya fue certificado."] } },
+      { status: 409 },
+    );
+  }
+  if (aprendiz.estado === "DESERTADO") {
+    return NextResponse.json(
+      { error: { _root: ["Tu proceso está cerrado por deserción. Consulta con tu Coordinación Académica."] } },
+      { status: 409 },
+    );
+  }
+  // Aplazar e interrumpir son decisiones excluyentes sobre el mismo tramo: si las dos llegaran a
+  // avalarse, los días cumplidos se contarían dos veces.
+  if (aprendiz.aplazamientosEP.length > 0) {
+    return NextResponse.json(
+      {
+        error: {
+          _root: [
+            "Ya tienes una solicitud de aplazamiento pendiente de autorización del Comité. Espera la respuesta antes de reportar una interrupción.",
+          ],
+        },
+      },
       { status: 409 },
     );
   }

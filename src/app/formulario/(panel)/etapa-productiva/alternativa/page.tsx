@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-guards";
 import { SeleccionAlternativaForm } from "@/components/seleccion-alternativa-form";
 import { InterrupcionEPForm } from "@/components/interrupcion-ep-form";
+import { AplazamientoEPForm } from "@/components/aplazamiento-ep-form";
 import { comunaLabel, alternativaEtapaProductivaLabel } from "@/lib/validations";
 import { diasPendientesEtapaProductiva } from "@/lib/etapa-productiva-fechas";
 
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function AlternativaPage() {
   const currentUser = await requireUser(["APRENDIZ"]);
 
-  const [user, selecciones, interrupciones] = await Promise.all([
+  const [user, selecciones, interrupciones, aplazamientos] = await Promise.all([
     prisma.user.findUnique({
       where: { id: currentUser.id },
       select: {
@@ -53,6 +54,22 @@ export default async function AlternativaPage() {
         motivoDetalle: true,
         estado: true,
         observacionesAval: true,
+      },
+    }),
+    prisma.aplazamientoEtapaProductiva.findMany({
+      where: { userId: currentUser.id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        fechaSuspension: true,
+        fechaReanudacionPrevista: true,
+        fechaReanudacionReal: true,
+        diasEjecutados: true,
+        motivo: true,
+        motivoDetalle: true,
+        estado: true,
+        observacionesAval: true,
+        actaComite: true,
       },
     }),
   ]);
@@ -124,6 +141,18 @@ export default async function AlternativaPage() {
         historial={interrupciones.map((i) => ({
           ...i,
           fechaInterrupcion: i.fechaInterrupcion.toISOString(),
+        }))}
+      />
+
+      <AplazamientoEPForm
+        puedeAplazar={Boolean(user.alternativaEtapaProductiva && user.fechaInicioEtapaProductiva)}
+        practicaAplazada={user.estado === "APLAZADA"}
+        fechaInicioEP={user.fechaInicioEtapaProductiva?.toISOString().slice(0, 10) ?? null}
+        historial={aplazamientos.map((a) => ({
+          ...a,
+          fechaSuspension: a.fechaSuspension.toISOString(),
+          fechaReanudacionPrevista: a.fechaReanudacionPrevista.toISOString(),
+          fechaReanudacionReal: a.fechaReanudacionReal?.toISOString() ?? null,
         }))}
       />
 

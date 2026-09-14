@@ -29,12 +29,24 @@ enum EstadoAprendiz {
   // retomarla. El tiempo ya cumplido queda acumulado en `diasEjecutadosPrevios` y se descuenta
   // del tramo siguiente — ver `InterrupcionEtapaProductiva` y la guía GFPI-G-040 §7 y §9.3.
   PRACTICA_INTERRUMPIDA
+  // Novedad que SUSPENDE la práctica sin terminarla: licencia de maternidad, incapacidad,
+  // vacaciones colectivas, cese de actividad de la empresa o fuerza mayor (guía GFPI-G-040 §9.3).
+  // A diferencia de PRACTICA_INTERRUMPIDA, el aprendiz vuelve con la MISMA alternativa, así que
+  // no necesita un GFPI-F-165 nuevo: al reanudar se le abre otro tramo por el tiempo que le
+  // faltaba. Lo aprueba el Comité de Evaluación y Seguimiento — ver `AplazamientoEtapaProductiva`.
+  APLAZADA
   // El instructor lo marca así uno a uno (ver checklist de Seguimiento), solo cuando las 6
   // evidencias de Etapa Productiva ya quedaron avaladas/aprobadas — dispara el correo con la
   // ficha de requisitos institucionales de certificación. Coordinación lo revisa y hace el paso
   // final a CERTIFICADO.
   POR_CERTIFICAR
   CERTIFICADO
+  // Declaración institucional de que el aprendiz abandonó el proceso (guía GFPI-G-040 §9.1.1):
+  // no presentó la planeación antes de la fecha fin de su grupo, o interrumpió la práctica y no
+  // consiguió alternativa nueva avalada dentro del período de ejecución. El sistema NUNCA lo
+  // declara solo: señala el riesgo (ver src/lib/desercion.ts) y Coordinación decide, porque es
+  // un acto administrativo con consecuencias para el aprendiz.
+  DESERTADO
 }
 
 // Modalidad ("alternativa") bajo la cual el aprendiz cursa su Etapa Productiva. Se elige/edita
@@ -235,6 +247,17 @@ enum ValoracionVariable {
 // ejecutando. Los seis primeros son las causales que la guía GFPI-G-040 §9.3.1 nombra
 // explícitamente como justificadas para avalar un cambio de alternativa; los tres siguientes
 // son las novedades de §9.3 que suspenden temporalmente la ejecución.
+// Novedades que SUSPENDEN temporalmente la Etapa Productiva sin terminarla (guía GFPI-G-040
+// §9.3). El aprendiz reanuda con la misma alternativa; lo que cambia son las fechas del plan.
+enum MotivoAplazamientoEP {
+  LICENCIA_MATERNIDAD
+  INCAPACIDAD_MEDICA
+  VACACIONES_COLECTIVAS
+  CESE_ACTIVIDAD_EMPRESA
+  FUERZA_MAYOR
+  OTRO
+}
+
 enum MotivoInterrupcionEP {
   LIQUIDACION_EMPRESA
   SALUD_CERTIFICADA
@@ -279,6 +302,10 @@ model User {
   tipoDocumento       TipoDocumento?
   celular             String
   direccionResidencia String
+  // Necesaria para saber si al iniciar la Etapa Productiva era menor de edad: en ese caso la guía
+  // GFPI-G-040 §9.1.1 exige autorización del Ministerio de Trabajo (formato GFPI-F-203) como
+  // requisito para el aval. Nullable por compatibilidad con las cuentas ya creadas.
+  fechaNacimiento     DateTime?
   // Comuna de Medellín donde reside. Nullable solo por compatibilidad con cuentas creadas antes
   // de este campo; el formulario de registro lo exige siempre para cuentas nuevas.
   comuna              Comuna?
@@ -301,6 +328,21 @@ model User {
   porCertificarPor   User?     @relation("MarcadoPorCertificar", fields: [porCertificarPorId], references: [id], onDelete: SetNull)
   marcadosPorCertificar User[] @relation("MarcadoPorCertificar")
   fechaPorCertificar DateTime?
+
+  // Requisitos de aval de la Etapa Productiva (guía GFPI-G-040 §9.1.1). Los registra Coordinación
+  // sobre el aprendiz, no el aprendiz sobre sí mismo — son verificaciones institucionales.
+  // `null` significa "sin verificar todavía", distinto de `false` ("verificado y no cumple".)
+  rapsEtapaLectivaAprobados Boolean?
+  // Autorización del Ministerio de Trabajo (GFPI-F-203) para aprendices menores de edad.
+  autorizacionMinTrabajoUrl String?
+
+  // Declaración de deserción (guía GFPI-G-040 §9.1.1). Es un acto administrativo: lo registra
+  // Coordinación explícitamente, con la causa que aplicó. El sistema solo señala el riesgo.
+  fechaDesercion  DateTime?
+  motivoDesercion String?
+  declaradoDesertorPorId String?
+  declaradoDesertorPor   User?  @relation("DeclaroDesercion", fields: [declaradoDesertorPorId], references: [id], onDelete: SetNull)
+  desercionesDeclaradas  User[] @relation("DeclaroDesercion")
 
   // Fecha real de inicio/fin de la Etapa Productiva de ESTE aprendiz — no todos los aprendices de
   // una misma ficha inician igual ni con la misma alternativa. Se capturan y mantienen
@@ -388,6 +430,8 @@ model User {
   concertacionesAval          ConcertacionFuncion[]         @relation("AvalConcertacion")
   interrupcionesEP            InterrupcionEtapaProductiva[] @relation("AprendizInterrupciones")
   interrupcionesEPAval        InterrupcionEtapaProductiva[] @relation("AvalInterrupcionEP")
+  aplazamientosEP             AplazamientoEtapaProductiva[] @relation("AprendizAplazamientos")
+  aplazamientosEPAval         AplazamientoEtapaProductiva[] @relation("AvalAplazamientoEP")
 }
 
 // Ficha SENA. La precarga el coordinador académico (carga masiva por código) antes de que los
@@ -503,6 +547,17 @@ model SeleccionAlternativaEP {
   fechaAval          DateTime?
   observacionesAval  String?
 
+  // Constancia de por qué se avaló pese a que algún requisito de §9.1.1 no estaba verificado
+  // (RAPs al 100%, ARL vigente un día antes, autorización de MinTrabajo para menores). Los
+  // requisitos ADVIERTEN, no bloquean —así lo decidió Coordinación—, pero saltárselos deja
+  // registro escrito de quién lo hizo y con qué razón. Ver src/lib/requisitos-aval.ts.
+  requisitosOmitidos String?
+
+  // Fecha en que la solicitud avalada quedó registrada en SofiaPlus. La guía §9.1.2 da 8 días
+  // hábiles desde el aval; el sistema no se conecta con SofiaPlus, así que esto es la constancia
+  // manual de que se hizo — y el punto desde el que se mide si se hizo a tiempo.
+  registroSofiaPlus DateTime?
+
   // Presente solo cuando esta solicitud se envió como parte de un formulario grupal (varios
   // aprendices de la misma ficha con la misma alternativa, en un solo envío).
   grupoId String?
@@ -523,6 +578,58 @@ model SeleccionAlternativaEP {
 // suman a `User.diasEjecutadosPrevios` y el aprendiz queda en estado PRACTICA_INTERRUMPIDA hasta
 // que se le avale una nueva `SeleccionAlternativaEP` (tipoSolicitud = MODIFICACION), cuyo tramo
 // solo cubrirá el tiempo que le falta para completar los 180 días del diseño curricular.
+// Aplazamiento de la Etapa Productiva por novedad (guía GFPI-G-040 §9.3): la práctica se
+// suspende y se reanuda con la MISMA alternativa, corriendo las fechas del plan.
+//
+// Mecánica: reutiliza exactamente la del cambio de alternativa (`InterrupcionEtapaProductiva`) —
+// el tiempo cumplido hasta la novedad se acumula en `User.diasEjecutadosPrevios` y al reanudar se
+// abre otro tramo por el tiempo que falta, continuando la numeración de bitácoras. La diferencia
+// es que aquí el aprendiz NO vuelve a diligenciar un GFPI-F-165: la alternativa sigue siendo la
+// misma, y quien autoriza es el Comité de Evaluación y Seguimiento, no Coordinación por sí sola.
+//
+// El Comité es un cuerpo colegiado, no una cuenta del sistema: quien registra el aval es un
+// Coordinador/Admin transcribiendo la decisión, y por eso el acta es obligatoria al aprobar.
+model AplazamientoEtapaProductiva {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("AprendizAplazamientos", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Alternativa y tramo que se estaban ejecutando cuando apareció la novedad.
+  alternativa      AlternativaEtapaProductiva
+  fechaInicioTramo DateTime
+  // Último día efectivamente trabajado antes de la novedad.
+  fechaSuspension  DateTime
+  // Cuándo se espera volver. Es una previsión: la fecha real se registra al reanudar.
+  fechaReanudacionPrevista DateTime
+
+  // Días cumplidos en el tramo hasta la suspensión — sugeridos por calendario, confirmados por
+  // el Comité (mismo criterio que en la interrupción: el soporte manda sobre el calendario).
+  diasEjecutados Int
+
+  motivo        MotivoAplazamientoEP
+  motivoDetalle String?
+  // Soporte de la novedad: licencia, incapacidad de la EPS, comunicación de la empresa, etc.
+  soporteUrl    String?
+
+  estado            EstadoEvidencia @default(PENDIENTE)
+  avaladoPorId      String?
+  avaladoPor        User?           @relation("AvalAplazamientoEP", fields: [avaladoPorId], references: [id], onDelete: SetNull)
+  fechaAval         DateTime?
+  observacionesAval String?
+  // Acta del Comité de Evaluación y Seguimiento que respalda la decisión. Obligatoria al
+  // aprobar — sin acta el aplazamiento no tiene soporte institucional.
+  actaComite        String?
+  fechaActaComite   DateTime?
+
+  // Se llena al registrar la reanudación: desde esta fecha arranca el tramo nuevo.
+  fechaReanudacionReal DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
 model InterrupcionEtapaProductiva {
   id     String @id @default(cuid())
   userId String

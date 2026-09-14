@@ -20,6 +20,11 @@ const APRENDIZ_SELECT = {
   fechaInicioEtapaProductiva: true,
   fechaFinEtapaProductiva: true,
   totalBitacoras: true,
+  fechaNacimiento: true,
+  rapsEtapaLectivaAprobados: true,
+  autorizacionMinTrabajoUrl: true,
+  fechaDesercion: true,
+  motivoDesercion: true,
   ficha: {
     select: {
       id: true,
@@ -118,6 +123,38 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
   }
 
+  // Tres estados no se fijan a mano desde acá porque son el resultado de un proceso con soportes
+  // y aval: PRACTICA_INTERRUMPIDA y APLAZADA las produce el aval de la interrupción o del
+  // aplazamiento (son las que acumulan `diasEjecutadosPrevios` y congelan la numeración de
+  // bitácoras — ponerlas sueltas dejaría al aprendiz detenido sin tramo que retomar), y DESERTADO
+  // exige registrar la causa, en su propio endpoint.
+  if (g.estado !== undefined && g.estado !== existing.estado) {
+    if (g.estado === "PRACTICA_INTERRUMPIDA" || g.estado === "APLAZADA") {
+      return NextResponse.json(
+        {
+          error: {
+            estado: [
+              "Este estado lo produce el aval de la interrupción o del aplazamiento, no se asigna directamente.",
+            ],
+          },
+        },
+        { status: 400 },
+      );
+    }
+    if (g.estado === "DESERTADO") {
+      return NextResponse.json(
+        { error: { estado: ["Usa la acción «Declarar deserción» para registrar la causa."] } },
+        { status: 400 },
+      );
+    }
+    if (existing.estado === "DESERTADO") {
+      return NextResponse.json(
+        { error: { estado: ["Primero revierte la deserción desde la acción correspondiente."] } },
+        { status: 400 },
+      );
+    }
+  }
+
   const data: Prisma.UserUpdateInput = {};
   if (g.nombres !== undefined) data.nombres = g.nombres;
   if (g.apellidos !== undefined) data.apellidos = g.apellidos;
@@ -143,6 +180,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
   if (g.totalBitacoras !== undefined) {
     data.totalBitacoras = g.totalBitacoras;
+  }
+  if (g.fechaNacimiento !== undefined) {
+    data.fechaNacimiento = g.fechaNacimiento ? new Date(g.fechaNacimiento) : null;
+  }
+  if (g.rapsEtapaLectivaAprobados !== undefined) {
+    data.rapsEtapaLectivaAprobados = g.rapsEtapaLectivaAprobados;
+  }
+  if (g.autorizacionMinTrabajoUrl !== undefined) {
+    data.autorizacionMinTrabajoUrl = g.autorizacionMinTrabajoUrl || null;
   }
 
   const aprendiz = await prisma.user.update({

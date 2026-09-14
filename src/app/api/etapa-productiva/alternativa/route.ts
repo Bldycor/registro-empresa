@@ -47,6 +47,38 @@ export async function POST(request: Request) {
   }
   const d = parsed.data;
 
+  // Con la práctica aplazada el camino de vuelta es la reanudación, no una alternativa nueva: el
+  // aplazamiento tiene su propio cierre (`fechaReanudacionReal`), y aprobar una alternativa acá
+  // dejaría al aprendiz con fechas nuevas pero el aplazamiento abierto para siempre.
+  const estadoActual = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { estado: true },
+  });
+  if (estadoActual?.estado === "APLAZADA") {
+    return NextResponse.json(
+      {
+        error: {
+          _root: [
+            "Tu práctica está aplazada. Cuando vuelvas, Coordinación registra la reanudación y sigues con la misma alternativa.",
+          ],
+        },
+      },
+      { status: 409 },
+    );
+  }
+  if (estadoActual?.estado === "DESERTADO") {
+    return NextResponse.json(
+      {
+        error: {
+          _root: [
+            "Tu proceso está cerrado por deserción. Consulta con tu Coordinación Académica.",
+          ],
+        },
+      },
+      { status: 409 },
+    );
+  }
+
   // Tope de la guía GFPI-G-040 §9.3.1: hasta tres (3) modificaciones de alternativa en todo el
   // proceso formativo. Se cuentan las ya avaladas — las rechazadas o pendientes no gastan cupo.
   if (d.tipoSolicitud === "MODIFICACION") {

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { StatBadge } from "@/components/stat-badge";
+import { PlazoBadge } from "@/components/plazo-badge";
+import { PLAZO_CAMBIO_ALTERNATIVA_HABILES } from "@/lib/plazos-institucionales";
 import {
   alternativaEtapaProductivaLabel,
   motivoInterrupcionEPLabel,
@@ -194,7 +196,14 @@ export function InterrupcionesEPPanel() {
                       </p>
                     )}
                   </div>
-                  <EstadoBadge estado={i.estado} />
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                    {/* Interrumpir es el paso previo a cambiar de alternativa: le corre el mismo
+                        plazo de respuesta de 15 días hábiles (§9.3.1). */}
+                    {i.estado === "PENDIENTE" && (
+                      <PlazoBadge desde={i.createdAt} limite={PLAZO_CAMBIO_ALTERNATIVA_HABILES} />
+                    )}
+                    <EstadoBadge estado={i.estado} />
+                  </div>
                 </div>
 
                 {i.estado === "PENDIENTE" && (

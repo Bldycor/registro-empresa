@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { StatBadge } from "@/components/stat-badge";
+import { PlazoBadge } from "@/components/plazo-badge";
+import {
+  PLAZO_AVAL_ALTERNATIVA_HABILES,
+  PLAZO_CAMBIO_ALTERNATIVA_HABILES,
+} from "@/lib/plazos-institucionales";
 import {
   alternativaEtapaProductivaLabel,
   subtipoAlternativaEtapaProductivaLabel,
@@ -50,6 +55,13 @@ export function AlternativasEPPanel({
   const [filtroTexto, setFiltroTexto] = useState("");
   const [filtroPrograma, setFiltroPrograma] = useState("");
   const [observaciones, setObservaciones] = useState<Record<string, string>>({});
+  // Constancia de por qué se avala pese a requisitos de §9.1.1 sin resolver. El campo solo
+  // aparece cuando el servidor devuelve cuáles faltan, para no pedirlo de entrada.
+  const [constancia, setConstancia] = useState<Record<string, string>>({});
+  const [requisitosFaltantes, setRequisitosFaltantes] = useState<
+    Record<string, { etiqueta: string; detalle: string }[]>
+  >({});
+  const [errores, setErrores] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
 
   function load() {
@@ -62,12 +74,35 @@ export function AlternativasEPPanel({
 
   async function avalar(id: string, estado: "APROBADA" | "RECHAZADA") {
     setBusy(id);
-    await fetch(`${patchUrlBase}/${id}`, {
+    setErrores((prev) => ({ ...prev, [id]: "" }));
+
+    const res = await fetch(`${patchUrlBase}/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ estado, observacionesAval: observaciones[id] ?? null }),
+      body: JSON.stringify({
+        estado,
+        observacionesAval: observaciones[id] ?? null,
+        requisitosOmitidos: constancia[id] ?? null,
+      }),
     });
     setBusy(null);
+
+    if (!res.ok) {
+      const data = await res.json();
+      if (data.requisitosPendientes) {
+        setRequisitosFaltantes((prev) => ({ ...prev, [id]: data.requisitosPendientes }));
+      }
+      const msg =
+        typeof data.error === "string"
+          ? data.error
+          : Object.values(data.error ?? {})
+              .flat()
+              .join(" ") || "No se pudo guardar.";
+      setErrores((prev) => ({ ...prev, [id]: msg }));
+      return;
+    }
+
+    setRequisitosFaltantes((prev) => ({ ...prev, [id]: [] }));
     load();
   }
 
@@ -190,7 +225,19 @@ export function AlternativasEPPanel({
                     </a>
                   )}
                 </div>
-                <EstadoBadge estado={s.estado} />
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                  {s.estado === "PENDIENTE" && (
+                    <PlazoBadge
+                      desde={s.createdAt}
+                      limite={
+                        s.tipoSolicitud === "MODIFICACION"
+                          ? PLAZO_CAMBIO_ALTERNATIVA_HABILES
+                          : PLAZO_AVAL_ALTERNATIVA_HABILES
+                      }
+                    />
+                  )}
+                  <EstadoBadge estado={s.estado} />
+                </div>
               </div>
 
               {s.estado === "PENDIENTE" && (
@@ -204,6 +251,32 @@ export function AlternativasEPPanel({
                     className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
                     rows={2}
                   />
+                  {(requisitosFaltantes[s.id]?.length ?? 0) > 0 && (
+                    <div className="rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+                      <p className="text-xs font-medium text-amber-900 dark:text-amber-200">
+                        Requisitos sin resolver (guía GFPI-G-040 §9.1.1):
+                      </p>
+                      <ul className="mt-1 list-disc pl-4 text-xs text-amber-800 dark:text-amber-400">
+                        {requisitosFaltantes[s.id].map((r) => (
+                          <li key={r.etiqueta}>
+                            <strong>{r.etiqueta}:</strong> {r.detalle}
+                          </li>
+                        ))}
+                      </ul>
+                      <textarea
+                        placeholder="Razón por la que avalas de todas formas (queda como constancia)"
+                        value={constancia[s.id] ?? ""}
+                        onChange={(e) =>
+                          setConstancia((prev) => ({ ...prev, [s.id]: e.target.value }))
+                        }
+                        className="mt-2 w-full rounded-md border border-amber-300 px-3 py-2 text-sm dark:border-amber-800 dark:bg-zinc-950"
+                        rows={2}
+                      />
+                    </div>
+                  )}
+
+                  {errores[s.id] && <p className="text-xs text-red-600">{errores[s.id]}</p>}
+
                   <div className="flex gap-2">
                     <button
                       type="button"

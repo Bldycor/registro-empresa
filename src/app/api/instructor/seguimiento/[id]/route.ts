@@ -84,6 +84,24 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       { status: 400 },
     );
   }
+  // Un proceso detenido o cerrado no puede saltar a "Por certificar": aunque las evidencias del
+  // tramo anterior estén completas, todavía le falta tiempo de Etapa Productiva por cumplir (o ya
+  // salió del proceso). Coordinación tiene que resolver primero el estado.
+  if (aprendiz.estado === "PRACTICA_INTERRUMPIDA" || aprendiz.estado === "APLAZADA") {
+    return NextResponse.json(
+      {
+        error:
+          "Su práctica está detenida: primero debe retomarla y completar el tiempo que le falta.",
+      },
+      { status: 400 },
+    );
+  }
+  if (aprendiz.estado === "DESERTADO") {
+    return NextResponse.json(
+      { error: "Este aprendiz está declarado en deserción por Coordinación." },
+      { status: 400 },
+    );
+  }
   if (aprendiz.estado === "POR_CERTIFICAR") {
     return NextResponse.json({ aprendiz: { estado: aprendiz.estado } });
   }

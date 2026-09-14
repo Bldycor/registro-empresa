@@ -55,7 +55,7 @@ export async function GET() {
       bitacoras: a.bitacoras,
       totalBitacoras: a.totalBitacoras,
       bitacoraInicioTramo: a.bitacoraInicioTramo,
-      practicaInterrumpida: a.estado === "PRACTICA_INTERRUMPIDA",
+      estadoAprendiz: a.estado,
       evaluacion2Aprobada: a.evaluaciones.some((e) => e.numero === 2 && e.estado === "APROBADA"),
       evaluacion3Aprobada: a.evaluaciones.some((e) => e.numero === 3 && e.estado === "APROBADA"),
       certificacionAprobada: a.certificacionEmpresario?.estado === "APROBADA",

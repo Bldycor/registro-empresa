@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { calcularFechaFinConTiempoPrevio } from "@/lib/etapa-productiva-fechas";
+import { evaluarRequisitosAval, requisitosPendientes } from "@/lib/requisitos-aval";
 import { z } from "zod";
 
 const AvalSchema = z.object({
   estado: z.enum(["APROBADA", "RECHAZADA"]),
   observacionesAval: z.string().trim().nullable().optional(),
+  // Constancia obligatoria cuando se avala con requisitos de §9.1.1 sin verificar o incumplidos.
+  requisitosOmitidos: z.string().trim().max(500).nullable().optional(),
 });
 
 // Avala o rechaza una solicitud de selección/modificación de alternativa. Al aprobar, sincroniza
@@ -30,6 +33,42 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
   const d = parsed.data;
 
+  // Requisitos de §9.1.1: advierten, no bloquean — pero avalar con alguno sin resolver exige
+  // escribir por qué, y esa constancia queda en la solicitud. Ver src/lib/requisitos-aval.ts.
+  if (d.estado === "APROBADA") {
+    const aprendiz = await prisma.user.findUnique({
+      where: { id: existing.userId },
+      select: {
+        rapsEtapaLectivaAprobados: true,
+        fechaNacimiento: true,
+        autorizacionMinTrabajoUrl: true,
+        concertacionFuncion: { select: { arlFechaAfiliacion: true } },
+      },
+    });
+    const pendientes = requisitosPendientes(
+      evaluarRequisitosAval({
+        rapsEtapaLectivaAprobados: aprendiz?.rapsEtapaLectivaAprobados ?? null,
+        fechaNacimiento: aprendiz?.fechaNacimiento ?? null,
+        autorizacionMinTrabajoUrl: aprendiz?.autorizacionMinTrabajoUrl ?? null,
+        fechaInicioPropuesta: existing.fechaInicioEjecucion,
+        arlFechaAfiliacion: aprendiz?.concertacionFuncion?.arlFechaAfiliacion ?? null,
+      }),
+    );
+    if (pendientes.length > 0 && !d.requisitosOmitidos?.trim()) {
+      return NextResponse.json(
+        {
+          error: {
+            requisitosOmitidos: [
+              `Falta resolver: ${pendientes.map((r) => r.etiqueta).join(", ")}. Escribe la razón por la que avalas de todas formas.`,
+            ],
+          },
+          requisitosPendientes: pendientes,
+        },
+        { status: 400 },
+      );
+    }
+  }
+
   const seleccion = await prisma.$transaction(async (tx) => {
     const updated = await tx.seleccionAlternativaEP.update({
       where: { id },
@@ -38,6 +77,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         avaladoPorId: user.id,
         fechaAval: new Date(),
         observacionesAval: d.observacionesAval ?? null,
+        requisitosOmitidos: d.requisitosOmitidos?.trim() || null,
       },
     });
 

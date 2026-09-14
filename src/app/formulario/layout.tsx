@@ -100,7 +100,7 @@ export default async function FormularioLayout({
                 bitacoras: aprendiz.bitacoras,
                 totalBitacoras: aprendiz.totalBitacoras,
                 bitacoraInicioTramo: aprendiz.bitacoraInicioTramo,
-                practicaInterrumpida: aprendiz.estado === "PRACTICA_INTERRUMPIDA",
+                estadoAprendiz: aprendiz.estado,
                 evaluacion2Aprobada: aprendiz.evaluaciones.some((e) => e.numero === 2 && e.estado === "APROBADA"),
                 evaluacion3Aprobada: aprendiz.evaluaciones.some((e) => e.numero === 3 && e.estado === "APROBADA"),
                 certificacionAprobada: aprendiz.certificacionEmpresario?.estado === "APROBADA",

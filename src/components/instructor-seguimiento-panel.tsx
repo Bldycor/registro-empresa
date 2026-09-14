@@ -13,7 +13,22 @@ type ChecklistItem = {
   href: string | null;
 };
 
-type EstadoAprendiz = "ACTIVO" | "PRACTICA_INTERRUMPIDA" | "POR_CERTIFICAR" | "CERTIFICADO";
+type EstadoAprendiz =
+  | "ACTIVO"
+  | "PRACTICA_INTERRUMPIDA"
+  | "APLAZADA"
+  | "POR_CERTIFICAR"
+  | "CERTIFICADO"
+  | "DESERTADO";
+
+// Estados que se muestran con su propia insignia en vez del conteo de atrasos: en todos ellos el
+// reloj de plazos está detenido (ver src/lib/seguimiento-evidencias.ts), así que "0 atrasadas" se
+// leería como que el aprendiz va al día cuando en realidad su proceso está parado o cerrado.
+const insigniaEstado: Partial<Record<EstadoAprendiz, { clase: string; texto: string }>> = {
+  PRACTICA_INTERRUMPIDA: { clase: "bg-amber-600", texto: "⏸ Práctica interrumpida" },
+  APLAZADA: { clase: "bg-amber-600", texto: "⏸ Práctica aplazada" },
+  DESERTADO: { clase: "bg-zinc-600", texto: "Desertó" },
+};
 
 type Aprendiz = {
   id: string;
@@ -228,13 +243,11 @@ export function InstructorSeguimientoPanel() {
                         : "Todavía no tiene fecha de inicio de Etapa Productiva"}
                     </p>
                   </div>
-                  {a.estadoAprendiz === "PRACTICA_INTERRUMPIDA" ? (
-                    // Va antes que el conteo de atrasos: mientras la práctica está interrumpida no
-                    // se le cuentan evidencias vencidas (ver `practicaInterrumpida` en
-                    // src/lib/seguimiento-evidencias.ts), así que mostrar "0 atrasadas" sin decir
-                    // por qué haría pensar que el aprendiz va al día.
-                    <span className="shrink-0 rounded-full bg-amber-600 px-2.5 py-1 text-xs font-semibold text-white">
-                      ⏸ Práctica interrumpida
+                  {insigniaEstado[a.estadoAprendiz] ? (
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold text-white ${insigniaEstado[a.estadoAprendiz]!.clase}`}
+                    >
+                      {insigniaEstado[a.estadoAprendiz]!.texto}
                     </span>
                   ) : a.atrasos > 0 ? (
                     <span className="shrink-0 rounded-full bg-red-600 px-2.5 py-1 text-xs font-semibold text-white">

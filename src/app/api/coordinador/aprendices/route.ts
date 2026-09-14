@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
+import { evaluarRiesgoDesercion } from "@/lib/desercion";
 
 // Lista de todos los aprendices (con ficha o sin asignar) para el panel de gestión del
 // Coordinador (o el ADMIN, que tiene control total). A diferencia de la vista del Instructor
@@ -26,11 +27,20 @@ export async function GET() {
       fechaInicioEtapaProductiva: true,
       fechaFinEtapaProductiva: true,
       totalBitacoras: true,
+      // Requisitos de aval (§9.1.1) y constancia de deserción (§9.1.1) — se gestionan desde este
+      // mismo panel, que es donde Coordinación ya edita al aprendiz.
+      fechaNacimiento: true,
+      rapsEtapaLectivaAprobados: true,
+      autorizacionMinTrabajoUrl: true,
+      fechaDesercion: true,
+      motivoDesercion: true,
+      concertacionFuncion: { select: { fecha: true } },
       ficha: {
         select: {
           id: true,
           codigo: true,
           programa: true,
+          fechaFinFormacion: true,
           instructor: { select: { id: true, nombres: true, apellidos: true, coordinacion: true } },
         },
       },
@@ -38,5 +48,20 @@ export async function GET() {
     orderBy: [{ nombres: "asc" }, { apellidos: "asc" }],
   });
 
-  return NextResponse.json({ aprendices });
+  const hoy = new Date();
+
+  // El riesgo de deserción se calcula al leer, igual que el semáforo de evidencias: es una señal
+  // para Coordinación, no un estado guardado. Ver src/lib/desercion.ts.
+  const conRiesgo = aprendices.map(({ concertacionFuncion, ...a }) => ({
+    ...a,
+    riesgoDesercion: evaluarRiesgoDesercion({
+      hoy,
+      estado: a.estado,
+      fechaFinFormacionFicha: a.ficha?.fechaFinFormacion ?? null,
+      concertacionFecha: concertacionFuncion?.fecha ?? null,
+      practicaInterrumpida: a.estado === "PRACTICA_INTERRUMPIDA",
+    }),
+  }));
+
+  return NextResponse.json({ aprendices: conRiesgo });
 }
