@@ -62,6 +62,7 @@ src/
     plazos-institucionales.ts     # plazos que la guía le fija a la institución
     requisitos-aval.ts            # requisitos para avalar una alternativa
     desercion.ts                  # señal de riesgo de deserción
+    reuniones.ts                  # títulos, destinatarios y choques de horario de las reuniones
     validations.ts                # esquemas Zod, enums y etiquetas
 prisma/schema.prisma              # única fuente de verdad del modelo de datos
 docs/                             # requisitos y plan
@@ -102,6 +103,9 @@ docs/                             # requisitos y plan
 - Momento 1 (Concertación): Coordinación (`CITACION_EMAIL`), instructor de la ficha, aprendiz y coformador. Momentos 2 y 3: instructor, aprendiz y coformador.
 - Siempre sale el correo propio de SEPA, aunque Google Calendar esté configurado o falle (en ese caso el enlace cae a Jitsi).
 - Al reprogramar (requisito §3.2) el correo dice «Reunión reprogramada» y muestra el horario anterior y el nuevo. La invitación `.ics` lleva UID fijo por reunión y SEQUENCE creciente, así que actualiza el evento en vez de duplicarlo, y su hora va en UTC ya convertida desde Colombia (en Vercel el reloj corre en UTC). Una dirección inválida queda fuera de la invitación, y si la invitación no se puede armar, el correo sale sin el adjunto.
+- Quién recibe cada citación, sus reprogramaciones y su recordatorio sale de un solo lugar: `destinatariosReunion` en `src/lib/reuniones.ts`.
+- El **instructor** también reprograma (`PATCH /api/instructor/reuniones/[id]`, desde «Evaluaciones» y «Reuniones extraordinarias»): la Concertación y los Momentos mientras no los haya finalizado, y las extraordinarias ya aprobadas. Revisa choques contra toda su agenda (`franjasOcupadasInstructor`; en la Concertación, también contra las demás concertaciones, porque Coordinación las acompaña todas), conserva el enlace de la videollamada, y el aviso dice quién la movió y, si lo escribió, por qué.
+- **Recordatorio** (`src/lib/recordatorio-reuniones.ts`, en la misma tarea diaria de los avisos de plazo): uno por reunión y horario, a los mismos destinatarios de la citación. Sale el día anterior; si la reunión se agendó o se movió después de la tarea de ese día, sale el mismo día, siempre que no haya empezado. Cubre la Concertación y los Momentos mientras no estén finalizados y las extraordinarias aprobadas, y nunca a procesos cerrados (Certificado o Desertó). Queda en `AvisoPlazo` con tipo `RECORDATORIO_REUNION`; al reprogramar, el nuevo horario tiene su propio recordatorio.
 
 **Reunión extraordinaria** (requisito §3.2; `src/app/api/etapa-productiva/extraordinarias` y `src/app/api/instructor/extraordinarias`):
 - La agenda el aprendiz, a nombre propio o del coformador, con fecha, franja y motivo. El instructor la aprueba o la rechaza (con nota obligatoria). La citación con enlace a todos sale **solo al aprobarla**: así el coformador no recibe invitaciones a reuniones que después no se hacen.
@@ -119,6 +123,6 @@ docs/                             # requisitos y plan
 
 ## Roadmap
 
-El detalle está en `docs/PLAN-IMPLEMENTACION.md`. Lo principal pendiente: vista consolidada por aprendiz, reportes con exportación a PDF y Excel, plantillas descargables de GFPI-F-147 y GFPI-F-023, recordatorio antes de cada reunión y que el instructor también pueda reprogramar.
+El detalle está en `docs/PLAN-IMPLEMENTACION.md`. Lo principal pendiente: vista consolidada y expediente por aprendiz, reportes con exportación a PDF y Excel, plantillas descargables de GFPI-F-147 y GFPI-F-023, y lo que falta de la guía GFPI-G-040 (plan de mejoramiento, plazos de novedades, tope de 80 aprendices por instructor, plazo de 24 meses).
 
 Trabajar un frente a la vez, y aplicar y probar cada migración antes de construir la interfaz encima.
