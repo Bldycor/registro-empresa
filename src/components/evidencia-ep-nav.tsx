@@ -43,6 +43,13 @@ const TABS = [
     icon: "🏁",
     key: "certificacion" as const,
   },
+  // Todo el proceso en una sola vista, para consultarlo o guardarlo en PDF. No lleva insignia.
+  {
+    href: "/formulario/etapa-productiva/expediente",
+    label: "Expediente",
+    icon: "🗂️",
+    key: null,
+  },
 ];
 
 // Nav horizontal del panel del Aprendiz — reemplaza el sidebar izquierdo (stepper) que existía
@@ -56,7 +63,7 @@ export function EvidenciaEPNav({ alertas }: { alertas?: AlertasPorEvidencia }) {
   const pathname = usePathname();
 
   return (
-    <div className="sticky top-0 z-10 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="sticky top-0 z-10 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 print:hidden">
       <div className="flex items-center justify-between gap-4 px-4 pt-3 sm:px-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
@@ -90,7 +97,7 @@ export function EvidenciaEPNav({ alertas }: { alertas?: AlertasPorEvidencia }) {
       <nav className="mt-3 flex gap-1 overflow-x-auto px-4 pb-3 sm:px-6">
         {TABS.map((tab) => {
           const active = pathname?.startsWith(tab.href) ?? false;
-          const enAlerta = alertas?.[tab.key] ?? 0;
+          const enAlerta = tab.key ? (alertas?.[tab.key] ?? 0) : 0;
           return (
             <Link
               key={tab.href}

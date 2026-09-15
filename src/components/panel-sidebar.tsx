@@ -52,7 +52,7 @@ export function PanelSidebar({ role }: { role: string }) {
   const pathname = usePathname();
 
   const navClass =
-    "flex w-full shrink-0 flex-col gap-1 overflow-x-auto border-b border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:sticky sm:top-0 sm:h-screen sm:w-72 sm:overflow-y-auto sm:border-b-0 sm:border-r";
+    "flex w-full shrink-0 flex-col gap-1 overflow-x-auto border-b border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:sticky sm:top-0 sm:h-screen sm:w-72 sm:overflow-y-auto sm:border-b-0 sm:border-r print:hidden";
 
   const items = roleNav[role] ?? [];
 

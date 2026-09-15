@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { DatePickerField } from "@/components/date-picker-field";
 import { fechaMinimaInicioEtapaProductiva } from "@/lib/etapa-productiva-fechas";
 import { TotalBitacorasValues, type AlternativaEtapaProductivaValue } from "@/lib/validations";
@@ -238,7 +239,13 @@ function AprendizRow({
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="font-medium text-zinc-900 dark:text-zinc-50">
-            {aprendiz.nombres} {aprendiz.apellidos}
+            {aprendiz.nombres} {aprendiz.apellidos}{" "}
+            <Link
+              href={`/formulario/expediente/${aprendiz.id}`}
+              className="ml-1 text-xs font-medium text-zinc-500 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            >
+              Ver expediente
+            </Link>
           </p>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             {aprendiz.email} · Cédula: {aprendiz.cedula}

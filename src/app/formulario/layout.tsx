@@ -30,7 +30,7 @@ export default async function FormularioLayout({
   // Aprendiz recién migrado entraba a una pantalla sin ningún dato suyo visible (ni su nombre),
   // lo que parecía "no se migraron sus datos" aunque el registro sí existiera correctamente.
   const header = (
-    <header className="flex items-center justify-between border-b border-zinc-200 bg-white px-6 py-4 dark:border-zinc-800 dark:bg-zinc-900">
+    <header className="flex items-center justify-between border-b border-zinc-200 bg-white px-6 py-4 dark:border-zinc-800 dark:bg-zinc-900 print:hidden">
       <span className="text-sm text-zinc-600 dark:text-zinc-400">
         Sesión iniciada como{" "}
         <strong>
@@ -123,7 +123,7 @@ export default async function FormularioLayout({
     // Antes de completar el perfil de empresa no hay nada más que navegar — la única pantalla
     // disponible es /formulario (el propio formulario de perfil), así que no se muestra el nav.
     return (
-      <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-black">
+      <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-black print:bg-white">
         {header}
         {profile && <EvidenciaEPNav alertas={alertas} />}
         <main className="flex flex-1 flex-col">{children}</main>

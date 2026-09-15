@@ -242,6 +242,12 @@ export function InstructorSeguimientoPanel() {
                         ? `Etapa Productiva desde ${formatoFecha(a.fechaInicioEtapaProductiva)}`
                         : "Todavía no tiene fecha de inicio de Etapa Productiva"}
                     </p>
+                    <Link
+                      href={`/formulario/expediente/${a.id}`}
+                      className="text-xs font-medium text-zinc-600 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                    >
+                      Ver expediente
+                    </Link>
                   </div>
                   {insigniaEstado[a.estadoAprendiz] ? (
                     <span

@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* El modo oscuro solo aplica en pantalla: al imprimir (o guardar en PDF, p. ej. el expediente del
+   aprendiz) todo sale en claro, sin fondos oscuros ni texto gris claro sobre papel blanco. */
+@custom-variant dark {
+  @media screen and (prefers-color-scheme: dark) {
+    @slot;
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -12,7 +20,7 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
+@media screen and (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
