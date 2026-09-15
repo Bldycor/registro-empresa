@@ -103,6 +103,11 @@ docs/                             # requisitos y plan
 - Siempre sale el correo propio de SEPA, aunque Google Calendar esté configurado o falle (en ese caso el enlace cae a Jitsi).
 - Al reprogramar (requisito §3.2) el correo dice «Reunión reprogramada» y muestra el horario anterior y el nuevo. La invitación `.ics` lleva UID fijo por reunión y SEQUENCE creciente, así que actualiza el evento en vez de duplicarlo, y su hora va en UTC ya convertida desde Colombia (en Vercel el reloj corre en UTC). Una dirección inválida queda fuera de la invitación, y si la invitación no se puede armar, el correo sale sin el adjunto.
 
+**Reunión extraordinaria** (requisito §3.2; `src/app/api/etapa-productiva/extraordinarias` y `src/app/api/instructor/extraordinarias`):
+- La agenda el aprendiz, a nombre propio o del coformador, con fecha, franja y motivo. El instructor la aprueba o la rechaza (con nota obligatoria). La citación con enlace a todos sale **solo al aprobarla**: así el coformador no recibe invitaciones a reuniones que después no se hacen.
+- Se guarda como `Evaluacion` con `esExtraordinario` y `numero` 0: sin rúbrica, y no cuenta para el semáforo, la insignia roja ni «Por certificar». Toda consulta de los Momentos debe filtrar `esExtraordinario: false`.
+- Una sola solicitud pendiente a la vez; el aprendiz puede retirarla mientras no tenga respuesta. Mientras está pendiente o aprobada ocupa la franja del instructor; rechazada la libera (`ocupaFranja` en `src/lib/reuniones.ts`).
+
 **Avisos de plazo por correo** (`src/app/api/cron/avisos-plazo`, tarea diaria de Vercel en `vercel.json`, 8 a. m. de Colombia):
 - Cubre bitácoras y los Momentos 1, 2 y 3 (requisito §3.3). Avisa al entrar en los 5 días previos (o el mismo día) y al vencer, **una sola vez** por entrega y tipo: la tabla `AvisoPlazo` es a la vez el control de repetición y el registro histórico.
 - Va al aprendiz con **copia al instructor** de la ficha; el **coformador** va en copia solo en los avisos de vencido. Solo aprendices `ACTIVO`.
@@ -114,6 +119,6 @@ docs/                             # requisitos y plan
 
 ## Roadmap
 
-El detalle está en `docs/PLAN-IMPLEMENTACION.md`. Lo principal pendiente: vista consolidada por aprendiz, reportes con exportación a PDF y Excel, reunión extraordinaria a solicitud (decidido: la agenda el aprendiz y la aprueba el instructor), plantillas descargables de GFPI-F-147 y GFPI-F-023, recordatorio antes de cada reunión y que el instructor también pueda reprogramar.
+El detalle está en `docs/PLAN-IMPLEMENTACION.md`. Lo principal pendiente: vista consolidada por aprendiz, reportes con exportación a PDF y Excel, plantillas descargables de GFPI-F-147 y GFPI-F-023, recordatorio antes de cada reunión y que el instructor también pueda reprogramar.
 
 Trabajar un frente a la vez, y aplicar y probar cada migración antes de construir la interfaz encima.
