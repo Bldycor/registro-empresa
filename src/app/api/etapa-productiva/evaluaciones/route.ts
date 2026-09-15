@@ -6,6 +6,7 @@ import { TODAS_LAS_VARIABLES, variableCategoria } from "@/lib/evaluacion-variabl
 import { rangesOverlap } from "@/lib/time";
 import { sendCitacionEmail } from "@/lib/mailer";
 import { getVideoConferenceUrl } from "@/lib/video";
+import { cambioDeHorario } from "@/lib/citacion-correo";
 import {
   isGoogleCalendarConfigured,
   createCalendarMeetEvent,
@@ -113,6 +114,16 @@ export async function POST(request: Request) {
 
   const fechaDate = toDateOnly(d.fecha);
 
+  // Horario que tenía antes, para avisar el cambio si se está reprogramando (requisito §3.2).
+  const anterior =
+    existing?.fecha && existing.horaInicio && existing.horaFin
+      ? {
+          fecha: existing.fecha.toISOString().slice(0, 10),
+          horaInicio: existing.horaInicio,
+          horaFin: existing.horaFin,
+        }
+      : null;
+
   const reunionesDelDia = await prisma.evaluacion.findMany({
     where: {
       fecha: fechaDate,
@@ -166,7 +177,9 @@ export async function POST(request: Request) {
   );
 
   let videollamadaUrl: string | null = null;
-  let googleEventId: string | null = null;
+  // Si Google falla al reprogramar se conserva el id del evento que ya existía: antes se
+  // sobrescribía con null, y la siguiente vez se creaba un evento nuevo dejando el viejo huérfano.
+  let googleEventId: string | null = existing?.googleEventId ?? null;
 
   // El evento de Google Calendar (si está configurado) solo resuelve el enlace de Meet — ya no es
   // el único canal de notificación: si falla (token expirado, API caída), la reunión ya quedó
@@ -209,6 +222,11 @@ export async function POST(request: Request) {
       horaInicio: d.horaInicio,
       horaFin: d.horaFin,
       videollamadaUrl,
+      anterior: cambioDeHorario(anterior, {
+        fecha: d.fecha,
+        horaInicio: d.horaInicio,
+        horaFin: d.horaFin,
+      }),
     });
   } catch (err) {
     console.error("[evaluaciones] No se pudo enviar el correo de citación:", err);

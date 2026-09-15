@@ -4,6 +4,7 @@ import { readFile } from "fs/promises";
 import path from "path";
 import { getVideoConferenceUrl } from "@/lib/video";
 import { componerAvisoPlazos, type AvisoPlazoCorreo } from "@/lib/aviso-plazos-correo";
+import { atributosInvitacion, componerCitacion, type HorarioReunion } from "@/lib/citacion-correo";
 
 let cachedTransporter: Transporter | null = null;
 let usingTestAccount = false;
@@ -52,18 +53,6 @@ function buildIcsEvent(attributes: EventAttributes): Promise<string> {
 function direccionDesnuda(from: string): string {
   const match = from.match(/<([^>]+)>/);
   return match ? match[1].trim() : from.trim();
-}
-
-function parseStartAndDuration(fecha: string, horaInicio: string, horaFin: string) {
-  const [year, month, day] = fecha.split("-").map(Number);
-  const [hStart, mStart] = horaInicio.split(":").map(Number);
-  const [hEnd, mEnd] = horaFin.split(":").map(Number);
-  const durationMinutes = hEnd * 60 + mEnd - (hStart * 60 + mStart);
-
-  return {
-    start: [year, month, day, hStart, mStart] as [number, number, number, number, number],
-    duration: { minutes: durationMinutes },
-  };
 }
 
 const roleLabel: Record<string, string> = {
@@ -129,8 +118,8 @@ export async function sendWelcomeEmail({
 // Citación por videollamada (respaldo Jitsi cuando no hay integración de Google Calendar) —
 // reutilizada por Concertación (Momento 1) y por las evaluaciones de seguimiento/cierre
 // (Momento 2/3): `titulo` identifica la reunión en el asunto/ICS, `destinatarios` ya trae
-// resueltos los correos correctos según quién revisa esa reunión (coordinador fijo para
-// Concertación, instructor de la ficha para Momento 2/3).
+// resueltos los correos correctos: Coordinación, instructor, aprendiz y coformador en la
+// Concertación; instructor, aprendiz y coformador en los Momentos 2 y 3.
 export async function sendCitacionEmail({
   reunionId,
   titulo = "Concertación de funciones",
@@ -141,6 +130,7 @@ export async function sendCitacionEmail({
   horaInicio,
   horaFin,
   videollamadaUrl: videollamadaUrlOverride,
+  anterior = null,
 }: {
   reunionId: string;
   titulo?: string;
@@ -154,60 +144,48 @@ export async function sendCitacionEmail({
   // misma videollamada que ve el aprendiz en la app — si se omite, se genera el enlace Jitsi de
   // respaldo a partir de `reunionId`/`prefijoSala`.
   videollamadaUrl?: string;
+  // Horario que tenía la reunión antes, cuando se está reprogramando (ver `cambioDeHorario`):
+  // el correo pasa a decir que la reunión cambió y muestra el horario anterior y el nuevo.
+  anterior?: HorarioReunion | null;
 }) {
   const from = process.env.EMAIL_FROM || "no-responder@registro-empresa.local";
   const to = Array.from(new Set(destinatarios.filter(Boolean)));
 
   const videollamadaUrl = videollamadaUrlOverride || getVideoConferenceUrl(reunionId, prefijoSala);
-  const { start, duration } = parseStartAndDuration(fecha, horaInicio, horaFin);
+  const horario = { fecha, horaInicio, horaFin };
+  const correo = componerCitacion({ titulo, aprendizNombre, horario, videollamadaUrl, anterior });
 
-  const fechaLegible = new Date(`${fecha}T00:00:00`).toLocaleDateString("es-CO", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const icsContent = await buildIcsEvent({
-    start,
-    duration,
-    title: `${titulo} - ${aprendizNombre}`,
-    description: `Videollamada de ${titulo.toLowerCase()} (etapa productiva).\n\nUnirse: ${videollamadaUrl}`,
-    location: videollamadaUrl,
-    url: videollamadaUrl,
-    organizer: { name: "Registro Empresa", email: direccionDesnuda(from) },
-    attendees: to.map((email) => ({
-      email,
-      rsvp: true,
-      partstat: "NEEDS-ACTION",
-      role: "REQ-PARTICIPANT",
-    })),
-    status: "CONFIRMED",
-    busyStatus: "BUSY",
-  });
+  // La invitación de calendario es un complemento del correo, no una condición para enviarlo: si
+  // no se puede armar, la citación sale igual, sin el adjunto. Antes, un fallo al armar el .ics
+  // tumbaba el envío completo y nadie recibía la citación.
+  let icsContent: string | null = null;
+  try {
+    icsContent = await buildIcsEvent(
+      atributosInvitacion({
+        reunionId,
+        titulo,
+        aprendizNombre,
+        horario,
+        videollamadaUrl,
+        organizador: { name: "Registro Empresa", email: direccionDesnuda(from) },
+        asistentes: to,
+      }),
+    );
+  } catch (err) {
+    console.error("[mailer] No se pudo armar la invitación de calendario; se envía sin adjunto:", err);
+  }
 
   const transporter = await getTransporter();
 
   const info = await transporter.sendMail({
     from,
     to,
-    subject: `Videollamada: ${titulo} - ${aprendizNombre}`,
-    text: `Se ha agendado una videollamada de ${titulo.toLowerCase()} (etapa productiva).\n\nUnirse a la videollamada: ${videollamadaUrl}\n\nAprendiz: ${aprendizNombre}\nFecha: ${fechaLegible}\nHora: ${horaInicio} - ${horaFin}`,
-    html: `
-      <p>Se ha agendado una <strong>videollamada</strong> de ${titulo.toLowerCase()} (etapa productiva).</p>
-      <p><a href="${videollamadaUrl}">Unirse a la videollamada</a></p>
-      <ul>
-        <li><strong>Aprendiz:</strong> ${aprendizNombre}</li>
-        <li><strong>Fecha:</strong> ${fechaLegible}</li>
-        <li><strong>Hora:</strong> ${horaInicio} - ${horaFin}</li>
-      </ul>
-      <p>Esta invitación se agregó también como evento de calendario adjunto.</p>
-    `,
-    icalEvent: {
-      filename: "invitacion.ics",
-      method: "REQUEST",
-      content: icsContent,
-    },
+    subject: correo.subject,
+    text: correo.text,
+    html: correo.html,
+    ...(icsContent
+      ? { icalEvent: { filename: "invitacion.ics", method: "REQUEST", content: icsContent } }
+      : {}),
   });
 
   if (usingTestAccount) {

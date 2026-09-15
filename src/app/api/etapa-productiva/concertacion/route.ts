@@ -5,6 +5,7 @@ import { ConcertacionSchema } from "@/lib/validations";
 import { rangesOverlap } from "@/lib/time";
 import { sendCitacionEmail } from "@/lib/mailer";
 import { getVideoConferenceUrl } from "@/lib/video";
+import { cambioDeHorario } from "@/lib/citacion-correo";
 import {
   isGoogleCalendarConfigured,
   createCalendarMeetEvent,
@@ -61,7 +62,10 @@ export async function POST(request: Request) {
       where: { fecha: fechaDate, userId: { not: session.user.id } },
     }),
     prisma.concertacionFuncion.findUnique({ where: { userId: session.user.id } }),
-    prisma.user.findUnique({ where: { id: session.user.id } }),
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: { ficha: { select: { instructor: { select: { email: true } } } } },
+    }),
     prisma.companyProfile.findUnique({ where: { userId: session.user.id } }),
   ]);
 
@@ -98,6 +102,15 @@ export async function POST(request: Request) {
     );
   }
 
+  // Horario que tenía antes, para avisar el cambio si se está reprogramando (requisito §3.2).
+  const anterior = existing
+    ? {
+        fecha: existing.fecha.toISOString().slice(0, 10),
+        horaInicio: existing.horaInicio,
+        horaFin: existing.horaFin,
+      }
+    : null;
+
   const concertacion = await prisma.concertacionFuncion.upsert({
     where: { userId: session.user.id },
     update: { fecha: fechaDate, horaInicio, horaFin },
@@ -106,13 +119,26 @@ export async function POST(request: Request) {
 
   const aprendizNombre = `${user.nombres} ${user.apellidos}`;
   const coordinadorEmail = process.env.CITACION_EMAIL || "bcoba@sena.edu.co";
+  // El instructor de la ficha valora el Momento 1, así que también recibe la citación y sus
+  // reprogramaciones, igual que en los Momentos 2 y 3 (decisión de Coordinación, 14 sep 2026).
+  const instructorEmail = user.ficha?.instructor?.email ?? null;
   const attendees = Array.from(
-    new Set([coordinadorEmail, user.email, companyProfile.correoCoformador].filter(Boolean))
+    new Set(
+      [coordinadorEmail, instructorEmail, user.email, companyProfile.correoCoformador].filter(
+        (e): e is string => Boolean(e),
+      ),
+    ),
   );
 
-  let videollamadaUrl: string;
-  let googleEventId: string | null = null;
+  let videollamadaUrl: string | null = null;
+  // Si Google falla al reprogramar se conserva el id del evento que ya existía: perderlo haría que
+  // la siguiente vez se creara un evento nuevo y el viejo quedara huérfano en el calendario.
+  let googleEventId: string | null = existing?.googleEventId ?? null;
 
+  // Mismo criterio que en los Momentos 2 y 3: Google Calendar solo resuelve el enlace de Meet. Si
+  // falla (token vencido, API caída), la reunión ya quedó guardada y no debe perderse: se cae al
+  // enlace Jitsi de respaldo en vez de tumbar la petición. Antes, aquí un fallo de Google
+  // devolvía error 500 aunque la reunión ya estuviera guardada.
   if (isGoogleCalendarConfigured()) {
     const eventInput = {
       summary: `Concertación de funciones - ${aprendizNombre}`,
@@ -122,23 +148,36 @@ export async function POST(request: Request) {
       horaFin,
       attendees,
     };
+    try {
+      const result = existing?.googleEventId
+        ? await updateCalendarMeetEvent({ ...eventInput, eventId: existing.googleEventId })
+        : await createCalendarMeetEvent(eventInput);
+      videollamadaUrl = result.meetLink ?? result.eventLink ?? null;
+      googleEventId = result.eventId;
+    } catch (err) {
+      console.error("[concertacion] No se pudo crear/actualizar el evento de Google Calendar:", err);
+    }
+  }
+  if (!videollamadaUrl) {
+    videollamadaUrl = getVideoConferenceUrl(concertacion.id);
+  }
 
-    const result = existing?.googleEventId
-      ? await updateCalendarMeetEvent({ ...eventInput, eventId: existing.googleEventId })
-      : await createCalendarMeetEvent(eventInput);
-
-    videollamadaUrl = result.meetLink ?? result.eventLink ?? getVideoConferenceUrl(concertacion.id);
-    googleEventId = result.eventId;
-  } else {
-    const result = await sendCitacionEmail({
+  // Correo propio de la institución, siempre. Antes, con Google Calendar configurado (el caso de
+  // producción) la Concertación no enviaba correo propio: dependía solo de la invitación de
+  // Google. Al reprogramar, el correo lo dice y muestra el horario anterior y el nuevo.
+  try {
+    await sendCitacionEmail({
       reunionId: concertacion.id,
       aprendizNombre,
       destinatarios: attendees,
       fecha,
       horaInicio,
       horaFin,
+      videollamadaUrl,
+      anterior: cambioDeHorario(anterior, { fecha, horaInicio, horaFin }),
     });
-    videollamadaUrl = result.videollamadaUrl;
+  } catch (err) {
+    console.error("[concertacion] No se pudo enviar el correo de citación:", err);
   }
 
   const actualizada = await prisma.concertacionFuncion.update({
