@@ -153,7 +153,11 @@ Confirmado con Coordinación a partir de la *Guía para el Desarrollo de la Etap
 
 - **Expediente del aprendiz** (§9.5, y la vista consolidada de la sección 3.4): todo el proceso en una vista de solo lectura, que se guarda en PDF desde el navegador. La ven el aprendiz (el suyo), el instructor y Coordinación.
 
-**Pendiente de la guía:** plan de mejoramiento cuando el juicio es No aprobado (§9.4), registro de novedades dentro de 3 y 5 días hábiles (§9.2), tope de 80 aprendices por instructor (§9.1.3) y plazo de 24 meses del Acuerdo 007 de 2012 (§9.1.1).
+- **Tope de 80 aprendices por instructor** (§9.1.3): **solo advierte**, al asignar fichas o aprendices y en el panel de Instructores.
+- **Plazo de 24 meses** (§9.1.1 c, Acuerdo 007 de 2012): aplica a las fichas que Coordinación marca con ese reglamento, contado desde su «Inicio productiva». **Solo advierte**; no bloquea ni cuenta como deserción.
+- **Plantillas oficiales** (sección 3.3): GFPI-F-147 V05 y GFPI-F-023 V06 descargables desde Bitácoras y Evaluaciones.
+
+**Pendiente de la guía:** registro de novedades dentro de 3 y 5 días hábiles (§9.2). El plan de mejoramiento cuando el juicio es No aprobado (§9.4) queda en pausa por decisión de Coordinación.
 
 ---
 

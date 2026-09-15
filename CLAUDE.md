@@ -101,6 +101,11 @@ docs/                             # requisitos y plan
 - **Deserción** (§9.1.1): el sistema solo señala el riesgo. La declara Coordinación, con causa obligatoria, en un endpoint propio y de forma reversible.
 - **Requisitos de aval** (§9.1.1: RAPs, ARL, autorización de MinTrabajo): **advierten, no bloquean**. Avalar sin resolverlos exige dejar constancia escrita.
 - **Plazos de la institución:** 8 días hábiles para el aval, 15 para el cambio de alternativa y 8 para registrar en SofiaPlus. SofiaPlus no está integrado: Coordinación anota la fecha como constancia. Los días hábiles no descuentan festivos.
+- **Tope de aprendices por instructor** (§9.1.3): 80 aprendices activos. **Solo advierte**: al asignar un instructor a una ficha, o aprendices a una ficha, la respuesta trae `advertencias` y la asignación se hace igual; el panel de Instructores muestra la carga de cada uno (`src/lib/carga-instructor.ts`, `src/lib/tope-instructor.ts`).
+- **Plazo de 24 meses** (§9.1.1 c, Acuerdo 007 de 2012): solo aplica a las fichas con `reglamento` = Acuerdo 007, que Coordinación marca en la ficha; se cuenta desde su «Inicio productiva». **Solo advierte**: en la solicitud de alternativa por avalar, en la lista de Aprendices y en el expediente. No bloquea ni suma como causal de deserción (`src/lib/plazo-culminacion.ts`).
+- **Plan de mejoramiento** (§9.4): en pausa por decisión de Coordinación (15 sep 2026).
+
+**Plantillas oficiales:** GFPI-F-147 (bitácora, Excel) y GFPI-F-023 (planeación, seguimiento y evaluación, Word) están en `public/documentos` y se enlazan en Bitácoras y Evaluaciones, del aprendiz y del instructor (`src/components/plantilla-enlace.tsx`). Si SENA publica una versión nueva, se reemplaza el archivo y se actualiza el nombre ahí.
 
 **Citaciones a reuniones** (`sendCitacionEmail`, redacción en `src/lib/citacion-correo.ts`):
 - Momento 1 (Concertación): Coordinación (`CITACION_EMAIL`), instructor de la ficha, aprendiz y coformador. Momentos 2 y 3: instructor, aprendiz y coformador.
@@ -137,6 +142,6 @@ docs/                             # requisitos y plan
 
 ## Roadmap
 
-El detalle está en `docs/PLAN-IMPLEMENTACION.md`. Lo principal pendiente: plantillas descargables de GFPI-F-147 y GFPI-F-023, y lo que falta de la guía GFPI-G-040 (plan de mejoramiento, plazos de novedades, tope de 80 aprendices por instructor, plazo de 24 meses).
+El detalle está en `docs/PLAN-IMPLEMENTACION.md`. Lo principal pendiente de la guía GFPI-G-040: registro de novedades dentro de 3 y 5 días hábiles (§9.2) y el plan de mejoramiento (§9.4), este último en pausa por decisión de Coordinación.
 
 Trabajar un frente a la vez, y aplicar y probar cada migración antes de construir la interfaz encima.
