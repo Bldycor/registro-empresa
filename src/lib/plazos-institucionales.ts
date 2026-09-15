@@ -18,6 +18,24 @@ export const PLAZO_JUICIO_EVALUATIVO_CALENDARIO = 8; // §9.4
 
 const MS_DIA = 24 * 60 * 60 * 1000;
 
+// Las fechas que elige el usuario ("hoy", "el día del aval") son fechas de calendario en
+// Colombia, no en UTC. Compararlas en UTC fallaba en producción: entre las 7 p. m. y la
+// medianoche el "hoy" del servidor ya es el mañana del usuario, así que se aceptaba como válida
+// una fecha futura, y un aval hecho en la noche quedaba registrado "al día siguiente". Colombia
+// no tiene horario de verano, así que la zona es fija.
+export const ZONA_HORARIA_COLOMBIA = "America/Bogota";
+
+// "YYYY-MM-DD" del día de calendario en Colombia. Sirve igual en el servidor y en el navegador,
+// sin depender de la zona horaria de ninguno de los dos.
+export function fechaEnColombia(fecha: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: ZONA_HORARIA_COLOMBIA,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(fecha);
+}
+
 // Días hábiles transcurridos entre dos fechas (lunes a viernes, sin contar el día inicial).
 export function diasHabilesEntre(desde: Date, hasta: Date): number {
   if (hasta <= desde) return 0;

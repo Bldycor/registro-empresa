@@ -6,6 +6,8 @@ import { PlazoBadge } from "@/components/plazo-badge";
 import {
   PLAZO_AVAL_ALTERNATIVA_HABILES,
   PLAZO_CAMBIO_ALTERNATIVA_HABILES,
+  PLAZO_REGISTRO_SOFIAPLUS_HABILES,
+  fechaEnColombia,
 } from "@/lib/plazos-institucionales";
 import {
   alternativaEtapaProductivaLabel,
@@ -27,6 +29,9 @@ type Seleccion = {
   archivoUrl: string | null;
   estado: "PENDIENTE" | "APROBADA" | "RECHAZADA";
   observacionesAval: string | null;
+  // Solo los devuelve el listado de Coordinación (el del instructor no los necesita).
+  fechaAval?: string | null;
+  registroSofiaPlus?: string | null;
   createdAt: string;
   user: {
     id: string;
@@ -41,15 +46,28 @@ type Seleccion = {
   };
 };
 
+function formatoFecha(iso: string): string {
+  return new Date(iso).toLocaleDateString("es-CO", { timeZone: "UTC" });
+}
+
+// Mismo "hoy" que usa el servidor para validar, sin depender de la zona horaria del navegador.
+function hoyColombia(): string {
+  return fechaEnColombia(new Date());
+}
+
 export function AlternativasEPPanel({
   listUrl = "/api/coordinador/alternativas",
   patchUrlBase = "/api/coordinador/alternativas",
+  // El registro en SofiaPlus (guía GFPI-G-040 §9.1.2) lo hace Coordinación. El instructor usa este
+  // mismo panel para revisar, pero no ve ni anota esa constancia.
+  permiteRegistroSofiaPlus = false,
 }: {
   listUrl?: string;
   patchUrlBase?: string;
+  permiteRegistroSofiaPlus?: boolean;
 } = {}) {
   const [selecciones, setSelecciones] = useState<Seleccion[] | null>(null);
-  const [filtro, setFiltro] = useState<"TODAS" | "PENDIENTE" | "APROBADA" | "RECHAZADA">(
+  const [filtro, setFiltro] = useState<"TODAS" | "PENDIENTE" | "APROBADA" | "RECHAZADA" | "SIN_SOFIAPLUS">(
     "PENDIENTE",
   );
   const [filtroTexto, setFiltroTexto] = useState("");
@@ -63,6 +81,7 @@ export function AlternativasEPPanel({
   >({});
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  const [fechaSofia, setFechaSofia] = useState<Record<string, string>>({});
 
   function load() {
     fetch(listUrl)
@@ -106,6 +125,31 @@ export function AlternativasEPPanel({
     load();
   }
 
+  async function registrarSofiaPlus(id: string, valor: string | null) {
+    setBusy(id);
+    setErrores((prev) => ({ ...prev, [id]: "" }));
+
+    const res = await fetch(`${patchUrlBase}/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ registroSofiaPlus: valor }),
+    });
+    setBusy(null);
+
+    if (!res.ok) {
+      const data = await res.json();
+      const msg =
+        typeof data.error === "string"
+          ? data.error
+          : Object.values(data.error ?? {})
+              .flat()
+              .join(" ") || "No se pudo guardar.";
+      setErrores((prev) => ({ ...prev, [id]: msg }));
+      return;
+    }
+    load();
+  }
+
   if (selecciones === null) {
     return <p className="text-sm text-zinc-500 dark:text-zinc-400">Cargando…</p>;
   }
@@ -114,6 +158,8 @@ export function AlternativasEPPanel({
     PENDIENTE: selecciones.filter((s) => s.estado === "PENDIENTE").length,
     APROBADA: selecciones.filter((s) => s.estado === "APROBADA").length,
     RECHAZADA: selecciones.filter((s) => s.estado === "RECHAZADA").length,
+    SIN_SOFIAPLUS: selecciones.filter((s) => s.estado === "APROBADA" && !s.registroSofiaPlus)
+      .length,
   };
 
   const programasDisponibles = Array.from(
@@ -121,7 +167,9 @@ export function AlternativasEPPanel({
   ).sort((a, b) => a.localeCompare(b));
 
   const visibles = selecciones.filter((s) => {
-    if (filtro !== "TODAS" && s.estado !== filtro) return false;
+    if (filtro === "SIN_SOFIAPLUS") {
+      if (s.estado !== "APROBADA" || s.registroSofiaPlus) return false;
+    } else if (filtro !== "TODAS" && s.estado !== filtro) return false;
     if (filtroPrograma && s.user.ficha?.programa !== filtroPrograma) return false;
     const texto = filtroTexto.trim().toLowerCase();
     if (texto) {
@@ -137,6 +185,13 @@ export function AlternativasEPPanel({
         <StatBadge tono="ambar" etiqueta="pendientes" cantidad={contadores.PENDIENTE} />
         <StatBadge tono="verde" etiqueta="aprobadas" cantidad={contadores.APROBADA} />
         <StatBadge tono="rojo" etiqueta="rechazadas" cantidad={contadores.RECHAZADA} />
+        {permiteRegistroSofiaPlus && contadores.SIN_SOFIAPLUS > 0 && (
+          <StatBadge
+            tono="azul"
+            etiqueta="sin registrar en SofiaPlus"
+            cantidad={contadores.SIN_SOFIAPLUS}
+          />
+        )}
 
         <input
           type="text"
@@ -165,6 +220,9 @@ export function AlternativasEPPanel({
           <option value="PENDIENTE">Pendientes</option>
           <option value="APROBADA">Aprobadas</option>
           <option value="RECHAZADA">Rechazadas</option>
+          {permiteRegistroSofiaPlus && (
+            <option value="SIN_SOFIAPLUS">Sin registrar en SofiaPlus</option>
+          )}
           <option value="TODAS">Todas</option>
         </select>
       </div>
@@ -236,6 +294,12 @@ export function AlternativasEPPanel({
                       }
                     />
                   )}
+                  {permiteRegistroSofiaPlus && s.estado === "APROBADA" && !s.registroSofiaPlus && (
+                    <PlazoBadge
+                      desde={s.fechaAval ?? null}
+                      limite={PLAZO_REGISTRO_SOFIAPLUS_HABILES}
+                    />
+                  )}
                   <EstadoBadge estado={s.estado} />
                 </div>
               </div>
@@ -295,6 +359,51 @@ export function AlternativasEPPanel({
                       Rechazar
                     </button>
                   </div>
+                </div>
+              )}
+
+              {permiteRegistroSofiaPlus && s.estado === "APROBADA" && (
+                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-3 text-xs dark:border-zinc-800">
+                  {s.registroSofiaPlus ? (
+                    <>
+                      <span className="text-emerald-700 dark:text-emerald-500">
+                        ✓ Registrado en SofiaPlus el {formatoFecha(s.registroSofiaPlus)}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={busy === s.id}
+                        onClick={() => registrarSofiaPlus(s.id, null)}
+                        className="font-medium text-zinc-500 underline hover:text-zinc-800 disabled:opacity-50 dark:text-zinc-400 dark:hover:text-zinc-200"
+                      >
+                        Deshacer
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-zinc-600 dark:text-zinc-400">
+                        Fecha de registro en SofiaPlus:
+                      </span>
+                      <input
+                        type="date"
+                        value={fechaSofia[s.id] ?? hoyColombia()}
+                        max={hoyColombia()}
+                        min={s.fechaAval ? fechaEnColombia(new Date(s.fechaAval)) : undefined}
+                        onChange={(e) =>
+                          setFechaSofia((prev) => ({ ...prev, [s.id]: e.target.value }))
+                        }
+                        className="rounded-md border border-zinc-300 px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-950"
+                      />
+                      <button
+                        type="button"
+                        disabled={busy === s.id}
+                        onClick={() => registrarSofiaPlus(s.id, fechaSofia[s.id] ?? hoyColombia())}
+                        className="rounded-md bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                      >
+                        Registrar
+                      </button>
+                    </>
+                  )}
+                  {errores[s.id] && <p className="w-full text-xs text-red-600">{errores[s.id]}</p>}
                 </div>
               )}
 

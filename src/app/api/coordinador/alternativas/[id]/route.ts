@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { calcularFechaFinConTiempoPrevio } from "@/lib/etapa-productiva-fechas";
 import { evaluarRequisitosAval, requisitosPendientes } from "@/lib/requisitos-aval";
+import { fechaEnColombia } from "@/lib/plazos-institucionales";
 import { z } from "zod";
 
 const AvalSchema = z.object({
@@ -10,6 +11,13 @@ const AvalSchema = z.object({
   observacionesAval: z.string().trim().nullable().optional(),
   // Constancia obligatoria cuando se avala con requisitos de §9.1.1 sin verificar o incumplidos.
   requisitosOmitidos: z.string().trim().max(500).nullable().optional(),
+});
+
+const RegistroSofiaPlusSchema = z.object({
+  registroSofiaPlus: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Selecciona la fecha de registro en SofiaPlus.")
+    .nullable(),
 });
 
 // Avala o rechaza una solicitud de selección/modificación de alternativa. Al aprobar, sincroniza
@@ -27,6 +35,57 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   const body = await request.json();
+
+  // ---- Constancia de registro en SofiaPlus ---------------------------------------------------
+  // La guía GFPI-G-040 §9.1.2 da 8 días hábiles desde el aval para registrar la alternativa en
+  // SofiaPlus. SEPA no se conecta con SofiaPlus, así que Coordinación anota aquí la fecha en que
+  // lo hizo: queda la constancia y se puede medir si fue a tiempo. `null` deshace un registro
+  // anotado por error.
+  if ("registroSofiaPlus" in body) {
+    if (existing.estado !== "APROBADA") {
+      return NextResponse.json(
+        { error: "Solo se registra en SofiaPlus una alternativa ya avalada." },
+        { status: 409 },
+      );
+    }
+    const parsedRegistro = RegistroSofiaPlusSchema.safeParse(body);
+    if (!parsedRegistro.success) {
+      return NextResponse.json(
+        { error: parsedRegistro.error.flatten().fieldErrors },
+        { status: 400 },
+      );
+    }
+    const valor = parsedRegistro.data.registroSofiaPlus;
+    const fecha = valor ? new Date(`${valor}T00:00:00.000Z`) : null;
+
+    // Se compara como día de calendario en Colombia ("YYYY-MM-DD" contra "YYYY-MM-DD"), no en
+    // UTC — ver `fechaEnColombia`.
+    if (valor) {
+      if (valor > fechaEnColombia(new Date())) {
+        return NextResponse.json(
+          { error: { registroSofiaPlus: ["La fecha de registro no puede ser futura."] } },
+          { status: 400 },
+        );
+      }
+      if (existing.fechaAval && valor < fechaEnColombia(existing.fechaAval)) {
+        return NextResponse.json(
+          {
+            error: {
+              registroSofiaPlus: ["No puede registrarse en SofiaPlus antes de haberse avalado."],
+            },
+          },
+          { status: 400 },
+        );
+      }
+    }
+
+    const seleccion = await prisma.seleccionAlternativaEP.update({
+      where: { id },
+      data: { registroSofiaPlus: fecha },
+    });
+    return NextResponse.json({ seleccion });
+  }
+
   const parsed = AvalSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });

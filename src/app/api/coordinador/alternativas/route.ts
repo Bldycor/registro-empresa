@@ -16,6 +16,7 @@ const SELECCION_SELECT = {
   estado: true,
   observacionesAval: true,
   fechaAval: true,
+  registroSofiaPlus: true,
   createdAt: true,
   grupoId: true,
   user: {

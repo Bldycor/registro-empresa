@@ -14,9 +14,10 @@ export default async function AlternativasEPPage() {
         </h1>
         <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
           Revisa y avala las solicitudes de selección/modificación de alternativa (formato
-          GFPI-F-165) enviadas por los aprendices.
+          GFPI-F-165) enviadas por los aprendices. Una vez avalada, anota la fecha en que la
+          registraste en SofiaPlus: la guía GFPI-G-040 da 8 días hábiles para hacerlo.
         </p>
-        <AlternativasEPPanel />
+        <AlternativasEPPanel permiteRegistroSofiaPlus />
       </div>
     </div>
   );
