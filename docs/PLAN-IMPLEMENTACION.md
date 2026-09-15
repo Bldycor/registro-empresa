@@ -1,7 +1,7 @@
 # Plan de Implementación
 ## registro-empresa — de lo construido al alcance validado
 
-**Fecha:** 17 de agosto de 2026 (última actualización: 19 de agosto de 2026)
+**Fecha:** 17 de agosto de 2026 (última actualización: 14 de septiembre de 2026)
 **Referencia funcional:** `docs/REQUISITOS-FUNCIONALES.md` (validado, sin puntos pendientes)
 
 Este documento traduce el documento de requisitos ya validado en pasos de código concretos, comparando contra lo que ya existe en el repositorio. Está pensado para trabajarse con Claude Code **una fase a la vez**.
@@ -107,6 +107,18 @@ Lo mínimo planeado (guardas por rol, ficha↔instructor, vista de instructor) s
   - **Estado "Por certificar" (nuevo tercer valor de `EstadoAprendiz`, entre `ACTIVO` y `CERTIFICADO`): COMPLETA.** El instructor confirma uno a uno, desde una casilla en cada tarjeta del panel de Seguimiento, que un aprendiz con las 6 evidencias ya avaladas está listo para iniciar su trámite de certificación institucional (`PATCH /api/instructor/seguimiento/[id]`, revalida en el servidor que las 6 evidencias sigan completas — no confía en el estado que muestre el cliente). Al confirmarlo (no al desmarcarlo, que es solo corrección) se envía un correo al aprendiz (`sendPorCertificarEmail`) con la ficha oficial de requisitos de certificación adjunta (`public/documentos/requisitos-certificacion.pdf`, la del Centro de Comercio Regional Antioquia). Coordinación/Admin ve estos aprendices con una insignia azul distintiva en "Aprendices" y "Fichas", con filtro por estado y un acceso rápido ("✓ N aprendiz(es) por certificar — ver"); el paso final a `CERTIFICADO` lo sigue haciendo Coordinación manualmente desde ahí (sin automatizar, por diseño).
   - **Fecha de inicio/fin de Etapa Productiva calculada automáticamente al crear el aprendiz: COMPLETA.** Ni el alta individual ni la importación masiva (Coordinador/Admin e Instructor) piden estas fechas — el sistema las deriva solas de `Ficha.fechaInicioProductiva` (+180 días para el fin, `src/lib/etapa-productiva-fechas.ts`); si la ficha aún no tiene esa fecha, quedan sin definir. El instructor las corrige después si una empresa recibe a su aprendiz en otra fecha real, individualmente (`PATCH /api/instructor/aprendices/[id]`) o para toda una ficha de un golpe (`PATCH /api/instructor/fichas/[id]/fechas`, con fin auto-calculado si no se da). Reglas validadas en el servidor (las mismas 3 rutas, incluida la de Coordinador): la fecha de inicio no puede pasar `Ficha.fechaLimiteIniciarEP`, ni ser anterior a la fecha calculada de la ficha — salvo la alternativa Vínculo laboral, que puede arrancar hasta 3 meses antes (el vínculo laboral ya existía); esa excepción es individual, no aplica al ajuste por ficha completa. La UI muestra el rango permitido antes de guardar.
   - Pendiente antes de cerrar esta fase: notificaciones de atraso por correo (cron) y actualizar `REQUISITOS-FUNCIONALES.md` con el cierre final. Certificación del Empresario (evidencia e) ya no está pendiente — fue lo último que faltaba de las 5 evidencias.
+- **Ajustes de Fase 2 (6-12 sep 2026): COMPLETOS en producción.**
+  - Total de bitácoras configurable por aprendiz, 6 o 12 (`a20a465`).
+  - Valoración del instructor en el Momento 1 (6 variables de planeación, con aval), selector de competencias del programa del aprendiz, y actividades y evidencias como variables separadas (`a5c415a`, `343ecf6`).
+  - El correo de citación de los Momentos 2 y 3 se envía aunque falle Google Calendar, y se corrigió el error 500 al reautorizar Google (`4cb07fb`, `9877af1`). La app de Google se renombró **SEPA** y pasó a modo Producción, así que el token ya no vence cada semana.
+  - Subida de archivos: se corrigió el envío de formularios mientras el archivo aún subía, en las 4 evidencias con adjunto (`80412a3`), y la subida es multiparte con reintentos (`cd26e93`).
+  - Agrupación por programa y filtros por instructor, coordinación, programa y búsqueda por aprendiz en Coordinación y en los seis paneles del instructor (`4bc8fdf`, `fb71b88`, `b596615`).
+- **Adaptación a la guía GFPI-G-040 v02 (12-14 sep 2026): COMPLETA en producción.** Detalle funcional en `REQUISITOS-FUNCIONALES.md`, sección 7.
+  - Interrupción y retoma con otra alternativa (§7, §9.3.1): `InterrupcionEtapaProductiva`, estado `PRACTICA_INTERRUMPIDA`, días cumplidos en `diasEjecutadosPrevios`, tramo nuevo por el tiempo restante, numeración de bitácoras que continúa (`bitacoraInicioTramo`) y tope de 3 cambios de alternativa (`bb50ce9`).
+  - Aplazamiento por novedad con aval del Comité y acta obligatoria (`AplazamientoEtapaProductiva`, estado `APLAZADA`); deserción señalada por el sistema y declarada por Coordinación (`DESERTADO`); plazos de respuesta institucionales en cada pendiente; requisitos de aval en modo advertencia con constancia; Momento 2 al 50 % del plan (`6b6efd9`).
+  - Constancia de registro en SofiaPlus en el aval de alternativas, con su plazo de 8 días hábiles (§9.1.2).
+- **Correcciones con un aprendiz real (13-14 sep 2026):** la Concertación ya no queda atrasada para siempre si se agendó tarde; ahora se evalúa por aval (`838b344`). Las bitácoras se cumplen con 6 aprobadas y su cadencia es mensual cuando el total es 6 (`1a6c8da`).
+- **Datos (14 sep 2026):** por instrucción de Coordinación se borraron las 40 fichas distintas de 3310644. Hay respaldo completo en `~/Respaldos-SEPA/respaldo-fichas-2026-09-14.json`. Los aprendices que tenían esas fichas no se borraron: quedaron sin ficha.
 
 ---
 
@@ -127,7 +139,7 @@ Esto cubre, en el lenguaje del documento de requisitos: inscripción (3.1, parci
 ## Qué falta frente al documento de requisitos validado
 
 1. ~~**Roles de usuario** — hoy `User` no distingue aprendiz/instructor/coordinador. No hay instructor asignado a un aprendiz.~~ **Resuelto en Fase 1** (ver arriba: modelo `Ficha`, asignación instructor↔ficha, autorización por rol).
-2. **Estado del aprendiz** (`Activo` / `Certificado`) — **parcialmente resuelto.** El panel de Aprendices (Coordinador/Admin) ya permite cambiar el estado manualmente. Falta el cambio **automático**: pasar a `CERTIFICADO` cuando todas las evidencias del aprendiz queden en `A` (eso depende de Fase 4, certificación del empresario).
+2. ~~**Estado del aprendiz**~~ **RESUELTO.** Seis estados: Activo, Práctica interrumpida, Práctica aplazada, Por certificar, Certificado y Desertó. Con las seis evidencias avaladas el instructor marca **Por certificar**; el paso a Certificado sigue siendo manual por decisión de negocio.
 3. **Fecha de inicio de Etapa Productiva** — **RESUELTO.** Es por aprendiz (`User.fechaInicioEtapaProductiva`/`fechaFinEtapaProductiva`, no `Ficha.fechaInicioProductiva`), y se captura/sincroniza exclusivamente desde la evidencia (a) Selección/Modificación de Alternativa (`SeleccionAlternativaEP`, ya construida — ver "Estado de avance"). `Ficha.fechaInicioProductiva` sigue existiendo como referencia institucional agregada de la ficha, no como fuente de cálculo de bitácoras/evaluaciones de un aprendiz individual.
 4. ~~**Bitácoras** (cada 15 días, ~12 en total, formato `GFPI-F-147`)~~ **RESUELTO.** Formulario, cálculo automático de las 12 fechas límite y revisión del instructor completos — ver "Estado de avance".
 5. ~~**Evaluación 2 y 3** (seguimiento, a los ~2 meses y al cierre)~~ **RESUELTO.** Rúbrica real de 13 variables del formato `GFPI-F-023_V06` (ver nota en `REQUISITOS-FUNCIONALES.md`, sección 3.4), con revisión del instructor — ver "Estado de avance".
@@ -135,8 +147,10 @@ Esto cubre, en el lenguaje del documento de requisitos: inscripción (3.1, parci
 7. ~~**Certificación del empresario** (carta de terminación, evidencia de cierre)~~ **RESUELTO.** Formulario/UI y validación de ventana de fechas (5 días antes/después del fin de EP) completos — ver "Estado de avance".
 8. **Control de evaluaciones por aprendiz** (vista consolidada, sección 3.4) — no existe.
 9. **Módulo de consultas y reportes** (sección 3.5: filtros, métricas, exportación PDF/Excel, acceso por rol) — no existe.
-10. **Notificaciones de incumplimiento** (alertas + correo a aprendiz y coformador) — hoy solo hay correo de citación al agendar y correo de bienvenida al registrarse; falta la lógica de alertas por vencimiento.
-11. Subida de evidencias con **plantilla descargable o firma cargada en la app** — no existe aún el manejo de archivos/firmas.
+10. **Notificaciones de incumplimiento** (correo al aprendiz y al coformador) — las alertas visuales ya existen (insignias del nav y semáforo del instructor), pero **no se envía ningún correo por vencimiento**. Requiere una tarea programada: no existe `vercel.json` ni una ruta de cron.
+11. **Plantillas descargables** de `GFPI-F-147` y `GFPI-F-023` — la subida de archivos ya existe (Vercel Blob), pero las plantillas no están en `public/documentos`. La firma dentro de la app está sugerida fuera de alcance (`REQUISITOS-FUNCIONALES.md`, sección 6).
+12. **Aviso por correo al reprogramar** una evaluación y **recordatorio** antes de cada reunión (requisitos §3.2) — reagendar funciona, pero no notifica.
+13. **Pendientes de la guía GFPI-G-040:** plan de mejoramiento cuando el juicio es No aprobado (§9.4), registro de novedades dentro de 3 y 5 días hábiles (§9.2), tope de 80 aprendices por instructor (§9.1.3), plazo de 24 meses del Acuerdo 007 de 2012 (§9.1.1) y expediente descargable (§9.5, se cruza con la Fase 5).
 
 ## Fases sugeridas
 
