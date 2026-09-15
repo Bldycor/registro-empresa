@@ -6,6 +6,7 @@ import { InterrupcionEPForm } from "@/components/interrupcion-ep-form";
 import { AplazamientoEPForm } from "@/components/aplazamiento-ep-form";
 import { comunaLabel, alternativaEtapaProductivaLabel } from "@/lib/validations";
 import { diasPendientesEtapaProductiva } from "@/lib/etapa-productiva-fechas";
+import { formatoMomento } from "@/lib/plazos-institucionales";
 
 export const dynamic = "force-dynamic";
 
@@ -175,7 +176,7 @@ export default async function AlternativaPage() {
                 </div>
                 <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                   {s.tipoSolicitud === "SELECCION" ? "Selección" : "Modificación"} · enviado el{" "}
-                  {s.createdAt.toLocaleDateString("es-CO", { timeZone: "UTC" })}
+                  {formatoMomento(s.createdAt)}
                 </p>
                 {s.observacionesAval && (
                   <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">

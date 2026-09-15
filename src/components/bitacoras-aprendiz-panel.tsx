@@ -1,5 +1,7 @@
 "use client";
 
+import { formatoMomento } from "@/lib/plazos-institucionales";
+
 import { useState } from "react";
 import { BitacoraForm, type BitacoraFormInitial, type BitacoraPrefillPrevio } from "@/components/bitacora-form";
 
@@ -89,7 +91,7 @@ export function BitacorasAprendizPanel({ slots }: { slots: BitacoraSlot[] }) {
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
                   Fecha límite: {formatoFecha(slot.fechaLimite)}
                   {slot.existing?.fechaEntrega &&
-                    ` · Enviada: ${formatoFecha(slot.existing.fechaEntrega)}`}
+                    ` · Enviada: ${formatoMomento(slot.existing.fechaEntrega)}`}
                 </p>
               </div>
               <div className="flex items-center gap-2">

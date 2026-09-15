@@ -52,6 +52,20 @@ export function diasHabilesEntre(desde: Date, hasta: Date): number {
   return habiles;
 }
 
+// Muestra un MOMENTO (cuándo se envió o se avaló algo) como fecha de Colombia. No usar para días
+// de calendario guardados a medianoche UTC (fecha límite, inicio de EP, fecha de una reunión):
+// esos se muestran con `timeZone: "UTC"`, o se correrían al día anterior.
+export function formatoMomento(fecha: Date | string): string {
+  return new Date(fecha).toLocaleDateString("es-CO", { timeZone: ZONA_HORARIA_COLOMBIA });
+}
+
+// Día de calendario en Colombia, representado como medianoche UTC para poder contar días con los
+// helpers de abajo (que trabajan en componentes UTC).
+function diaEnColombia(fecha: Date): Date {
+  const [y, m, d] = fechaEnColombia(fecha).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
 export function diasCalendarioEntre(desde: Date, hasta: Date): number {
   return Math.max(0, Math.floor((hasta.getTime() - desde.getTime()) / MS_DIA));
 }
@@ -73,9 +87,11 @@ export function calcularPlazo(params: {
 }): EstadoPlazo | null {
   if (!params.desde) return null;
   const habiles = params.habiles ?? true;
-  const transcurridos = habiles
-    ? diasHabilesEntre(params.desde, params.hoy)
-    : diasCalendarioEntre(params.desde, params.hoy);
+  // Se cuenta en días de Colombia: una solicitud enviada a las 9 p. m. es de ese día, no del
+  // siguiente, aunque en UTC ya sea madrugada.
+  const desde = diaEnColombia(params.desde);
+  const hoy = diaEnColombia(params.hoy);
+  const transcurridos = habiles ? diasHabilesEntre(desde, hoy) : diasCalendarioEntre(desde, hoy);
   const limite = params.limite ?? null;
   return {
     transcurridos,

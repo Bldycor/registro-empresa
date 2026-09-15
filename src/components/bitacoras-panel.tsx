@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { StatBadge } from "@/components/stat-badge";
 import { PlazoBadge } from "@/components/plazo-badge";
+import { formatoMomento } from "@/lib/plazos-institucionales";
 import { nivelRiesgoARLLabel, type NivelRiesgoARLValue } from "@/lib/validations";
 
 type Bitacora = {
@@ -159,7 +160,7 @@ export function BitacorasPanel() {
                     </p>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">
                       Fecha límite: {formatoFecha(b.fechaLimite)}
-                      {b.fechaEntrega && ` · Enviada: ${formatoFecha(b.fechaEntrega)}`}
+                      {b.fechaEntrega && ` · Enviada: ${formatoMomento(b.fechaEntrega)}`}
                     </p>
                     {b.archivoUrl && (
                       <a
