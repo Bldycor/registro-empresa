@@ -185,7 +185,15 @@ export function ExpedienteAprendiz({ expediente: e, propio = false }: { expedien
           <Dato etiqueta="Instructor de seguimiento">{instructor ? quien(instructor) : "Sin asignar"}</Dato>
           <Dato etiqueta="Bitácoras previstas">{e.totalBitacoras}</Dato>
           <Dato etiqueta="Días de tramos anteriores">{e.diasEjecutadosPrevios || "—"}</Dato>
+          {e.plazoCulminacion && (
+            <Dato etiqueta="Plazo máximo para culminar">{dia(e.plazoCulminacion)} (Acuerdo 007 de 2012)</Dato>
+          )}
         </dl>
+        {e.advertenciaPlazo && (
+          <p className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200 print:bg-transparent print:text-black">
+            {e.advertenciaPlazo}
+          </p>
+        )}
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {e.checklist.map((c) => {
             const s = estadoSeguimiento[c.estado];

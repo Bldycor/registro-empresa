@@ -59,6 +59,8 @@ type Aprendiz = {
   // Lo calcula el endpoint al leer, no está guardado: es una señal para Coordinación, no un
   // estado del aprendiz. Ver src/lib/desercion.ts.
   riesgoDesercion?: { enRiesgo: boolean; causa: string | null };
+  // Plazo de 24 meses del Acuerdo 007 de 2012 (solo advertencia).
+  advertenciaPlazo?: string | null;
   ficha: FichaConInstructor | null;
 };
 
@@ -149,6 +151,8 @@ export function CoordinadorAprendicesPanel({
   const [bulkAssignFichaId, setBulkAssignFichaId] = useState("");
   const [bulkAssignLoading, setBulkAssignLoading] = useState(false);
   const [bulkAssignError, setBulkAssignError] = useState<string | null>(null);
+  // Tope de aprendices por instructor (§9.1.3): la asignación se hace igual, solo se advierte.
+  const [avisosTope, setAvisosTope] = useState<string[]>([]);
 
   const porCertificarCount = aprendices.filter((a) => a.estado === "POR_CERTIFICAR").length;
 
@@ -363,6 +367,7 @@ export function CoordinadorAprendicesPanel({
 
     setSelectedIds(new Set());
     setBulkAssignFichaId("");
+    setAvisosTope(data.advertencias ?? []);
     await refetchAprendices();
   }
 
@@ -527,6 +532,14 @@ export function CoordinadorAprendicesPanel({
                 Cancelar selección
               </button>
               {bulkAssignError && <p className="w-full text-xs text-red-600">{bulkAssignError}</p>}
+              {avisosTope.length > 0 && (
+                <div className="w-full rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                  {avisosTope.map((a) => (
+                    <p key={a}>{a}</p>
+                  ))}
+                  <p className="mt-1 text-amber-700 dark:text-amber-400">La asignación quedó hecha; es solo una advertencia.</p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -617,6 +630,14 @@ export function CoordinadorAprendicesPanel({
                             className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/30 dark:text-red-400"
                           >
                             Riesgo de deserción
+                          </span>
+                        )}
+                        {aprendiz.advertenciaPlazo && (
+                          <span
+                            title={aprendiz.advertenciaPlazo}
+                            className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                          >
+                            Plazo de 24 meses
                           </span>
                         )}
                         {aprendiz.alternativaEtapaProductiva && (

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { SeleccionAlternativaGrupalSchema } from "@/lib/validations";
+import { advertenciaPlazoCulminacion, plazoMaximoCulminacion } from "@/lib/plazo-culminacion";
 import type { Prisma } from "@/generated/prisma/client";
 
 const SELECCION_SELECT = {
@@ -29,6 +30,8 @@ const SELECCION_SELECT = {
         select: {
           codigo: true,
           programa: true,
+          reglamento: true,
+          fechaInicioProductiva: true,
           instructor: { select: { nombres: true, apellidos: true } },
         },
       },
@@ -48,7 +51,22 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json({ selecciones });
+  // Plazo de 24 meses del Acuerdo 007 de 2012 (solo advierte): se revisa en las solicitudes por
+  // avalar, contra la fecha fin que proponen.
+  const hoy = new Date();
+  return NextResponse.json({
+    selecciones: selecciones.map((s) => ({
+      ...s,
+      advertenciaPlazo:
+        s.estado === "PENDIENTE"
+          ? advertenciaPlazoCulminacion({
+              plazo: plazoMaximoCulminacion(s.user.ficha),
+              fechaFin: s.fechaFinEjecucion,
+              hoy,
+            })
+          : null,
+    })),
+  });
 }
 
 // Modo grupal (formato GFPI-F-165 grupal): el coordinador/instructor diligencia la misma

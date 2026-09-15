@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { evaluarRiesgoDesercion } from "@/lib/desercion";
+import { advertenciaPlazoCulminacion, plazoMaximoCulminacion } from "@/lib/plazo-culminacion";
 
 // Lista de todos los aprendices (con ficha o sin asignar) para el panel de gestión del
 // Coordinador (o el ADMIN, que tiene control total). A diferencia de la vista del Instructor
@@ -41,6 +42,8 @@ export async function GET() {
           codigo: true,
           programa: true,
           fechaFinFormacion: true,
+          fechaInicioProductiva: true,
+          reglamento: true,
           instructor: { select: { id: true, nombres: true, apellidos: true, coordinacion: true } },
         },
       },
@@ -60,6 +63,13 @@ export async function GET() {
       fechaFinFormacionFicha: a.ficha?.fechaFinFormacion ?? null,
       concertacionFecha: concertacionFuncion?.fecha ?? null,
       practicaInterrumpida: a.estado === "PRACTICA_INTERRUMPIDA",
+    }),
+    // Plazo de 24 meses del Acuerdo 007 de 2012: solo advierte (ver src/lib/plazo-culminacion.ts).
+    advertenciaPlazo: advertenciaPlazoCulminacion({
+      plazo: plazoMaximoCulminacion(a.ficha),
+      fechaFin: a.fechaFinEtapaProductiva,
+      hoy,
+      estado: a.estado,
     }),
   }));
 

@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth-guards";
 import { InstructorEvaluacionesPanel } from "@/components/instructor-evaluaciones-panel";
+import { PlantillaEnlace, PLANTILLA_EVALUACION } from "@/components/plantilla-enlace";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,9 @@ export default async function InstructorEvaluacionesPage() {
           Registra la valoración de Momento 1 (concertación), Momento 2 (seguimiento) y Momento 3
           (cierre) de los aprendices de tus fichas asignadas, tras la reunión agendada.
         </p>
+        <div className="-mt-4 mb-6">
+          <PlantillaEnlace plantilla={PLANTILLA_EVALUACION} />
+        </div>
         <InstructorEvaluacionesPanel />
       </div>
     </div>

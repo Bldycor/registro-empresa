@@ -131,11 +131,21 @@ export const jornadaLabel: Record<JornadaValue, string> = {
 // ficha puede tener solo algunos campos diligenciados.
 // fechaInicioProductiva y fechaLimiteIniciarEP NO están acá a propósito: se calculan siempre en
 // el servidor con la fórmula oficial (ver src/lib/ficha-fechas.ts), no se editan directamente.
+// Reglamento del aprendiz que rige a la ficha (enum `ReglamentoAprendiz`). Define si aplica el
+// plazo de 24 meses del Acuerdo 007 de 2012 (ver src/lib/plazo-culminacion.ts).
+export const ReglamentoAprendizValues = ["ACUERDO_007_2012", "ACUERDO_009_2024"] as const;
+export type ReglamentoAprendizValue = (typeof ReglamentoAprendizValues)[number];
+export const reglamentoAprendizLabel: Record<ReglamentoAprendizValue, string> = {
+  ACUERDO_007_2012: "Acuerdo 007 de 2012",
+  ACUERDO_009_2024: "Acuerdo 009 de 2024",
+};
+
 export const FichaGestionSchema = z.object({
   programa: z.enum(ProgramasFormacionValues).nullable().optional(),
   estado: z.enum(EstadoFichaValues).nullable().optional(),
   nivelFormacion: z.enum(NivelFormacionValues).nullable().optional(),
   jornada: z.enum(JornadaValues).nullable().optional(),
+  reglamento: z.enum(ReglamentoAprendizValues).nullable().optional(),
   fechaInicioFicha: z.string().trim().nullable().optional(),
   fechaFinFormacion: z.string().trim().nullable().optional(),
 });

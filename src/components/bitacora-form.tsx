@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileUploadField } from "@/components/file-upload-field";
+import { PlantillaEnlace, PLANTILLA_BITACORA } from "@/components/plantilla-enlace";
 import { DatePickerField } from "@/components/date-picker-field";
 import { NivelRiesgoARLValues, nivelRiesgoARLLabel } from "@/lib/validations";
 import { agruparCompetencias, type CompetenciaCatalogo } from "@/lib/competencia-catalogo";
@@ -415,6 +416,7 @@ export function BitacoraForm({
           )}
         </div>
 
+        <PlantillaEnlace plantilla={PLANTILLA_BITACORA} />
         <FileUploadField
           label="Bitácora diligenciada (adjunto)"
           pathPrefix="bitacora-ep"

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
+import { advertenciasTope } from "@/lib/carga-instructor";
 
 // Asigna (o quita) la misma ficha a varios aprendices de una sola vez, para cuando el
 // coordinador/admin selecciona un lote en el panel en vez de asignar aprendiz por aprendiz.
@@ -16,11 +17,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Selecciona al menos un aprendiz." }, { status: 400 });
   }
 
+  let instructorId: string | null = null;
   if (fichaId) {
-    const ficha = await prisma.ficha.findUnique({ where: { id: fichaId } });
+    const ficha = await prisma.ficha.findUnique({ where: { id: fichaId }, select: { instructorId: true } });
     if (!ficha) {
       return NextResponse.json({ error: "La ficha seleccionada no existe." }, { status: 400 });
     }
+    instructorId = ficha.instructorId;
   }
 
   const resultado = await prisma.user.updateMany({
@@ -28,5 +31,8 @@ export async function POST(request: Request) {
     data: { fichaId },
   });
 
-  return NextResponse.json({ actualizados: resultado.count });
+  // Tope de aprendices por instructor (§9.1.3): solo se advierte, la asignación ya quedó hecha.
+  const advertencias = instructorId ? await advertenciasTope([instructorId]) : [];
+
+  return NextResponse.json({ actualizados: resultado.count, advertencias });
 }

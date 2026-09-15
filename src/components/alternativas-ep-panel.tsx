@@ -32,6 +32,8 @@ type Seleccion = {
   // Solo los devuelve el listado de Coordinación (el del instructor no los necesita).
   fechaAval?: string | null;
   registroSofiaPlus?: string | null;
+  // Plazo de 24 meses del Acuerdo 007 de 2012, en las solicitudes por avalar (solo advierte).
+  advertenciaPlazo?: string | null;
   createdAt: string;
   user: {
     id: string;
@@ -272,6 +274,11 @@ export function AlternativasEPPanel({
                         })
                       : "—"}
                   </p>
+                  {s.advertenciaPlazo && (
+                    <p className="mt-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                      {s.advertenciaPlazo} Puedes avalarla igual.
+                    </p>
+                  )}
                   {s.archivoUrl && (
                     <a
                       href={s.archivoUrl}

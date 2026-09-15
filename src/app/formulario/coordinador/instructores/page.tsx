@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-guards";
 import { CoordinadorInstructoresPanel } from "@/components/coordinador-instructores-panel";
+import { aprendicesActivosPorInstructor } from "@/lib/carga-instructor";
 
 export const dynamic = "force-dynamic";
 
@@ -35,9 +36,13 @@ export default async function CoordinadorInstructoresPage() {
     orderBy: [{ nombres: "asc" }, { apellidos: "asc" }],
   });
 
+  // Carga frente al tope de 80 aprendices activos por instructor (§9.1.3), igual que en la API.
+  const activos = await aprendicesActivosPorInstructor(instructores.map((i) => i.id));
+  const conCarga = instructores.map((i) => ({ ...i, aprendicesActivos: activos.get(i.id) ?? 0 }));
+
   return (
     <div className="flex flex-1 justify-center px-4 py-10">
-      <CoordinadorInstructoresPanel initialInstructores={instructores} />
+      <CoordinadorInstructoresPanel initialInstructores={conCarga} />
     </div>
   );
 }

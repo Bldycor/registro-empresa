@@ -10,6 +10,7 @@ import {
   type CoordinacionValue,
 } from "@/lib/validations";
 import { StatBadge } from "@/components/stat-badge";
+import { superaTope, TOPE_APRENDICES_POR_INSTRUCTOR } from "@/lib/tope-instructor";
 
 type AprendizNombre = { id: string; nombres: string; apellidos: string };
 type Ficha = {
@@ -32,6 +33,8 @@ type Instructor = {
   comuna: ComunaValue | null;
   coordinacion: CoordinacionValue | null;
   fichasAsignadas: Ficha[];
+  // Aprendices activos en sus fichas, frente al tope de la guía (§9.1.3).
+  aprendicesActivos?: number;
   creadoPorId?: string | null;
   creadoPor?: CreadoPor | null;
 };
@@ -573,6 +576,18 @@ export function CoordinadorInstructoresPanel({
                       <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
                         {instructor.coordinacion ? coordinacionLabel[instructor.coordinacion] : "Sin coordinación"}
                       </span>
+                      {superaTope(instructor.aprendicesActivos ?? 0) ? (
+                        <span
+                          title={`La guía GFPI-G-040 (§9.1.3) fija como máximo ${TOPE_APRENDICES_POR_INSTRUCTOR} aprendices en etapa productiva por instructor.`}
+                          className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                        >
+                          {instructor.aprendicesActivos} aprendices activos · supera el tope de {TOPE_APRENDICES_POR_INSTRUCTOR}
+                        </span>
+                      ) : (
+                        <span className="rounded-full border border-zinc-200 px-2 py-0.5 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
+                          {instructor.aprendicesActivos ?? 0} de {TOPE_APRENDICES_POR_INSTRUCTOR} aprendices activos
+                        </span>
+                      )}
                       {instructor.fichasAsignadas.length > 0 ? (
                         <div className="flex flex-col items-end gap-1">
                           <div className="flex flex-wrap justify-end gap-1">

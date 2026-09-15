@@ -5,6 +5,7 @@ import { requireApiUser } from "@/lib/auth-guards";
 import { CreateInstructorSchema } from "@/lib/validations";
 import { sendWelcomeEmail } from "@/lib/mailer";
 import { generarPasswordTemporal } from "@/lib/temp-password";
+import { aprendicesActivosPorInstructor } from "@/lib/carga-instructor";
 
 // Lista de instructores para el selector de asignación de fichas y para el panel de gestión
 // de instructores del coordinador. ADMIN también tiene acceso (control total).
@@ -42,7 +43,12 @@ export async function GET() {
     orderBy: [{ nombres: "asc" }, { apellidos: "asc" }],
   });
 
-  return NextResponse.json({ instructores });
+  // Carga frente al tope de 80 aprendices activos por instructor (§9.1.3), para advertirla.
+  const activos = await aprendicesActivosPorInstructor(instructores.map((i) => i.id));
+
+  return NextResponse.json({
+    instructores: instructores.map((i) => ({ ...i, aprendicesActivos: activos.get(i.id) ?? 0 })),
+  });
 }
 
 // El Instructor no se autoregistra: sus datos los ingresa el Coordinador al cual pertenece (o el

@@ -8,6 +8,9 @@ import {
   nivelFormacionLabel,
   JornadaValues,
   jornadaLabel,
+  ReglamentoAprendizValues,
+  reglamentoAprendizLabel,
+  type ReglamentoAprendizValue,
   ProgramasFormacionValues,
   estadoAprendizLabel,
   type EstadoFichaValue,
@@ -17,6 +20,7 @@ import {
 } from "@/lib/validations";
 import { StatBadge } from "@/components/stat-badge";
 import { DatePickerField } from "@/components/date-picker-field";
+import { plazoMaximoCulminacion } from "@/lib/plazo-culminacion";
 
 type Instructor = { id: string; nombres: string; apellidos: string; email: string };
 
@@ -35,6 +39,7 @@ type Ficha = {
   estado: EstadoFichaValue | null;
   nivelFormacion: NivelFormacionValue | null;
   jornada: JornadaValue | null;
+  reglamento: ReglamentoAprendizValue | null;
   fechaInicioFicha: string | null;
   fechaInicioProductiva: string | null;
   fechaFinFormacion: string | null;
@@ -53,6 +58,7 @@ type GestionForm = {
   estado: string;
   nivelFormacion: string;
   jornada: string;
+  reglamento: string;
   fechaInicioFicha: string;
   fechaFinFormacion: string;
 };
@@ -62,6 +68,7 @@ const gestionVacia: GestionForm = {
   estado: "",
   nivelFormacion: "",
   jornada: "",
+  reglamento: "",
   fechaInicioFicha: "",
   fechaFinFormacion: "",
 };
@@ -129,6 +136,8 @@ export function CoordinadorFichasPanel({
   const [bulkAssignInstructorId, setBulkAssignInstructorId] = useState("");
   const [bulkAssignLoading, setBulkAssignLoading] = useState(false);
   const [bulkAssignError, setBulkAssignError] = useState<string | null>(null);
+  // Tope de aprendices por instructor (§9.1.3): la asignación se hace igual, solo se advierte.
+  const [avisosTope, setAvisosTope] = useState<string[]>([]);
 
   const fichasFiltradas = fichas.filter((ficha) => {
     if (soloSinInstructor && ficha.instructorId) return false;
@@ -177,6 +186,7 @@ export function CoordinadorFichasPanel({
 
     setSelectedIds(new Set());
     setBulkAssignInstructorId("");
+    setAvisosTope(data.advertencias ?? []);
     await refetchFichas();
   }
 
@@ -263,6 +273,7 @@ export function CoordinadorFichasPanel({
 
     const data = await res.json();
     setFichas((prev) => prev.map((f) => (f.id === fichaId ? { ...f, ...data.ficha } : f)));
+    setAvisosTope(data.advertencias ?? []);
   }
 
   function startEdit(ficha: Ficha) {
@@ -273,6 +284,7 @@ export function CoordinadorFichasPanel({
       estado: ficha.estado ?? "",
       nivelFormacion: ficha.nivelFormacion ?? "",
       jornada: ficha.jornada ?? "",
+      reglamento: ficha.reglamento ?? "",
       fechaInicioFicha: aInputDate(ficha.fechaInicioFicha),
       fechaFinFormacion: aInputDate(ficha.fechaFinFormacion),
     });
@@ -301,6 +313,7 @@ export function CoordinadorFichasPanel({
           estado: gestionForm.estado || null,
           nivelFormacion: gestionForm.nivelFormacion || null,
           jornada: gestionForm.jornada || null,
+          reglamento: gestionForm.reglamento || null,
           fechaInicioFicha: gestionForm.fechaInicioFicha || null,
           fechaFinFormacion: gestionForm.fechaFinFormacion || null,
         },
@@ -577,6 +590,14 @@ export function CoordinadorFichasPanel({
                 Cancelar selección
               </button>
               {bulkAssignError && <p className="w-full text-xs text-red-600">{bulkAssignError}</p>}
+              {avisosTope.length > 0 && (
+                <div className="w-full rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                  {avisosTope.map((a) => (
+                    <p key={a}>{a}</p>
+                  ))}
+                  <p className="mt-1 text-amber-700 dark:text-amber-400">La asignación quedó hecha; es solo una advertencia.</p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -600,13 +621,21 @@ export function CoordinadorFichasPanel({
                 ficha.estado ? estadoFichaLabel[ficha.estado] : null,
                 ficha.nivelFormacion ? nivelFormacionLabel[ficha.nivelFormacion] : null,
                 ficha.jornada ? jornadaLabel[ficha.jornada] : null,
+                ficha.reglamento ? reglamentoAprendizLabel[ficha.reglamento] : null,
               ].filter(Boolean);
+
+              // Plazo de 24 meses para culminar la EP, solo en fichas del Acuerdo 007 de 2012.
+              const plazoCulminacion = plazoMaximoCulminacion({
+                reglamento: ficha.reglamento,
+                fechaInicioProductiva: ficha.fechaInicioProductiva ? new Date(ficha.fechaInicioProductiva) : null,
+              });
 
               const fechas = [
                 ["Inicio ficha", formatoLegible(ficha.fechaInicioFicha)],
                 ["Inicio productiva", formatoLegible(ficha.fechaInicioProductiva)],
                 ["Fin formación", formatoLegible(ficha.fechaFinFormacion)],
                 ["Límite iniciar EP", formatoLegible(ficha.fechaLimiteIniciarEP)],
+                ["Plazo máx. culminar EP", plazoCulminacion ? formatoLegible(plazoCulminacion.toISOString()) : null],
               ].filter(([, valor]) => valor) as [string, string][];
 
               return (
@@ -815,6 +844,24 @@ export function CoordinadorFichasPanel({
                               </option>
                             ))}
                           </select>
+                        </label>
+                        <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
+                          Reglamento del aprendiz
+                          <select
+                            value={gestionForm.reglamento}
+                            onChange={(e) => updateGestion("reglamento", e.target.value)}
+                            className={inputClass}
+                          >
+                            <option value="">Sin definir</option>
+                            {ReglamentoAprendizValues.map((v) => (
+                              <option key={v} value={v}>
+                                {reglamentoAprendizLabel[v]}
+                              </option>
+                            ))}
+                          </select>
+                          <span className="text-[11px] text-zinc-500">
+                            Con el Acuerdo 007 de 2012 se calcula el plazo de 24 meses para culminar la EP.
+                          </span>
                         </label>
                       </div>
 

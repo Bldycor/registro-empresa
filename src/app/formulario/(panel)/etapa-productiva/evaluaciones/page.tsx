@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth-guards";
 import { ConcertacionForm } from "@/components/concertacion-form";
 import { EvaluacionMomento, type EvaluacionMomentoData } from "@/components/evaluacion-momento";
 import { ReunionExtraordinaria } from "@/components/reunion-extraordinaria";
+import { PlantillaEnlace, PLANTILLA_EVALUACION } from "@/components/plantilla-enlace";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +90,9 @@ export default async function EtapaProductivaPage() {
           Formato GFPI-F-023 — 3 momentos: Planeación (concertación), Seguimiento y Cierre. Tu
           instructor registra la rúbrica de cada momento tras la reunión.
         </p>
+        <div className="mt-2">
+          <PlantillaEnlace plantilla={PLANTILLA_EVALUACION} />
+        </div>
       </div>
 
       <div className="w-full max-w-2xl">

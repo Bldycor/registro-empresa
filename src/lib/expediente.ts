@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { calcularSeguimiento } from "@/lib/seguimiento-evidencias";
+import { advertenciaPlazoCulminacion, plazoMaximoCulminacion } from "@/lib/plazo-culminacion";
 
 // Expediente de la Etapa Productiva de un aprendiz (requisitos §3.4; guía GFPI-G-040 §9.5): todo su
 // proceso en un solo lugar —datos, las seis evidencias con su aval, reuniones, novedades y avisos
@@ -35,6 +36,8 @@ export async function cargarExpediente(userId: string) {
           codigo: true,
           programa: true,
           fechaLimiteIniciarEP: true,
+          fechaInicioProductiva: true,
+          reglamento: true,
           instructor: { select: { nombres: true, apellidos: true, email: true } },
         },
       },
@@ -205,7 +208,16 @@ export async function cargarExpediente(userId: string) {
     certificacionAprobada: a.certificacionEmpresario?.estado === "APROBADA",
   });
 
-  return { ...a, momentos, extraordinarias, checklist };
+  // Plazo de 24 meses del Acuerdo 007 de 2012, si la ficha se rige por él (solo advierte).
+  const plazoCulminacion = plazoMaximoCulminacion(a.ficha);
+  const advertenciaPlazo = advertenciaPlazoCulminacion({
+    plazo: plazoCulminacion,
+    fechaFin: a.fechaFinEtapaProductiva,
+    hoy: new Date(),
+    estado: a.estado,
+  });
+
+  return { ...a, momentos, extraordinarias, checklist, plazoCulminacion, advertenciaPlazo };
 }
 
 export type Expediente = NonNullable<Awaited<ReturnType<typeof cargarExpediente>>>;

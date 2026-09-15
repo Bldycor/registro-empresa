@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
+import { advertenciasTope } from "@/lib/carga-instructor";
 
 // Asigna (o quita) el mismo instructor a varias fichas de una sola vez, para cuando el
 // coordinador selecciona un lote en el panel en vez de asignar ficha por ficha.
@@ -31,5 +32,8 @@ export async function POST(request: Request) {
     data: { instructorId },
   });
 
-  return NextResponse.json({ actualizadas: resultado.count });
+  // Tope de aprendices por instructor (§9.1.3): solo se advierte, la asignación ya quedó hecha.
+  const advertencias = instructorId ? await advertenciasTope([instructorId]) : [];
+
+  return NextResponse.json({ actualizadas: resultado.count, advertencias });
 }

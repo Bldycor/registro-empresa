@@ -20,6 +20,7 @@ export default async function CoordinadorFichasPage() {
         fechaInicioProductiva: true,
         fechaFinFormacion: true,
         fechaLimiteIniciarEP: true,
+        reglamento: true,
         instructorId: true,
         instructor: { select: { id: true, nombres: true, apellidos: true, email: true } },
         _count: { select: { aprendices: true } },

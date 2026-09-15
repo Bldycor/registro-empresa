@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-guards";
 import { calcularSlotsBitacoras, calcularPeriodoBitacora } from "@/lib/bitacora-fechas";
 import { BitacorasAprendizPanel, type BitacoraSlot } from "@/components/bitacoras-aprendiz-panel";
+import { PlantillaEnlace, PLANTILLA_BITACORA } from "@/components/plantilla-enlace";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,9 @@ export default async function BitacorasPage() {
           Registro quincenal de actividades durante tu Etapa Productiva (formato GFPI-F-147) — {aprendiz?.totalBitacoras ?? 12}{" "}
           bitácoras, cada 15 días desde tu fecha de inicio.
         </p>
+        <div className="mt-2">
+          <PlantillaEnlace plantilla={PLANTILLA_BITACORA} />
+        </div>
       </div>
 
       {!aprendiz?.fechaInicioEtapaProductiva ? (

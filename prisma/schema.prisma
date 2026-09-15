@@ -465,6 +465,11 @@ model Ficha {
   // de control se calcula como (vigencia del acuerdo 007 o 009, el que aplique) - 180 días; acá
   // se importa el valor ya calculado, sin modelar las columnas de vigencia de acuerdo.
   fechaLimiteIniciarEP DateTime?
+  // Reglamento del aprendiz que rige a la ficha. Con el Acuerdo 007 de 2012 la etapa productiva
+  // se debe culminar dentro de los 24 meses siguientes al fin de la etapa lectiva
+  // (`fechaInicioProductiva`); los grupos del Acuerdo 009 de 2024 no tienen ese plazo (guía
+  // GFPI-G-040 §9.1.1). Sin marcar, el sistema no calcula el plazo.
+  reglamento ReglamentoAprendiz?
 
   instructorId String?
   instructor   User?   @relation("InstructorFichas", fields: [instructorId], references: [id])
@@ -958,4 +963,10 @@ model AvisoPlazo {
 enum SolicitanteReunion {
   APRENDIZ
   COFORMADOR
+}
+
+// Reglamento del aprendiz aplicable a una ficha (ver `Ficha.reglamento`).
+enum ReglamentoAprendiz {
+  ACUERDO_007_2012
+  ACUERDO_009_2024
 }

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { FichaGestionSchema } from "@/lib/validations";
 import { calcularFechasFicha } from "@/lib/ficha-fechas";
+import { advertenciasTope } from "@/lib/carga-instructor";
 import type { Prisma } from "@/generated/prisma/client";
 
 const FICHA_SELECT = {
@@ -16,6 +17,7 @@ const FICHA_SELECT = {
   fechaInicioProductiva: true,
   fechaFinFormacion: true,
   fechaLimiteIniciarEP: true,
+  reglamento: true,
   instructorId: true,
   instructor: { select: { id: true, nombres: true, apellidos: true, email: true } },
 } satisfies Prisma.FichaSelect;
@@ -80,6 +82,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (g.estado !== undefined) data.estado = g.estado;
     if (g.nivelFormacion !== undefined) data.nivelFormacion = g.nivelFormacion;
     if (g.jornada !== undefined) data.jornada = g.jornada;
+    if (g.reglamento !== undefined) data.reglamento = g.reglamento;
 
     let fechaInicioFicha = ficha.fechaInicioFicha;
     let fechaFinFormacion = ficha.fechaFinFormacion;
@@ -121,7 +124,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     select: FICHA_SELECT,
   });
 
-  return NextResponse.json({ ficha: actualizada });
+  // Tope de aprendices por instructor (§9.1.3): solo se advierte, la asignación ya quedó hecha.
+  const advertencias =
+    "instructorId" in body && actualizada.instructorId ? await advertenciasTope([actualizada.instructorId]) : [];
+
+  return NextResponse.json({ ficha: actualizada, advertencias });
 }
 
 // Elimina la ficha y todos sus datos de gestión (estado, fechas, etc.). Los aprendices que la
