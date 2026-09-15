@@ -20,6 +20,7 @@ const roleNav: Record<string, { href: string; label: string }[]> = {
     { href: "/formulario/instructor/evaluaciones", label: "Evaluaciones" },
     { href: "/formulario/instructor/extraordinarias", label: "Reuniones extraordinarias" },
     { href: "/formulario/instructor/certificacion", label: "Certificación" },
+    { href: "/formulario/reportes", label: "Reportes" },
     { href: "/formulario/instructor/perfil", label: "Mi perfil" },
   ],
   COORDINADOR: [
@@ -30,6 +31,7 @@ const roleNav: Record<string, { href: string; label: string }[]> = {
     { href: "/formulario/coordinador/interrupciones", label: "Interrupciones EP" },
     { href: "/formulario/coordinador/aplazamientos", label: "Aplazamientos EP" },
     { href: "/formulario/coordinador/competencias", label: "Competencias" },
+    { href: "/formulario/reportes", label: "Reportes" },
     { href: "/formulario/coordinador/perfil", label: "Mi perfil" },
   ],
   // ADMIN tiene control total: todo lo del Coordinador, más la gestión de coordinadores.
@@ -42,6 +44,7 @@ const roleNav: Record<string, { href: string; label: string }[]> = {
     { href: "/formulario/coordinador/interrupciones", label: "Interrupciones EP" },
     { href: "/formulario/coordinador/aplazamientos", label: "Aplazamientos EP" },
     { href: "/formulario/coordinador/competencias", label: "Competencias" },
+    { href: "/formulario/reportes", label: "Reportes" },
     { href: "/formulario/coordinador/perfil", label: "Mi perfil" },
   ],
 };
