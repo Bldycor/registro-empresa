@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { ocupaFranja } from "@/lib/reuniones";
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -44,6 +45,8 @@ export async function GET(request: Request) {
       fecha: fechaDate,
       userId: { not: session.user.id },
       user: { ficha: { instructorId } },
+      // Una reunión extraordinaria rechazada ya no ocupa la franja.
+      AND: [ocupaFranja],
     },
     select: { horaInicio: true, horaFin: true },
   });

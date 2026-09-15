@@ -15,7 +15,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const existing = await prisma.evaluacion.findUnique({
     where: { id },
-    select: { id: true, numero: true, user: { select: { ficha: { select: { instructorId: true } } } } },
+    select: {
+      id: true,
+      numero: true,
+      esExtraordinario: true,
+      user: { select: { ficha: { select: { instructorId: true } } } },
+    },
   });
   if (!existing) {
     return NextResponse.json({ error: "Evaluación no encontrada." }, { status: 404 });
@@ -24,6 +29,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json(
       { error: "Solo puedes evaluar a aprendices de tus fichas asignadas." },
       { status: 403 }
+    );
+  }
+  if (existing.esExtraordinario) {
+    return NextResponse.json(
+      {
+        error:
+          "Las reuniones extraordinarias no llevan rúbrica: se aprueban o rechazan desde «Reuniones extraordinarias».",
+      },
+      { status: 400 }
     );
   }
 

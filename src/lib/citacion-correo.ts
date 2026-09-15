@@ -57,6 +57,8 @@ export function componerCitacion(p: {
   horario: HorarioReunion;
   videollamadaUrl: string;
   anterior?: HorarioReunion | null;
+  // Texto adicional, p. ej. el motivo de una reunión extraordinaria.
+  detalle?: string | null;
 }): { subject: string; text: string; html: string } {
   const tituloMin = p.titulo.toLowerCase();
 
@@ -98,6 +100,7 @@ export function componerCitacion(p: {
       `Aprendiz: ${p.aprendizNombre}`,
       `Fecha: ${fechaLegible(p.horario.fecha)}`,
       `Hora: ${p.horario.horaInicio} - ${p.horario.horaFin}`,
+      ...(p.detalle ? [`Motivo: ${p.detalle}`] : []),
     ].join("\n"),
     html: [
       `<p>Se ha agendado una <strong>videollamada</strong> de ${escaparHtml(tituloMin)} (etapa productiva).</p>`,
@@ -106,6 +109,7 @@ export function componerCitacion(p: {
       `<li><strong>Aprendiz:</strong> ${escaparHtml(p.aprendizNombre)}</li>`,
       `<li><strong>Fecha:</strong> ${escaparHtml(fechaLegible(p.horario.fecha))}</li>`,
       `<li><strong>Hora:</strong> ${p.horario.horaInicio} - ${p.horario.horaFin}</li>`,
+      ...(p.detalle ? [`<li><strong>Motivo:</strong> ${escaparHtml(p.detalle)}</li>`] : []),
       "</ul>",
       "<p>Esta invitación se agregó también como evento de calendario adjunto.</p>",
     ].join("\n"),
@@ -163,5 +167,70 @@ export function atributosInvitacion(p: {
     })),
     status: "CONFIRMED",
     busyStatus: "BUSY",
+  };
+}
+
+
+// Solicitud de reunión extraordinaria, solo para el instructor. Todavía NO es una citación: la
+// citación con enlace a todos sale únicamente cuando el instructor la aprueba.
+export function componerSolicitudExtraordinaria(p: {
+  aprendizNombre: string;
+  horario: HorarioReunion;
+  motivo: string;
+  solicitadaPor: "APRENDIZ" | "COFORMADOR";
+  panelUrl: string;
+}): { subject: string; text: string; html: string } {
+  const quien =
+    p.solicitadaPor === "COFORMADOR"
+      ? `${p.aprendizNombre} solicitó una reunión extraordinaria contigo, a petición de su coformador.`
+      : `${p.aprendizNombre} solicitó una reunión extraordinaria contigo.`;
+  return {
+    subject: `Solicitud de reunión extraordinaria — ${p.aprendizNombre}`,
+    text: [
+      quien,
+      "",
+      `Fecha propuesta: ${horarioLegible(p.horario)}`,
+      `Motivo: ${p.motivo}`,
+      "",
+      `Apruébala o recházala en SEPA: ${p.panelUrl}`,
+      "",
+      "Al aprobarla se envía la citación con el enlace de la videollamada al aprendiz y a su coformador.",
+    ].join("\n"),
+    html: [
+      `<p>${escaparHtml(quien)}</p>`,
+      "<ul>",
+      `<li><strong>Fecha propuesta:</strong> ${escaparHtml(horarioLegible(p.horario))}</li>`,
+      `<li><strong>Motivo:</strong> ${escaparHtml(p.motivo)}</li>`,
+      "</ul>",
+      `<p><a href="${escaparHtml(p.panelUrl)}">Aprobar o rechazar en SEPA</a></p>`,
+      "<p>Al aprobarla se envía la citación con el enlace de la videollamada al aprendiz y a su coformador.</p>",
+    ].join("\n"),
+  };
+}
+
+// Aviso al aprendiz de que su instructor no aprobó la reunión extraordinaria, con la razón.
+export function componerRechazoExtraordinaria(p: {
+  aprendizNombre: string;
+  horario: HorarioReunion;
+  motivoRechazo: string;
+  appUrl: string;
+}): { subject: string; text: string; html: string } {
+  return {
+    subject: "Tu solicitud de reunión extraordinaria no fue aprobada",
+    text: [
+      `Hola ${p.aprendizNombre},`,
+      "",
+      `Tu instructor no aprobó la reunión extraordinaria que propusiste para el ${horarioLegible(p.horario)}.`,
+      "",
+      `Motivo: ${p.motivoRechazo}`,
+      "",
+      `Puedes proponer otra fecha desde SEPA: ${p.appUrl}`,
+    ].join("\n"),
+    html: [
+      `<p>Hola ${escaparHtml(p.aprendizNombre)},</p>`,
+      `<p>Tu instructor no aprobó la reunión extraordinaria que propusiste para el ${escaparHtml(horarioLegible(p.horario))}.</p>`,
+      `<p><strong>Motivo:</strong> ${escaparHtml(p.motivoRechazo)}</p>`,
+      `<p><a href="${escaparHtml(p.appUrl)}">Proponer otra fecha en SEPA</a></p>`,
+    ].join("\n"),
   };
 }

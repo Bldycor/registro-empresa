@@ -3,13 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-guards";
 import { ConcertacionForm } from "@/components/concertacion-form";
 import { EvaluacionMomento, type EvaluacionMomentoData } from "@/components/evaluacion-momento";
+import { ReunionExtraordinaria } from "@/components/reunion-extraordinaria";
 
 export const dynamic = "force-dynamic";
 
 export default async function EtapaProductivaPage() {
   const currentUser = await requireUser(["APRENDIZ"]);
 
-  const [profile, concertacion, evaluaciones, aprendiz] = await Promise.all([
+  const [profile, concertacion, evaluaciones, aprendiz, extraordinarias] = await Promise.all([
     prisma.companyProfile.findUnique({ where: { userId: currentUser.id } }),
     prisma.concertacionFuncion.findUnique({
       where: { userId: currentUser.id },
@@ -22,7 +23,26 @@ export default async function EtapaProductivaPage() {
     }),
     prisma.user.findUnique({
       where: { id: currentUser.id },
-      select: { ficha: { select: { instructor: { select: { nombres: true, apellidos: true } } } } },
+      select: {
+        estado: true,
+        ficha: { select: { instructor: { select: { nombres: true, apellidos: true } } } },
+      },
+    }),
+    prisma.evaluacion.findMany({
+      where: { userId: currentUser.id, esExtraordinario: true },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        fecha: true,
+        horaInicio: true,
+        horaFin: true,
+        modalidad: true,
+        motivoExtraordinario: true,
+        solicitadaPor: true,
+        estado: true,
+        observaciones: true,
+        videollamadaUrl: true,
+      },
     }),
   ]);
 
@@ -105,6 +125,25 @@ export default async function EtapaProductivaPage() {
 
       <div className="w-full max-w-2xl">
         <EvaluacionMomento numero={3} data={mapEvaluacion(3)} instructorNombre={instructorNombre} />
+      </div>
+
+      <div className="w-full max-w-2xl">
+        <ReunionExtraordinaria
+          instructorNombre={instructorNombre}
+          procesoCerrado={aprendiz?.estado === "CERTIFICADO" || aprendiz?.estado === "DESERTADO"}
+          reuniones={extraordinarias.map((r) => ({
+            id: r.id,
+            fecha: r.fecha?.toISOString() ?? null,
+            horaInicio: r.horaInicio,
+            horaFin: r.horaFin,
+            modalidad: r.modalidad,
+            motivo: r.motivoExtraordinario,
+            solicitadaPor: r.solicitadaPor,
+            estado: r.estado,
+            observaciones: r.observaciones,
+            videollamadaUrl: r.videollamadaUrl,
+          }))}
+        />
       </div>
     </div>
   );

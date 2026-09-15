@@ -4,7 +4,13 @@ import { readFile } from "fs/promises";
 import path from "path";
 import { getVideoConferenceUrl } from "@/lib/video";
 import { componerAvisoPlazos, type AvisoPlazoCorreo } from "@/lib/aviso-plazos-correo";
-import { atributosInvitacion, componerCitacion, type HorarioReunion } from "@/lib/citacion-correo";
+import {
+  atributosInvitacion,
+  componerCitacion,
+  componerRechazoExtraordinaria,
+  componerSolicitudExtraordinaria,
+  type HorarioReunion,
+} from "@/lib/citacion-correo";
 
 let cachedTransporter: Transporter | null = null;
 let usingTestAccount = false;
@@ -131,6 +137,7 @@ export async function sendCitacionEmail({
   horaFin,
   videollamadaUrl: videollamadaUrlOverride,
   anterior = null,
+  detalle = null,
 }: {
   reunionId: string;
   titulo?: string;
@@ -147,13 +154,15 @@ export async function sendCitacionEmail({
   // Horario que tenía la reunión antes, cuando se está reprogramando (ver `cambioDeHorario`):
   // el correo pasa a decir que la reunión cambió y muestra el horario anterior y el nuevo.
   anterior?: HorarioReunion | null;
+  // Texto adicional para el correo, p. ej. el motivo de una reunión extraordinaria.
+  detalle?: string | null;
 }) {
   const from = process.env.EMAIL_FROM || "no-responder@registro-empresa.local";
   const to = Array.from(new Set(destinatarios.filter(Boolean)));
 
   const videollamadaUrl = videollamadaUrlOverride || getVideoConferenceUrl(reunionId, prefijoSala);
   const horario = { fecha, horaInicio, horaFin };
-  const correo = componerCitacion({ titulo, aprendizNombre, horario, videollamadaUrl, anterior });
+  const correo = componerCitacion({ titulo, aprendizNombre, horario, videollamadaUrl, anterior, detalle });
 
   // La invitación de calendario es un complemento del correo, no una condición para enviarlo: si
   // no se puede armar, la citación sale igual, sin el adjunto. Antes, un fallo al armar el .ics
@@ -321,4 +330,52 @@ export async function sendAvisoPlazosEmail(params: {
   }
 
   return { info, destinatarios: correo.destinatarios };
+}
+
+
+function urlApp(ruta: string): string {
+  return process.env.APP_URL ? `${process.env.APP_URL.replace(/\/$/, "")}${ruta}` : ruta;
+}
+
+// Solicitud de reunión extraordinaria: solo al instructor, para que la apruebe o la rechace.
+export async function sendSolicitudExtraordinariaEmail(params: {
+  instructorEmail: string;
+  aprendizNombre: string;
+  horario: HorarioReunion;
+  motivo: string;
+  solicitadaPor: "APRENDIZ" | "COFORMADOR";
+}) {
+  const from = process.env.EMAIL_FROM || "no-responder@registro-empresa.local";
+  const correo = componerSolicitudExtraordinaria({
+    ...params,
+    panelUrl: urlApp("/formulario/instructor/extraordinarias"),
+  });
+  const transporter = await getTransporter();
+  const info = await transporter.sendMail({ from, to: params.instructorEmail, ...correo });
+  if (usingTestAccount) {
+    console.log(`[mailer] Vista previa (Ethereal) de la solicitud extraordinaria: ${nodemailer.getTestMessageUrl(info)}`);
+  }
+  return { info };
+}
+
+// Rechazo de la reunión extraordinaria: al aprendiz, con la razón que dio el instructor.
+export async function sendRechazoExtraordinariaEmail(params: {
+  aprendizEmail: string;
+  aprendizNombre: string;
+  horario: HorarioReunion;
+  motivoRechazo: string;
+}) {
+  const from = process.env.EMAIL_FROM || "no-responder@registro-empresa.local";
+  const correo = componerRechazoExtraordinaria({
+    aprendizNombre: params.aprendizNombre,
+    horario: params.horario,
+    motivoRechazo: params.motivoRechazo,
+    appUrl: urlApp("/formulario/etapa-productiva/evaluaciones"),
+  });
+  const transporter = await getTransporter();
+  const info = await transporter.sendMail({ from, to: params.aprendizEmail, ...correo });
+  if (usingTestAccount) {
+    console.log(`[mailer] Vista previa (Ethereal) del rechazo extraordinario: ${nodemailer.getTestMessageUrl(info)}`);
+  }
+  return { info };
 }

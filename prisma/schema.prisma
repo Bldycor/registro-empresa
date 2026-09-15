@@ -772,11 +772,14 @@ model Evaluacion {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // 2 = Momento de seguimiento a los ~2 meses; 3 = Momento de evaluación de cierre (10-15 días
-  // antes de terminar). Los seguimientos extraordinarios no llevan numero fijo — ver esExtraordinario.
+  // antes de terminar). Las reuniones extraordinarias usan numero 0 — ver esExtraordinario.
   numero Int
 
   esExtraordinario      Boolean @default(false)
   motivoExtraordinario  String?
+  // Quién pidió la reunión extraordinaria (requisito §3.2: a petición del aprendiz o del
+  // coformador). El coformador no tiene cuenta, así que el aprendiz la agenda en su nombre.
+  solicitadaPor         SolicitanteReunion?
 
   fecha      DateTime?
   horaInicio String?
@@ -944,4 +947,10 @@ model AvisoPlazo {
 
   @@unique([userId, clave, tipo, fechaLimite])
   @@index([userId])
+}
+
+// Quién solicitó una reunión extraordinaria (ver `Evaluacion.solicitadaPor`).
+enum SolicitanteReunion {
+  APRENDIZ
+  COFORMADOR
 }

@@ -7,6 +7,7 @@ import { rangesOverlap } from "@/lib/time";
 import { sendCitacionEmail } from "@/lib/mailer";
 import { getVideoConferenceUrl } from "@/lib/video";
 import { cambioDeHorario } from "@/lib/citacion-correo";
+import { ocupaFranja } from "@/lib/reuniones";
 import {
   isGoogleCalendarConfigured,
   createCalendarMeetEvent,
@@ -129,6 +130,8 @@ export async function POST(request: Request) {
       fecha: fechaDate,
       userId: { not: session.user.id },
       user: { ficha: { instructorId } },
+      // Una reunión extraordinaria rechazada ya no ocupa la franja.
+      AND: [ocupaFranja],
     },
     select: { horaInicio: true, horaFin: true },
   });

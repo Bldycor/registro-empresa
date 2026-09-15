@@ -855,6 +855,59 @@ export const EvaluacionRetroAprendizSchema = z.object({
   retroalimentacionAprendiz: z.string().trim().min(1, "Escribe tu comentario."),
 });
 
+// Reunión extraordinaria (requisito §3.2): la pide el aprendiz o el coformador cuando hay un
+// problema o una eventualidad. El aprendiz la agenda con fecha, franja y motivo; el instructor la
+// aprueba o la rechaza, y solo al aprobarla sale la citación a todos (decisión de Coordinación).
+// Se guarda como `Evaluacion` con `esExtraordinario` y numero 0: no lleva rúbrica ni cuenta para
+// el semáforo ni para "Por certificar".
+export const NUMERO_REUNION_EXTRAORDINARIA = 0;
+
+export const SolicitanteReunionValues = ["APRENDIZ", "COFORMADOR"] as const;
+export type SolicitanteReunionValue = (typeof SolicitanteReunionValues)[number];
+export const solicitanteReunionLabel: Record<SolicitanteReunionValue, string> = {
+  APRENDIZ: "El aprendiz",
+  COFORMADOR: "El coformador",
+};
+
+export const ReunionExtraordinariaSchema = z
+  .object({
+    fecha: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Selecciona una fecha válida.")
+      .refine((fecha) => fecha >= todayDateString(), {
+        message: "La fecha no puede ser en el pasado.",
+      }),
+    horaInicio: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Selecciona una hora de inicio válida."),
+    horaFin: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Selecciona una hora de fin válida."),
+    modalidad: z.enum(ModalidadEjecucionEPValues, { message: "Selecciona la modalidad." }),
+    motivo: z
+      .string()
+      .trim()
+      .min(10, "Explica el motivo de la reunión (mínimo 10 caracteres).")
+      .max(500, "El motivo no puede pasar de 500 caracteres."),
+    solicitadaPor: z.enum(SolicitanteReunionValues, { message: "Indica quién pide la reunión." }),
+  })
+  .refine((data) => toMinutes(data.horaFin) > toMinutes(data.horaInicio), {
+    message: "La hora de fin debe ser posterior a la hora de inicio.",
+    path: ["horaFin"],
+  })
+  .refine((data) => toMinutes(data.horaFin) - toMinutes(data.horaInicio) >= 60, {
+    message: "La franja debe durar al menos una hora.",
+    path: ["horaFin"],
+  });
+
+// Respuesta del instructor. Rechazar exige una nota: es lo que el aprendiz lee para saber por qué
+// y proponer otra fecha.
+export const DecisionExtraordinariaSchema = z
+  .object({
+    estado: z.enum(["APROBADA", "RECHAZADA"]),
+    observaciones: z.string().trim().max(500).nullable().optional(),
+  })
+  .refine((d) => d.estado !== "RECHAZADA" || Boolean(d.observaciones?.trim()), {
+    message: "Indícale al aprendiz por qué no se aprueba.",
+    path: ["observaciones"],
+  });
+
 // Evidencia (d): el instructor registra la evaluación (rúbrica de 13 variables + retroalimentación
 // y, en el Momento 3, el juicio final) — coherente con su rol ("revisa y califica evidencias,
 // registra evaluaciones") en docs/REQUISITOS-FUNCIONALES.md sección 2. `finalizar` distingue

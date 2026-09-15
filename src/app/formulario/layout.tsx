@@ -61,7 +61,8 @@ export default async function FormularioLayout({
                   prisma.seleccionAlternativaEP.count({ where: { userId, estado: "RECHAZADA" } }),
                   prisma.formalizacionEtapaProductiva.count({ where: { userId, estado: "RECHAZADA" } }),
                   prisma.bitacora.count({ where: { userId, estado: "RECHAZADA" } }),
-                  prisma.evaluacion.count({ where: { userId, estado: "RECHAZADA" } }),
+                  // Una reunión extraordinaria no aprobada no es una evidencia rechazada: no suma a la insignia.
+                  prisma.evaluacion.count({ where: { userId, estado: "RECHAZADA", esExtraordinario: false } }),
                   prisma.certificacionEmpresario.count({ where: { userId, estado: "RECHAZADA" } }),
                 ]);
               return { alternativa, formalizacion, bitacoras, evaluaciones, certificacion };
