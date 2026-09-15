@@ -119,10 +119,15 @@ docs/                             # requisitos y plan
 - Doble interruptor: `CRON_SECRET` y `NOTIFICACIONES_ACTIVAS=true` (variables de producción en Vercel). Con sesión de Coordinación la ruta solo simula; `?simular=1` fuerza la simulación también con la clave. La redacción del correo es una función pura (`src/lib/aviso-plazos-correo.ts`), porque es lo único que se puede probar en local.
 - Al activarlos (14 sep 2026), Coordinación decidió no avisar lo que ya estaba vencido: se marcó como avisado sin enviar correo (`POST` a la misma ruta).
 
+**Expediente del aprendiz** (requisitos §3.4, guía §9.5; `src/lib/expediente.ts` y `src/components/expediente-aprendiz.tsx`):
+- Todo el proceso de un aprendiz en una sola vista de solo lectura: datos y empresa, el semáforo de las seis evidencias (el mismo `calcularSeguimiento`), cada evidencia con quién la revisó y cuándo, la rúbrica de cada Momento, las reuniones extraordinarias, las novedades y los avisos enviados por correo.
+- La ven el instructor (de cualquier aprendiz, como su lista de Aprendices), Coordinación y Admin en `/formulario/expediente/[id]`, y el aprendiz el suyo en la pestaña «Expediente».
+- Se descarga con «Imprimir o guardar en PDF» del navegador, sin librería de PDF: al imprimir se ocultan el encabezado y los menús (`print:hidden`), y el modo oscuro solo aplica en pantalla (`@custom-variant dark` en `globals.css`), así que el PDF sale en claro.
+
 **Cuentas — riesgo aceptado:** las cuentas que crea otro rol reciben como contraseña inicial su cédula, que es también el usuario, y el correo de bienvenida la envía en texto plano. Coordinación ratificó las dos decisiones el 14 de septiembre de 2026, sabiendo que 23 de 37 cuentas (incluidos los 2 coordinadores) seguían con la cédula como contraseña. No cambiarlo ni volver a proponerlo sin que Coordinación lo pida.
 
 ## Roadmap
 
-El detalle está en `docs/PLAN-IMPLEMENTACION.md`. Lo principal pendiente: vista consolidada y expediente por aprendiz, reportes con exportación a PDF y Excel, plantillas descargables de GFPI-F-147 y GFPI-F-023, y lo que falta de la guía GFPI-G-040 (plan de mejoramiento, plazos de novedades, tope de 80 aprendices por instructor, plazo de 24 meses).
+El detalle está en `docs/PLAN-IMPLEMENTACION.md`. Lo principal pendiente: reportes con exportación a PDF y Excel, plantillas descargables de GFPI-F-147 y GFPI-F-023, y lo que falta de la guía GFPI-G-040 (plan de mejoramiento, plazos de novedades, tope de 80 aprendices por instructor, plazo de 24 meses).
 
 Trabajar un frente a la vez, y aplicar y probar cada migración antes de construir la interfaz encima.

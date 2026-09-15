@@ -149,7 +149,9 @@ Confirmado con Coordinación a partir de la *Guía para el Desarrollo de la Etap
 - **Plazos de la institución** (§9.1.2, §9.3.1): 8 días hábiles para avalar una alternativa, 15 para un cambio de alternativa y 8 para registrarla en SofiaPlus. Se muestran como antigüedad en cada pendiente.
 - **SofiaPlus:** la integración sigue fuera de alcance (sección 6). Coordinación anota en SEPA la fecha en que registró la alternativa, como constancia.
 
-**Pendiente de la guía:** plan de mejoramiento cuando el juicio es No aprobado (§9.4), registro de novedades dentro de 3 y 5 días hábiles (§9.2), tope de 80 aprendices por instructor (§9.1.3), plazo de 24 meses del Acuerdo 007 de 2012 (§9.1.1) y expediente descargable por aprendiz (§9.5).
+- **Expediente del aprendiz** (§9.5, y la vista consolidada de la sección 3.4): todo el proceso en una vista de solo lectura, que se guarda en PDF desde el navegador. La ven el aprendiz (el suyo), el instructor y Coordinación.
+
+**Pendiente de la guía:** plan de mejoramiento cuando el juicio es No aprobado (§9.4), registro de novedades dentro de 3 y 5 días hábiles (§9.2), tope de 80 aprendices por instructor (§9.1.3) y plazo de 24 meses del Acuerdo 007 de 2012 (§9.1.1).
 
 ---
 

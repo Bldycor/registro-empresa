@@ -127,6 +127,7 @@ Lo mínimo planeado (guardas por rol, ficha↔instructor, vista de instructor) s
   - *Recordatorio:* en la misma tarea diaria de los avisos de plazo sale un correo por reunión —Concertación, Momentos 2 y 3 sin finalizar, extraordinarias aprobadas— a los mismos destinatarios de la citación. Sale el día anterior, o el mismo día si la reunión se agendó o se movió después de la tarea del día anterior y todavía no ha empezado. Se registra en `AvisoPlazo` (tipo nuevo `RECORDATORIO_REUNION`, migración aditiva), una vez por reunión y horario.
   - *Reprogramación por el instructor:* botón «Reprogramar reunión» en «Evaluaciones» (Momentos sin finalizar) y en «Reuniones extraordinarias» (aprobadas y por venir). Muestra la agenda del propio instructor, revisa choques contra todas sus reuniones (y, en la Concertación, contra las demás concertaciones), conserva el enlace de la videollamada y envía «Reunión reprogramada» con quién la movió y el motivo del cambio.
   - Los títulos, destinatarios y choques de horario de las reuniones quedaron en un solo lugar (`src/lib/reuniones.ts`).
+- **Expediente del aprendiz — Fase 5 (15 sep 2026): COMPLETO.** Requisitos §3.4 y guía §9.5. Una vista de solo lectura con todo el proceso: datos y empresa, estado del aprendiz y del plan (el mismo semáforo del panel de Seguimiento), cada evidencia con su revisión (quién y cuándo), la rúbrica completa de cada Momento y el juicio final, las reuniones extraordinarias, las novedades (interrupciones, aplazamientos, deserción) y el historial de avisos por correo. Enlace «Ver expediente» en Seguimiento y en las listas de Aprendices del instructor y de Coordinación (`/formulario/expediente/[id]`), y pestaña «Expediente» en el panel del aprendiz. Se guarda en PDF desde el navegador —sin librería nueva—: al imprimir se ocultan los menús y el modo oscuro deja de aplicar.
 
 ---
 
@@ -155,12 +156,12 @@ Esto cubre, en el lenguaje del documento de requisitos: inscripción (3.1, parci
 5. ~~**Evaluación 2 y 3** (seguimiento, a los ~2 meses y al cierre)~~ **RESUELTO.** Rúbrica real de 13 variables del formato `GFPI-F-023_V06` (ver nota en `REQUISITOS-FUNCIONALES.md`, sección 3.4), con revisión del instructor — ver "Estado de avance".
 6. ~~**Reunión extra a solicitud**~~ **RESUELTO (14 sep 2026).** El aprendiz la agenda —a nombre propio o del coformador— con fecha, franja y motivo, y el instructor la aprueba o la rechaza; la citación a todos sale al aprobarla. Ver «Estado de avance».
 7. ~~**Certificación del empresario** (carta de terminación, evidencia de cierre)~~ **RESUELTO.** Formulario/UI y validación de ventana de fechas (5 días antes/después del fin de EP) completos — ver "Estado de avance".
-8. **Control de evaluaciones por aprendiz** (vista consolidada, sección 3.4) — no existe.
+8. ~~**Control de evaluaciones por aprendiz** (vista consolidada, sección 3.4)~~ **RESUELTO (15 sep 2026)** con el expediente del aprendiz, que además cubre el expediente descargable de la guía (§9.5). Ver «Estado de avance».
 9. **Módulo de consultas y reportes** (sección 3.5: filtros, métricas, exportación PDF/Excel, acceso por rol) — no existe.
 10. ~~**Notificaciones de incumplimiento**~~ **RESUELTO (14 sep 2026).** Avisos diarios por correo, ver «Estado de avance».
 11. **Plantillas descargables** de `GFPI-F-147` y `GFPI-F-023` — la subida de archivos ya existe (Vercel Blob), pero las plantillas no están en `public/documentos`. La firma dentro de la app está sugerida fuera de alcance (`REQUISITOS-FUNCIONALES.md`, sección 6).
 12. ~~**Recordatorio** antes de cada reunión y **reprogramación por cualquiera de las partes** (requisitos §3.2)~~ **RESUELTO (15 sep 2026).** El aviso al reprogramar quedó el 14 sep; el recordatorio y la reprogramación desde el panel del instructor, el 15. Ver «Estado de avance».
-13. **Pendientes de la guía GFPI-G-040:** plan de mejoramiento cuando el juicio es No aprobado (§9.4), registro de novedades dentro de 3 y 5 días hábiles (§9.2), tope de 80 aprendices por instructor (§9.1.3), plazo de 24 meses del Acuerdo 007 de 2012 (§9.1.1) y expediente descargable (§9.5, se cruza con la Fase 5).
+13. **Pendientes de la guía GFPI-G-040:** plan de mejoramiento cuando el juicio es No aprobado (§9.4), registro de novedades dentro de 3 y 5 días hábiles (§9.2), tope de 80 aprendices por instructor (§9.1.3) y plazo de 24 meses del Acuerdo 007 de 2012 (§9.1.1). El expediente descargable (§9.5) quedó resuelto el 15 sep 2026 (punto 8).
 
 ## Fases sugeridas
 
@@ -195,8 +196,8 @@ Detalle del diseño final y verificación en vivo de todo lo anterior: ver "Esta
 
 **Absorbidas por "Fase 2 redefinida como Gestión de Evidencia de Etapa Productiva"** (ver la nota al inicio de "Estado de avance") — el plan original de tratarlas como tres fases separadas quedó obsoleto en cuanto se revisaron los formatos institucionales reales. Bitácoras (evidencia c), Evaluaciones 2/3 (evidencia d, con rúbrica de 13 variables en vez de A/D/P) y Certificación del empresario (evidencia e) quedaron **todas completas** — ver el detalle de cada una en "Estado de avance". Los puntos originales de estas tres fases que quedaban sin construir —**reunión extra a solicitud**, **notificaciones de incumplimiento por correo** y **recordatorio y reprogramación de reuniones**— quedaron resueltos entre el 14 y el 15 sep 2026 (puntos 6, 10 y 12 de "Qué falta"). El paso automático a `Certificado` al aprobarse todas las evidencias **no se implementó a propósito**: el paso sigue siendo manual, por decisión de negocio (ver `CLAUDE.md`).
 
-### Fase 5 — Control de evaluaciones por aprendiz
-- Vista consolidada por aprendiz: bitácoras + 3 evaluaciones + certificación del empresario, con estado de cada una.
+### Fase 5 — Control de evaluaciones por aprendiz (COMPLETA, 15 sep 2026)
+- ~~Vista consolidada por aprendiz: bitácoras + 3 evaluaciones + certificación del empresario, con estado de cada una.~~ → Expediente del aprendiz, ver «Estado de avance».
 
 ### Fase 6 — Consultas y reportes
 - Filtros (ficha, empresa, instructor, estado, rango de fechas).
