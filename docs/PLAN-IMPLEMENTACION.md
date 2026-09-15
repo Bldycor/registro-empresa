@@ -119,6 +119,8 @@ Lo mínimo planeado (guardas por rol, ficha↔instructor, vista de instructor) s
   - Constancia de registro en SofiaPlus en el aval de alternativas, con su plazo de 8 días hábiles (§9.1.2).
 - **Correcciones con un aprendiz real (13-14 sep 2026):** la Concertación ya no queda atrasada para siempre si se agendó tarde; ahora se evalúa por aval (`838b344`). Las bitácoras se cumplen con 6 aprobadas y su cadencia es mensual cuando el total es 6 (`1a6c8da`).
 - **Datos (14 sep 2026):** por instrucción de Coordinación se borraron las 40 fichas distintas de 3310644. Hay respaldo completo en `~/Respaldos-SEPA/respaldo-fichas-2026-09-14.json`. Los aprendices que tenían esas fichas no se borraron: quedaron sin ficha.
+- **Bloque 0 (14 sep 2026): COMPLETO.** La rama de trabajo pasó a `main` por avance directo; desde ahí se descubrió que Vercel publica en producción cada push a `main`. Las fechas de envío y los plazos se muestran y cuentan en hora de Colombia (`9680def`). Contraseña inicial = cédula: riesgo aceptado por Coordinación.
+- **Avisos de plazo por correo (14 sep 2026): COMPLETO y activo en producción.** Tarea diaria de Vercel (8 a. m. de Colombia) que avisa bitácoras y Momentos 1-3 al entrar en los 5 días previos y al vencer, una vez por entrega, al aprendiz con copia al instructor y, en los vencidos, al coformador. Registro histórico en `AvisoPlazo`. Lo vencido antes de la activación se marcó como avisado sin enviar, por decisión de Coordinación. De paso se corrigió el semáforo, que marcaba «atrasado 1 día» desde las 7 a. m. del mismo día del vencimiento.
 
 ---
 
@@ -149,7 +151,7 @@ Esto cubre, en el lenguaje del documento de requisitos: inscripción (3.1, parci
 7. ~~**Certificación del empresario** (carta de terminación, evidencia de cierre)~~ **RESUELTO.** Formulario/UI y validación de ventana de fechas (5 días antes/después del fin de EP) completos — ver "Estado de avance".
 8. **Control de evaluaciones por aprendiz** (vista consolidada, sección 3.4) — no existe.
 9. **Módulo de consultas y reportes** (sección 3.5: filtros, métricas, exportación PDF/Excel, acceso por rol) — no existe.
-10. **Notificaciones de incumplimiento** (correo al aprendiz y al coformador) — las alertas visuales ya existen (insignias del nav y semáforo del instructor), pero **no se envía ningún correo por vencimiento**. Requiere una tarea programada: no existe `vercel.json` ni una ruta de cron.
+10. ~~**Notificaciones de incumplimiento**~~ **RESUELTO (14 sep 2026).** Avisos diarios por correo, ver «Estado de avance». Pendiente menor: el recordatorio antes de cada reunión (punto 12).
 11. **Plantillas descargables** de `GFPI-F-147` y `GFPI-F-023` — la subida de archivos ya existe (Vercel Blob), pero las plantillas no están en `public/documentos`. La firma dentro de la app está sugerida fuera de alcance (`REQUISITOS-FUNCIONALES.md`, sección 6).
 12. **Aviso por correo al reprogramar** una evaluación y **recordatorio** antes de cada reunión (requisitos §3.2) — reagendar funciona, pero no notifica.
 13. **Pendientes de la guía GFPI-G-040:** plan de mejoramiento cuando el juicio es No aprobado (§9.4), registro de novedades dentro de 3 y 5 días hábiles (§9.2), tope de 80 aprendices por instructor (§9.1.3), plazo de 24 meses del Acuerdo 007 de 2012 (§9.1.1) y expediente descargable (§9.5, se cruza con la Fase 5).

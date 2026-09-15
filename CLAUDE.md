@@ -98,10 +98,17 @@ docs/                             # requisitos y plan
 - **Requisitos de aval** (§9.1.1: RAPs, ARL, autorización de MinTrabajo): **advierten, no bloquean**. Avalar sin resolverlos exige dejar constancia escrita.
 - **Plazos de la institución:** 8 días hábiles para el aval, 15 para el cambio de alternativa y 8 para registrar en SofiaPlus. SofiaPlus no está integrado: Coordinación anota la fecha como constancia. Los días hábiles no descuentan festivos.
 
+**Avisos de plazo por correo** (`src/app/api/cron/avisos-plazo`, tarea diaria de Vercel en `vercel.json`, 8 a. m. de Colombia):
+- Cubre bitácoras y los Momentos 1, 2 y 3 (requisito §3.3). Avisa al entrar en los 5 días previos (o el mismo día) y al vencer, **una sola vez** por entrega y tipo: la tabla `AvisoPlazo` es a la vez el control de repetición y el registro histórico.
+- Va al aprendiz con **copia al instructor** de la ficha; el **coformador** va en copia solo en los avisos de vencido. Solo aprendices `ACTIVO`.
+- «Entregado» significa lo que depende del aprendiz: una bitácora enviada (aunque no esté revisada) o un Momento agendado. Una bitácora rechazada cuenta como no entregada. Con el mínimo de bitácoras cumplido, no se avisa por las restantes.
+- Doble interruptor: `CRON_SECRET` y `NOTIFICACIONES_ACTIVAS=true` (variables de producción en Vercel). Con sesión de Coordinación la ruta solo simula; `?simular=1` fuerza la simulación también con la clave. La redacción del correo es una función pura (`src/lib/aviso-plazos-correo.ts`), porque es lo único que se puede probar en local.
+- Al activarlos (14 sep 2026), Coordinación decidió no avisar lo que ya estaba vencido: se marcó como avisado sin enviar correo (`POST` a la misma ruta).
+
 **Cuentas — riesgo aceptado:** las cuentas que crea otro rol reciben como contraseña inicial su cédula, que es también el usuario, y el correo de bienvenida la envía en texto plano. Coordinación ratificó las dos decisiones el 14 de septiembre de 2026, sabiendo que 23 de 37 cuentas (incluidos los 2 coordinadores) seguían con la cédula como contraseña. No cambiarlo ni volver a proponerlo sin que Coordinación lo pida.
 
 ## Roadmap
 
-El detalle está en `docs/PLAN-IMPLEMENTACION.md`. Lo principal pendiente: correos por incumplimiento (al aprendiz y al coformador), vista consolidada por aprendiz, reportes con exportación a PDF y Excel, reunión extraordinaria a solicitud, plantillas descargables de GFPI-F-147 y GFPI-F-023, y aviso al reprogramar una reunión.
+El detalle está en `docs/PLAN-IMPLEMENTACION.md`. Lo principal pendiente: vista consolidada por aprendiz, reportes con exportación a PDF y Excel, reunión extraordinaria a solicitud, plantillas descargables de GFPI-F-147 y GFPI-F-023, y aviso al reprogramar una reunión.
 
 Trabajar un frente a la vez, y aplicar y probar cada migración antes de construir la interfaz encima.
