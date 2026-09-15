@@ -29,7 +29,7 @@ Fuentes de verdad funcional:
 - `prisma.config.ts` solo carga `.env`, que apunta a una base local que ya no existe. Antes de cualquier comando de Prisma:
   `export DATABASE_URL=$(grep '^DATABASE_URL=' .env.local | sed 's/^DATABASE_URL=//' | tr -d '"')`
 - Las migraciones se escriben a mano, **solo aditivas**, y se aplican con `npx prisma migrate deploy` (seguido de `npx prisma generate`). Reiniciar el servidor de desarrollo después de regenerar el cliente.
-- Despliegue: rama `fase2-gestion-evidencia-ep`. `git push origin fase2-gestion-evidencia-ep` y luego `npx vercel deploy --prod --yes --scope bldycors-projects`.
+- Despliegue: **Vercel publica en producción automáticamente cada push a `main`**, y crea un Preview por cada push a otra rama. Se trabaja en `fase2-gestion-evidencia-ep` y se pasa a `main` solo por avance directo: `git push origin HEAD:main`, que Git rechaza si no es fast-forward. `npx vercel deploy --prod --yes --scope bldycors-projects` también publica, pero sin pasar por `main`: evitarlo, porque así fue como `main` llegó a quedar 21 commits atrás de producción.
 - Nunca commitear secretos (`.env*`).
 
 ## Comandos
@@ -97,6 +97,8 @@ docs/                             # requisitos y plan
 - **Deserción** (§9.1.1): el sistema solo señala el riesgo. La declara Coordinación, con causa obligatoria, en un endpoint propio y de forma reversible.
 - **Requisitos de aval** (§9.1.1: RAPs, ARL, autorización de MinTrabajo): **advierten, no bloquean**. Avalar sin resolverlos exige dejar constancia escrita.
 - **Plazos de la institución:** 8 días hábiles para el aval, 15 para el cambio de alternativa y 8 para registrar en SofiaPlus. SofiaPlus no está integrado: Coordinación anota la fecha como constancia. Los días hábiles no descuentan festivos.
+
+**Cuentas — riesgo aceptado:** las cuentas que crea otro rol reciben como contraseña inicial su cédula, que es también el usuario, y el correo de bienvenida la envía en texto plano. Coordinación ratificó las dos decisiones el 14 de septiembre de 2026, sabiendo que 23 de 37 cuentas (incluidos los 2 coordinadores) seguían con la cédula como contraseña. No cambiarlo ni volver a proponerlo sin que Coordinación lo pida.
 
 ## Roadmap
 

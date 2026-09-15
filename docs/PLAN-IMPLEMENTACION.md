@@ -135,6 +135,8 @@ Lo mínimo planeado (guardas por rol, ficha↔instructor, vista de instructor) s
 Esto cubre, en el lenguaje del documento de requisitos: inscripción (3.1, parcial — ya incluye la notificación de creación de cuenta), Evaluación 1 / Concertación (3.2 y 3.3, primera reunión oficial).
 
 > **Nota de seguridad pendiente:** el correo de bienvenida envía la contraseña en texto plano (requerimiento explícito). El correo no es un canal cifrado que controlemos, así que a futuro conviene reemplazarlo por un enlace de "activa tu cuenta / crea tu contraseña" de un solo uso, sin transmitir la contraseña real.
+>
+> **Decisión (14 sep 2026) — riesgo aceptado:** Coordinación decidió mantener este esquema, igual que el de contraseña inicial = cédula, sabiendo que 23 de 37 cuentas (incluidos los 2 coordinadores) seguían con la cédula como contraseña, es decir, que conocer la cédula basta para entrar a esas cuentas. No se implementa el enlace de un solo uso.
 
 ## Qué falta frente al documento de requisitos validado
 
