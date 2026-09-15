@@ -128,6 +128,7 @@ Lo mínimo planeado (guardas por rol, ficha↔instructor, vista de instructor) s
   - *Reprogramación por el instructor:* botón «Reprogramar reunión» en «Evaluaciones» (Momentos sin finalizar) y en «Reuniones extraordinarias» (aprobadas y por venir). Muestra la agenda del propio instructor, revisa choques contra todas sus reuniones (y, en la Concertación, contra las demás concertaciones), conserva el enlace de la videollamada y envía «Reunión reprogramada» con quién la movió y el motivo del cambio.
   - Los títulos, destinatarios y choques de horario de las reuniones quedaron en un solo lugar (`src/lib/reuniones.ts`).
 - **Expediente del aprendiz — Fase 5 (15 sep 2026): COMPLETO.** Requisitos §3.4 y guía §9.5. Una vista de solo lectura con todo el proceso: datos y empresa, estado del aprendiz y del plan (el mismo semáforo del panel de Seguimiento), cada evidencia con su revisión (quién y cuándo), la rúbrica completa de cada Momento y el juicio final, las reuniones extraordinarias, las novedades (interrupciones, aplazamientos, deserción) y el historial de avisos por correo. Enlace «Ver expediente» en Seguimiento y en las listas de Aprendices del instructor y de Coordinación (`/formulario/expediente/[id]`), y pestaña «Expediente» en el panel del aprendiz. Se guarda en PDF desde el navegador —sin librería nueva—: al imprimir se ocultan los menús y el modo oscuro deja de aplicar.
+- **Consultas y reportes — Fase 6 (15 sep 2026): COMPLETO.** Requisitos §3.5. Opción «Reportes» en el menú del instructor, Coordinación y Admin, de solo consulta y sobre todos los aprendices. Tres reportes que no repiten información, con los mismos filtros (ficha, instructor, empresa, estado, rango de inicio de la EP): *Métricas* (totales: aprendices por estado, bitácoras entregadas a tiempo y aprobadas, rúbrica en «Satisfactorio», juicio final del Momento 3), *Cumplimiento* (las seis evidencias en conjunto —completa, atrasada, próxima, pendiente— y la lista de aprendices en riesgo, con sus evidencias atrasadas o la causal de deserción) y *Listado* (una fila por aprendiz con su avance, enlazada a su expediente). Se descarga en Excel real (.xlsx, una hoja por reporte, con la librería `write-excel-file`) o en PDF desde el navegador. El «promedio de evaluaciones» de los requisitos se expresa como el porcentaje de variables de la rúbrica en «Satisfactorio», porque la evaluación ya no es numérica (sección 3.4).
 
 ---
 
@@ -157,7 +158,7 @@ Esto cubre, en el lenguaje del documento de requisitos: inscripción (3.1, parci
 6. ~~**Reunión extra a solicitud**~~ **RESUELTO (14 sep 2026).** El aprendiz la agenda —a nombre propio o del coformador— con fecha, franja y motivo, y el instructor la aprueba o la rechaza; la citación a todos sale al aprobarla. Ver «Estado de avance».
 7. ~~**Certificación del empresario** (carta de terminación, evidencia de cierre)~~ **RESUELTO.** Formulario/UI y validación de ventana de fechas (5 días antes/después del fin de EP) completos — ver "Estado de avance".
 8. ~~**Control de evaluaciones por aprendiz** (vista consolidada, sección 3.4)~~ **RESUELTO (15 sep 2026)** con el expediente del aprendiz, que además cubre el expediente descargable de la guía (§9.5). Ver «Estado de avance».
-9. **Módulo de consultas y reportes** (sección 3.5: filtros, métricas, exportación PDF/Excel, acceso por rol) — no existe.
+9. ~~**Módulo de consultas y reportes** (sección 3.5: filtros, métricas, exportación PDF/Excel, acceso por rol)~~ **RESUELTO (15 sep 2026).** Ver «Estado de avance».
 10. ~~**Notificaciones de incumplimiento**~~ **RESUELTO (14 sep 2026).** Avisos diarios por correo, ver «Estado de avance».
 11. **Plantillas descargables** de `GFPI-F-147` y `GFPI-F-023` — la subida de archivos ya existe (Vercel Blob), pero las plantillas no están en `public/documentos`. La firma dentro de la app está sugerida fuera de alcance (`REQUISITOS-FUNCIONALES.md`, sección 6).
 12. ~~**Recordatorio** antes de cada reunión y **reprogramación por cualquiera de las partes** (requisitos §3.2)~~ **RESUELTO (15 sep 2026).** El aviso al reprogramar quedó el 14 sep; el recordatorio y la reprogramación desde el panel del instructor, el 15. Ver «Estado de avance».
@@ -199,7 +200,7 @@ Detalle del diseño final y verificación en vivo de todo lo anterior: ver "Esta
 ### Fase 5 — Control de evaluaciones por aprendiz (COMPLETA, 15 sep 2026)
 - ~~Vista consolidada por aprendiz: bitácoras + 3 evaluaciones + certificación del empresario, con estado de cada una.~~ → Expediente del aprendiz, ver «Estado de avance».
 
-### Fase 6 — Consultas y reportes
+### Fase 6 — Consultas y reportes (COMPLETA, 15 sep 2026 — ver «Estado de avance»)
 - Filtros (ficha, empresa, instructor, estado, rango de fechas).
 - Métricas agregadas (activos, certificados, cumplimiento, promedio evaluaciones, próximas fechas límite).
 - Exportación PDF y Excel.

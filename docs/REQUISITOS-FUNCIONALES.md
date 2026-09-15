@@ -112,6 +112,8 @@ Reglas de negocio necesarias:
 > **Confirmado — acceso a reportes:**
 > - **Coordinador:** acceso de **solo consulta/visualización** a todos los informes (no edita desde ahí).
 > - **Instructor:** puede ver los reportes de **todos los aprendices** (no limitado a los que tiene asignados por ficha) — coherente con su permiso de consulta general definido en la sección 2.
+>
+> **Actualización (15 sep 2026) — construido:** tres reportes que no repiten información —Métricas, Cumplimiento (con la lista de aprendices en riesgo) y Listado—, con los filtros de arriba y descarga en Excel (.xlsx) y PDF. Como la evaluación usa la rúbrica y no una nota, el «promedio de evaluaciones» se muestra como el porcentaje de variables valoradas en *Satisfactorio*, junto con el juicio final del Momento 3.
 
 ## 4. Integraciones externas requeridas
 

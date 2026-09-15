@@ -20,6 +20,7 @@ Fuentes de verdad funcional:
   - Google Calendar/Meet (`googleapis`), OAuth en `src/app/api/google/*`, lógica en `src/lib/google-calendar.ts` y `src/lib/video.ts`. Si Google falla, cae a **Jitsi Meet** y el correo se envía igual.
   - Correo con `nodemailer` (`src/lib/mailer.ts`) e invitaciones `.ics` con la librería `ics`.
   - Archivos adjuntos en **Vercel Blob** (`src/app/api/upload`, `src/components/file-upload-field.tsx`).
+  - Excel con `write-excel-file`, solo en el servidor (`src/app/api/reportes/excel`). Los PDF (expediente, reportes) salen de la impresión del navegador, sin librería.
 - **Lint:** ESLint (`npm run lint`). Hay un warning preexistente en `concertacion-form.tsx`; se tolera.
 
 ## Entorno — leer antes de probar cualquier cosa
@@ -63,6 +64,8 @@ src/
     requisitos-aval.ts            # requisitos para avalar una alternativa
     desercion.ts                  # señal de riesgo de deserción
     reuniones.ts                  # títulos, destinatarios y choques de horario de las reuniones
+    expediente.ts                 # expediente de un aprendiz (vista y PDF)
+    reportes.ts                   # los tres reportes y sus filtros (pantalla y Excel)
     validations.ts                # esquemas Zod, enums y etiquetas
 prisma/schema.prisma              # única fuente de verdad del modelo de datos
 docs/                             # requisitos y plan
@@ -124,10 +127,16 @@ docs/                             # requisitos y plan
 - La ven el instructor (de cualquier aprendiz, como su lista de Aprendices), Coordinación y Admin en `/formulario/expediente/[id]`, y el aprendiz el suyo en la pestaña «Expediente».
 - Se descarga con «Imprimir o guardar en PDF» del navegador, sin librería de PDF: al imprimir se ocultan el encabezado y los menús (`print:hidden`), y el modo oscuro solo aplica en pantalla (`@custom-variant dark` en `globals.css`), así que el PDF sale en claro.
 
+**Reportes** (requisitos §3.5; `src/lib/reportes.ts`, `/formulario/reportes` y `/api/reportes/excel`):
+- Tres reportes que se reparten la información para no repetirla: **Métricas** (solo totales: aprendices por estado, bitácoras a tiempo y aprobadas, rúbrica en «Satisfactorio», juicio final), **Cumplimiento** (cada evidencia en conjunto y la lista de aprendices en riesgo: evidencias atrasadas o causal de deserción) y **Listado** (una fila por aprendiz con su avance).
+- Una sola consulta (`construirReporte`) alimenta la pantalla y el Excel, con los mismos filtros: ficha, instructor, empresa, estado y rango de la fecha de inicio de la EP. Los filtros van en la URL (formulario GET).
+- Solo consulta. Los ven el instructor —de todos los aprendices, no solo de sus fichas— y Coordinación y Admin.
+- Excel real (`.xlsx`, librería `write-excel-file`, solo en el servidor) con una hoja por reporte; el PDF sale de «Imprimir o guardar en PDF», igual que el expediente.
+
 **Cuentas — riesgo aceptado:** las cuentas que crea otro rol reciben como contraseña inicial su cédula, que es también el usuario, y el correo de bienvenida la envía en texto plano. Coordinación ratificó las dos decisiones el 14 de septiembre de 2026, sabiendo que 23 de 37 cuentas (incluidos los 2 coordinadores) seguían con la cédula como contraseña. No cambiarlo ni volver a proponerlo sin que Coordinación lo pida.
 
 ## Roadmap
 
-El detalle está en `docs/PLAN-IMPLEMENTACION.md`. Lo principal pendiente: reportes con exportación a PDF y Excel, plantillas descargables de GFPI-F-147 y GFPI-F-023, y lo que falta de la guía GFPI-G-040 (plan de mejoramiento, plazos de novedades, tope de 80 aprendices por instructor, plazo de 24 meses).
+El detalle está en `docs/PLAN-IMPLEMENTACION.md`. Lo principal pendiente: plantillas descargables de GFPI-F-147 y GFPI-F-023, y lo que falta de la guía GFPI-G-040 (plan de mejoramiento, plazos de novedades, tope de 80 aprendices por instructor, plazo de 24 meses).
 
 Trabajar un frente a la vez, y aplicar y probar cada migración antes de construir la interfaz encima.
