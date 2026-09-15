@@ -3,6 +3,7 @@ import { createEvent, type EventAttributes } from "ics";
 import { readFile } from "fs/promises";
 import path from "path";
 import { getVideoConferenceUrl } from "@/lib/video";
+import { componerAvisoPlazos, type AvisoPlazoCorreo } from "@/lib/aviso-plazos-correo";
 
 let cachedTransporter: Transporter | null = null;
 let usingTestAccount = false;
@@ -307,4 +308,39 @@ export async function sendPorCertificarEmail({
   }
 
   return { info };
+}
+
+// Aviso de plazos de Etapa Productiva (requisito §3.3). La redacción —destinatarios, copias,
+// asunto y cuerpo— la arma `componerAvisoPlazos`; aquí solo se envía.
+export async function sendAvisoPlazosEmail(params: {
+  aprendizNombre: string;
+  aprendizEmail: string;
+  instructorEmail: string | null;
+  coformadorEmail: string | null;
+  avisos: AvisoPlazoCorreo[];
+}) {
+  const from = process.env.EMAIL_FROM || "no-responder@registro-empresa.local";
+  const appUrl = process.env.APP_URL
+    ? `${process.env.APP_URL.replace(/\/$/, "")}/formulario/etapa-productiva`
+    : "/formulario/etapa-productiva";
+  const correo = componerAvisoPlazos({ ...params, appUrl });
+
+  const transporter = await getTransporter();
+
+  const info = await transporter.sendMail({
+    from,
+    to: correo.to,
+    cc: correo.cc.length ? correo.cc : undefined,
+    subject: correo.subject,
+    text: correo.text,
+    html: correo.html,
+  });
+
+  if (usingTestAccount) {
+    console.log(
+      `[mailer] Cuenta de prueba (Ethereal) — vista previa del aviso de plazos: ${nodemailer.getTestMessageUrl(info)}`
+    );
+  }
+
+  return { info, destinatarios: correo.destinatarios };
 }

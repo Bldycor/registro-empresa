@@ -15,6 +15,7 @@
 
 import { calcularSlotsBitacoras } from "@/lib/bitacora-fechas";
 import { detalleDetencionPlazos } from "@/lib/validations";
+import { fechaEnColombia } from "@/lib/plazos-institucionales";
 import type { EstadoEvidencia } from "@/generated/prisma/enums";
 
 export const DIAS_ALERTA_PROXIMA = 5;
@@ -45,8 +46,15 @@ export type ChecklistItem = {
   cantidadAtrasada: number;
 };
 
-function diffDias(desde: Date, hasta: Date): number {
-  return Math.round((hasta.getTime() - desde.getTime()) / (1000 * 60 * 60 * 24));
+// Días entre una fecha límite y hoy: positivo si ya pasó, negativo si falta, 0 si vence hoy. Se
+// cuenta en días de calendario —la fecha límite es un día, guardado a medianoche UTC, y "hoy" es
+// el día en Colombia—, no en horas. Antes se restaban milisegundos y se redondeaba, así que desde
+// las 7 a. m. del mismo día del vencimiento la entrega ya aparecía "atrasada 1 día", cuando el
+// aprendiz todavía tenía todo ese día para entregar.
+function diasDesdeLimite(limite: Date, hoy: Date): number {
+  const diaLimite = Date.UTC(limite.getUTCFullYear(), limite.getUTCMonth(), limite.getUTCDate());
+  const [y, m, d] = fechaEnColombia(hoy).split("-").map(Number);
+  return Math.round((Date.UTC(y, m - 1, d) - diaLimite) / 86400000);
 }
 
 // Momento 2 (Seguimiento): la guía GFPI-G-040 §9.2 lo ubica "al 50% del tiempo planeado", no en
@@ -65,6 +73,22 @@ function fechaMomento2(fechaInicioEP: Date | null, fechaFinEP: Date | null): Dat
   return new Date((fechaInicioEP.getTime() + fechaFinEP.getTime()) / 2);
 }
 
+// Fechas límite compartidas por el semáforo y por los avisos por correo (`calcularVencimientos`):
+// un solo lugar para cada plazo, para que las dos vistas nunca digan cosas distintas.
+function fechaLimiteConcertacion(fechaInicioEP: Date | null): Date | null {
+  return fechaInicioEP ? new Date(fechaInicioEP.getTime() + DIAS_CONCERTACION * 86400000) : null;
+}
+
+function fechaLimiteMomento3(fechaFinEP: Date | null): Date | null {
+  return fechaFinEP
+    ? new Date(fechaFinEP.getTime() - DIAS_MOMENTO3_ANTES_DE_CIERRE * 86400000)
+    : null;
+}
+
+function umbralCumplimientoBitacoras(totalBitacoras: number): number {
+  return Math.min(totalBitacoras, MIN_BITACORAS_CUMPLIMIENTO);
+}
+
 // Un solo punto con fecha límite (Alternativa, Formalización, Concertación, Certificación):
 // decide completa/atrasada/próxima/pendiente según si ya existe la evidencia aprobada y cuánto
 // falta o ha pasado desde la referencia.
@@ -77,7 +101,7 @@ function estadoPorFecha(params: {
   if (completa) return { estado: "completa", dias: null, sinReferencia: false };
   if (!referencia) return { estado: "pendiente", dias: null, sinReferencia: true };
 
-  const dias = diffDias(referencia, hoy);
+  const dias = diasDesdeLimite(referencia, hoy);
   if (dias > 0) return { estado: "atrasada", dias, sinReferencia: false };
   if (dias >= -DIAS_ALERTA_PROXIMA) return { estado: "proxima", dias: -dias, sinReferencia: false };
   return { estado: "pendiente", dias: -dias, sinReferencia: false };
@@ -123,9 +147,7 @@ export function calcularSeguimiento(input: {
     completa: input.formalizacionAprobada,
   });
 
-  const refConcertacion = fechaInicioEP
-    ? new Date(fechaInicioEP.getTime() + DIAS_CONCERTACION * 86400000)
-    : null;
+  const refConcertacion = fechaLimiteConcertacion(fechaInicioEP);
   // Mismo criterio que las demás evidencias: completa cuando está avalada. Mientras no lo esté,
   // la referencia son los 15 días de §9.2 para decidir si va atrasada, próxima o a tiempo.
   const concertacion = estadoPorFecha({
@@ -167,7 +189,7 @@ export function calcularSeguimiento(input: {
       }
       const alDia = b?.estado === "PENDIENTE";
       if (alDia) return;
-      const dias = diffDias(limite, hoy);
+      const dias = diasDesdeLimite(limite, hoy);
       if (dias > 0) atrasadas++;
       else if (dias >= -DIAS_ALERTA_PROXIMA) proxima = true;
     });
@@ -180,7 +202,7 @@ export function calcularSeguimiento(input: {
     // efectos malos: un aprendiz que llegaba al mínimo pero no al total seguía sin poder
     // certificarse, y uno con MÁS bitácoras aprobadas que las planeadas (por ejemplo al corregirle
     // el total de 12 a 6) tampoco contaba como completo, porque nunca daba la igualdad exacta.
-    const umbralCumplimiento = Math.min(input.totalBitacoras, MIN_BITACORAS_CUMPLIMIENTO);
+    const umbralCumplimiento = umbralCumplimientoBitacoras(input.totalBitacoras);
     const todasAprobadas = aprobadas >= umbralCumplimiento;
     const estado: EstadoSeguimiento = todasAprobadas
       ? "completa"
@@ -215,9 +237,7 @@ export function calcularSeguimiento(input: {
   const refMomento2 = fechaMomento2(fechaInicioEP, fechaFinEP);
   const momento2 = estadoPorFecha({ hoy, referencia: refMomento2, completa: input.evaluacion2Aprobada });
 
-  const refMomento3 = fechaFinEP
-    ? new Date(fechaFinEP.getTime() - DIAS_MOMENTO3_ANTES_DE_CIERRE * 86400000)
-    : null;
+  const refMomento3 = fechaLimiteMomento3(fechaFinEP);
   const momento3 = estadoPorFecha({ hoy, referencia: refMomento3, completa: input.evaluacion3Aprobada });
 
   const rango: EstadoSeguimiento[] = ["atrasada", "proxima", "pendiente", "completa"];
@@ -236,7 +256,9 @@ export function calcularSeguimiento(input: {
           : `Momento ${momento2.estado !== "completa" ? 2 : 3}${
               peorEvaluacion.estado === "atrasada"
                 ? ` atrasado ${peorEvaluacion.dias}d`
-                : ` vence en ${peorEvaluacion.dias}d`
+                : peorEvaluacion.dias === 0
+                  ? " vence hoy"
+                  : ` vence en ${peorEvaluacion.dias}d`
             }`,
     href: "/formulario/instructor/evaluaciones",
     cantidadAtrasada:
@@ -251,7 +273,7 @@ export function calcularSeguimiento(input: {
   ) {
     if (item.estado === "completa") return "Al día";
     if (item.estado === "atrasada") return `Atrasada ${item.dias}d`;
-    if (item.estado === "proxima") return `Vence en ${item.dias}d`;
+    if (item.estado === "proxima") return item.dias === 0 ? "Vence hoy" : `Vence en ${item.dias}d`;
     if (item.sinReferencia) return sinReferenciaMsg;
     return `A tiempo · vence en ${item.dias}d`;
   }
@@ -307,4 +329,96 @@ export function calcularSeguimiento(input: {
       cantidadAtrasada: certificacion.estado === "atrasada" ? 1 : 0,
     },
   ]);
+}
+
+// ---- Vencimientos por entrega: para los avisos por correo ------------------------------------
+//
+// El semáforo de arriba resume cada evidencia en un chip. Los avisos por correo necesitan el
+// detalle de cada entrega con su propia fecha (la bitácora 7, el Momento 2…). Vive en este mismo
+// archivo y usa los mismos helpers de fecha para que el correo y el semáforo nunca calculen
+// plazos distintos.
+//
+// Cubre lo que pide el requisito de incumplimiento (§3.3): bitácoras y los tres Momentos de
+// evaluación. "Entregado" significa lo que depende del APRENDIZ: una bitácora enviada, aunque el
+// instructor todavía no la revise, o un Momento ya agendado. Si lo que falta es la revisión del
+// instructor, no es un incumplimiento del aprendiz y no se le avisa. Una bitácora rechazada sí
+// cuenta como no entregada: hay que corregirla y reenviarla.
+export type VencimientoEntrega = {
+  clave: string;
+  etiqueta: string;
+  fechaLimite: Date;
+  estado: "proxima" | "vencida";
+  // Días que faltan (próxima; 0 = vence hoy) o que lleva vencida.
+  dias: number;
+};
+
+export function calcularVencimientos(input: {
+  hoy: Date;
+  estadoAprendiz: string;
+  fechaInicioEP: Date | null;
+  fechaFinEP: Date | null;
+  concertacionAgendada: boolean;
+  bitacoras: { numero: number; estado: EstadoEvidencia }[];
+  totalBitacoras: number;
+  bitacoraInicioTramo?: number;
+  momento2Agendado: boolean;
+  momento3Agendado: boolean;
+}): VencimientoEntrega[] {
+  // Solo aprendices en curso. Con la práctica interrumpida o aplazada no corre ningún plazo, y
+  // tras Por certificar, Certificado o Desertó ya no hay nada que entregar.
+  if (input.estadoAprendiz !== "ACTIVO" || !input.fechaInicioEP) return [];
+
+  const pendientes: { clave: string; etiqueta: string; fechaLimite: Date | null }[] = [];
+
+  if (!input.concertacionAgendada) {
+    pendientes.push({
+      clave: "concertacion",
+      etiqueta: "Momento 1 — Concertación (planeación)",
+      fechaLimite: fechaLimiteConcertacion(input.fechaInicioEP),
+    });
+  }
+
+  const inicioTramo = input.bitacoraInicioTramo ?? 1;
+  const slots = calcularSlotsBitacoras(input.fechaInicioEP, input.totalBitacoras, inicioTramo);
+  const porNumero = new Map(input.bitacoras.map((b) => [b.numero, b]));
+  const enTramo = new Set(slots.map((s) => s.numero));
+  const aprobadas = input.bitacoras.filter(
+    (b) => b.estado === "APROBADA" && (b.numero < inicioTramo || enTramo.has(b.numero)),
+  ).length;
+  // Con el mínimo de bitácoras cumplido, los cupos restantes dejan de ser una deuda —igual que en
+  // el semáforo—, así que no se avisa por ellos.
+  if (aprobadas < umbralCumplimientoBitacoras(input.totalBitacoras)) {
+    for (const { numero, fechaLimite } of slots) {
+      const b = porNumero.get(numero);
+      if (b && b.estado !== "RECHAZADA") continue;
+      pendientes.push({ clave: `bitacora:${numero}`, etiqueta: `Bitácora ${numero}`, fechaLimite });
+    }
+  }
+
+  if (!input.momento2Agendado) {
+    pendientes.push({
+      clave: "momento:2",
+      etiqueta: "Momento 2 — Seguimiento",
+      fechaLimite: fechaMomento2(input.fechaInicioEP, input.fechaFinEP),
+    });
+  }
+  if (!input.momento3Agendado) {
+    pendientes.push({
+      clave: "momento:3",
+      etiqueta: "Momento 3 — Evaluación de cierre",
+      fechaLimite: fechaLimiteMomento3(input.fechaFinEP),
+    });
+  }
+
+  const vencimientos: VencimientoEntrega[] = [];
+  for (const p of pendientes) {
+    if (!p.fechaLimite) continue;
+    const dias = diasDesdeLimite(p.fechaLimite, input.hoy);
+    if (dias > 0) {
+      vencimientos.push({ ...p, fechaLimite: p.fechaLimite, estado: "vencida", dias });
+    } else if (dias >= -DIAS_ALERTA_PROXIMA) {
+      vencimientos.push({ ...p, fechaLimite: p.fechaLimite, estado: "proxima", dias: -dias });
+    }
+  }
+  return vencimientos;
 }

@@ -432,6 +432,7 @@ model User {
   interrupcionesEPAval        InterrupcionEtapaProductiva[] @relation("AvalInterrupcionEP")
   aplazamientosEP             AplazamientoEtapaProductiva[] @relation("AprendizAplazamientos")
   aplazamientosEPAval         AplazamientoEtapaProductiva[] @relation("AvalAplazamientoEP")
+  avisosPlazo                 AvisoPlazo[]                  @relation("AvisosPlazo")
 }
 
 // Ficha SENA. La precarga el coordinador académico (carga masiva por código) antes de que los
@@ -911,5 +912,36 @@ model PasswordResetToken {
 
   createdAt DateTime @default(now())
 
+  @@index([userId])
+}
+
+// Tipo de aviso de plazo enviado por correo (ver src/app/api/cron/avisos-plazo).
+enum TipoAvisoPlazo {
+  // Faltan pocos días (o vence hoy).
+  PROXIMO
+  // La fecha límite pasó sin que el aprendiz entregara.
+  VENCIDO
+}
+
+// Registro histórico de los avisos de plazo enviados por correo: requisitos §3.3 ("llevar un
+// registro histórico por aprendiz") y §5 (entidad Notificación). Sirve además para no repetir:
+// cada entrega recibe como máximo un aviso PROXIMO y uno VENCIDO. La fecha límite forma parte de
+// la clave, así que si cambia (retoma tras interrumpir, reanudación de un aplazamiento) la entrega
+// con su fecha nueva vuelve a poder avisarse.
+model AvisoPlazo {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("AvisosPlazo", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Qué entrega: "concertacion", "bitacora:7", "momento:2", "momento:3".
+  clave       String
+  tipo        TipoAvisoPlazo
+  fechaLimite DateTime
+
+  // Correos a los que efectivamente se envió, separados por coma.
+  destinatarios String
+  enviadoEn     DateTime @default(now())
+
+  @@unique([userId, clave, tipo, fechaLimite])
   @@index([userId])
 }
