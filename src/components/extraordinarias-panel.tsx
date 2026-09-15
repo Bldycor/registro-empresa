@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { StatBadge } from "@/components/stat-badge";
 import { PlazoBadge } from "@/components/plazo-badge";
+import { ReprogramarReunion } from "@/components/reprogramar-reunion";
+import { fechaEnColombia } from "@/lib/plazos-institucionales";
 import {
   modalidadEjecucionEPLabel,
   type ModalidadEjecucionEPValue,
@@ -226,6 +228,12 @@ export function ExtraordinariasPanel() {
                       No aprobar
                     </button>
                   </div>
+                </div>
+              )}
+
+              {r.estado === "APROBADA" && r.fecha && r.fecha.slice(0, 10) >= fechaEnColombia(new Date()) && (
+                <div className="mt-3 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                  <ReprogramarReunion tipo="EVALUACION" id={r.id} onDone={load} />
                 </div>
               )}
 

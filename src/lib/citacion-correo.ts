@@ -59,10 +59,18 @@ export function componerCitacion(p: {
   anterior?: HorarioReunion | null;
   // Texto adicional, p. ej. el motivo de una reunión extraordinaria.
   detalle?: string | null;
+  // Solo al reprogramar: quién movió la reunión y por qué, cuando no fue el aprendiz.
+  reprogramadaPor?: string | null;
+  motivoCambio?: string | null;
 }): { subject: string; text: string; html: string } {
   const tituloMin = p.titulo.toLowerCase();
 
   if (p.anterior) {
+    const extras: [string, string][] = [
+      ...(p.reprogramadaPor ? [["Reprogramada por", p.reprogramadaPor] as [string, string]] : []),
+      ...(p.motivoCambio ? [["Motivo del cambio", p.motivoCambio] as [string, string]] : []),
+      ...(p.detalle ? [["Motivo de la reunión", p.detalle] as [string, string]] : []),
+    ];
     return {
       subject: `Reunión reprogramada: ${p.titulo} - ${p.aprendizNombre}`,
       text: [
@@ -74,6 +82,7 @@ export function componerCitacion(p: {
         `Unirse a la videollamada: ${p.videollamadaUrl}`,
         "",
         `Aprendiz: ${p.aprendizNombre}`,
+        ...extras.map(([k, v]) => `${k}: ${v}`),
         "",
         "La invitación de calendario adjunta reemplaza a la anterior.",
       ].join("\n"),
@@ -85,6 +94,7 @@ export function componerCitacion(p: {
         "</ul>",
         `<p><a href="${escaparHtml(p.videollamadaUrl)}">Unirse a la videollamada</a></p>`,
         `<p><strong>Aprendiz:</strong> ${escaparHtml(p.aprendizNombre)}</p>`,
+        ...extras.map(([k, v]) => `<p><strong>${k}:</strong> ${escaparHtml(v)}</p>`),
         "<p>La invitación de calendario adjunta reemplaza a la anterior.</p>",
       ].join("\n"),
     };
@@ -170,6 +180,47 @@ export function atributosInvitacion(p: {
   };
 }
 
+// Recordatorio de una reunión de hoy o de mañana (requisito §3.2), a las mismas personas que
+// recibieron la citación. Va sin invitación de calendario: el evento ya está en el calendario de
+// todos desde la citación, y reenviarla solo les pediría otra vez que lo acepten.
+export function componerRecordatorioReunion(p: {
+  titulo: string;
+  aprendizNombre: string;
+  horario: HorarioReunion;
+  videollamadaUrl: string;
+  cuando: "hoy" | "manana";
+  detalle?: string | null;
+}): { subject: string; text: string; html: string } {
+  const dia = p.cuando === "hoy" ? "hoy" : "mañana";
+  const tituloMin = p.titulo.toLowerCase();
+  const cambio = "Si hay que cambiar la fecha o la hora, se reprograma en SEPA y a todos les llega el aviso.";
+  return {
+    subject: `Recordatorio: ${p.titulo} ${dia} - ${p.aprendizNombre}`,
+    text: [
+      `Te recordamos que ${dia} es la videollamada de ${tituloMin} (etapa productiva).`,
+      "",
+      `Fecha: ${fechaLegible(p.horario.fecha)}`,
+      `Hora: ${p.horario.horaInicio} - ${p.horario.horaFin}`,
+      `Aprendiz: ${p.aprendizNombre}`,
+      ...(p.detalle ? [`Motivo: ${p.detalle}`] : []),
+      "",
+      `Unirse a la videollamada: ${p.videollamadaUrl}`,
+      "",
+      cambio,
+    ].join("\n"),
+    html: [
+      `<p>Te recordamos que <strong>${dia}</strong> es la videollamada de ${escaparHtml(tituloMin)} (etapa productiva).</p>`,
+      "<ul>",
+      `<li><strong>Fecha:</strong> ${escaparHtml(fechaLegible(p.horario.fecha))}</li>`,
+      `<li><strong>Hora:</strong> ${p.horario.horaInicio} - ${p.horario.horaFin}</li>`,
+      `<li><strong>Aprendiz:</strong> ${escaparHtml(p.aprendizNombre)}</li>`,
+      ...(p.detalle ? [`<li><strong>Motivo:</strong> ${escaparHtml(p.detalle)}</li>`] : []),
+      "</ul>",
+      `<p><a href="${escaparHtml(p.videollamadaUrl)}">Unirse a la videollamada</a></p>`,
+      `<p style="color:#666">${cambio}</p>`,
+    ].join("\n"),
+  };
+}
 
 // Solicitud de reunión extraordinaria, solo para el instructor. Todavía NO es una citación: la
 // citación con enlace a todos sale únicamente cuando el instructor la aprueba.

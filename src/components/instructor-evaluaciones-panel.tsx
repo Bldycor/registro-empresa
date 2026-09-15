@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { StatBadge } from "@/components/stat-badge";
+import { ReprogramarReunion } from "@/components/reprogramar-reunion";
 import {
   ValoracionVariableValues,
   valoracionVariableLabel,
@@ -182,7 +183,10 @@ export function InstructorEvaluacionesPanel() {
               </button>
 
               {expandidoId === ev.id && (
-                <div className="border-t border-zinc-100 p-4 dark:border-zinc-800">
+                <div className="flex flex-col gap-4 border-t border-zinc-100 p-4 dark:border-zinc-800">
+                  {ev.estado !== "APROBADA" && (
+                    <ReprogramarReunion tipo={ev.tipo} id={ev.id} onDone={load} />
+                  )}
                   <RubricaForm evaluacion={ev} onSaved={load} />
                 </div>
               )}

@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { calcularVencimientos, type VencimientoEntrega } from "@/lib/seguimiento-evidencias";
-import { sendAvisoPlazosEmail } from "@/lib/mailer";
+import { sendAvisoPlazosEmail, sendRecordatorioReunionEmail } from "@/lib/mailer";
 import { fechaEnColombia } from "@/lib/plazos-institucionales";
+import { recordatoriosPendientes } from "@/lib/recordatorio-reuniones";
 
 export const dynamic = "force-dynamic";
 // Un correo por aprendiz con avisos, por SMTP y uno tras otro: el límite por defecto se queda corto.
@@ -63,7 +64,9 @@ function avisosNuevos(a: AprendizAvisos, hoy: Date): VencimientoEntrega[] {
   return vencimientos.filter((v) => !yaAvisados.has(claveAviso(v.clave, tipoAviso(v), v.fechaLimite)));
 }
 
-// Avisos diarios de plazos por correo: bitácoras y Momentos de evaluación (requisito §3.3).
+// Avisos diarios de plazos por correo: bitácoras y Momentos de evaluación (requisito §3.3). En la
+// misma pasada salen los recordatorios de las reuniones de hoy y mañana (requisito §3.2, ver
+// `recordatoriosPendientes`).
 //
 // La dispara la tarea programada de Vercel (`vercel.json`, todos los días a las 8 a. m. de
 // Colombia), que se identifica con `Authorization: Bearer <CRON_SECRET>`. Coordinación y Admin
@@ -161,6 +164,50 @@ export async function GET(request: Request) {
     });
   }
 
+  // Recordatorios de las reuniones de hoy y mañana (requisito §3.2), con los mismos interruptores.
+  const detalleRecordatorios: {
+    aprendiz: string;
+    reunion: string;
+    fecha: string;
+    hora: string;
+    cuando: "hoy" | "manana";
+    destinatarios: number;
+  }[] = [];
+  for (const r of await recordatoriosPendientes(hoy)) {
+    if (enviar) {
+      try {
+        const resultado = await sendRecordatorioReunionEmail(r);
+        await prisma.avisoPlazo.createMany({
+          data: [
+            {
+              userId: r.userId,
+              clave: r.clave,
+              tipo: "RECORDATORIO_REUNION",
+              fechaLimite: r.fecha,
+              destinatarios: resultado.destinatarios.join(", "),
+            },
+          ],
+          skipDuplicates: true,
+        });
+      } catch (error) {
+        console.error(`[cron/avisos-plazo] No se pudo enviar el recordatorio a ${r.aprendizNombre}:`, error);
+        errores.push({
+          aprendiz: r.aprendizNombre,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        continue;
+      }
+    }
+    detalleRecordatorios.push({
+      aprendiz: r.aprendizNombre,
+      reunion: r.titulo,
+      fecha: r.horario.fecha,
+      hora: `${r.horario.horaInicio}-${r.horario.horaFin}`,
+      cuando: r.cuando,
+      destinatarios: r.destinatarios.length,
+    });
+  }
+
   const todos = detalle.flatMap((d) => d.avisos);
   return NextResponse.json({
     modo: enviar ? "envio" : "simulacion",
@@ -174,6 +221,7 @@ export async function GET(request: Request) {
       vencidos: todos.filter((x) => x.estado === "vencida").length,
       proximos: todos.filter((x) => x.estado === "proxima").length,
     },
+    recordatorios: { total: detalleRecordatorios.length, detalle: detalleRecordatorios },
     errores,
     detalle,
   });

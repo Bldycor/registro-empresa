@@ -7,6 +7,7 @@ import { componerAvisoPlazos, type AvisoPlazoCorreo } from "@/lib/aviso-plazos-c
 import {
   atributosInvitacion,
   componerCitacion,
+  componerRecordatorioReunion,
   componerRechazoExtraordinaria,
   componerSolicitudExtraordinaria,
   type HorarioReunion,
@@ -138,6 +139,8 @@ export async function sendCitacionEmail({
   videollamadaUrl: videollamadaUrlOverride,
   anterior = null,
   detalle = null,
+  reprogramadaPor = null,
+  motivoCambio = null,
 }: {
   reunionId: string;
   titulo?: string;
@@ -156,13 +159,25 @@ export async function sendCitacionEmail({
   anterior?: HorarioReunion | null;
   // Texto adicional para el correo, p. ej. el motivo de una reunión extraordinaria.
   detalle?: string | null;
+  // Al reprogramar desde el panel del instructor: quién la movió y por qué.
+  reprogramadaPor?: string | null;
+  motivoCambio?: string | null;
 }) {
   const from = process.env.EMAIL_FROM || "no-responder@registro-empresa.local";
   const to = Array.from(new Set(destinatarios.filter(Boolean)));
 
   const videollamadaUrl = videollamadaUrlOverride || getVideoConferenceUrl(reunionId, prefijoSala);
   const horario = { fecha, horaInicio, horaFin };
-  const correo = componerCitacion({ titulo, aprendizNombre, horario, videollamadaUrl, anterior, detalle });
+  const correo = componerCitacion({
+    titulo,
+    aprendizNombre,
+    horario,
+    videollamadaUrl,
+    anterior,
+    detalle,
+    reprogramadaPor,
+    motivoCambio,
+  });
 
   // La invitación de calendario es un complemento del correo, no una condición para enviarlo: si
   // no se puede armar, la citación sale igual, sin el adjunto. Antes, un fallo al armar el .ics
@@ -332,6 +347,27 @@ export async function sendAvisoPlazosEmail(params: {
   return { info, destinatarios: correo.destinatarios };
 }
 
+
+// Recordatorio de una reunión de hoy o de mañana (requisito §3.2). La redacción la arma
+// `componerRecordatorioReunion`; los destinatarios son los mismos de la citación.
+export async function sendRecordatorioReunionEmail(params: {
+  destinatarios: string[];
+  titulo: string;
+  aprendizNombre: string;
+  horario: HorarioReunion;
+  videollamadaUrl: string;
+  cuando: "hoy" | "manana";
+  detalle: string | null;
+}) {
+  const from = process.env.EMAIL_FROM || "no-responder@registro-empresa.local";
+  const correo = componerRecordatorioReunion(params);
+  const transporter = await getTransporter();
+  const info = await transporter.sendMail({ from, to: params.destinatarios, ...correo });
+  if (usingTestAccount) {
+    console.log(`[mailer] Vista previa (Ethereal) del recordatorio de reunión: ${nodemailer.getTestMessageUrl(info)}`);
+  }
+  return { info, destinatarios: params.destinatarios };
+}
 
 function urlApp(ruta: string): string {
   return process.env.APP_URL ? `${process.env.APP_URL.replace(/\/$/, "")}${ruta}` : ruta;

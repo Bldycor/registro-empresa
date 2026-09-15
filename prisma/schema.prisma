@@ -924,6 +924,10 @@ enum TipoAvisoPlazo {
   PROXIMO
   // La fecha límite pasó sin que el aprendiz entregara.
   VENCIDO
+  // Recordatorio de una reunión agendada para hoy o mañana (requisito §3.2). Aquí `clave` es
+  // "reunion:<id>@<horaInicio>" y `fechaLimite` es el día de la reunión: si se reprograma, la
+  // nueva fecha u hora genera su propio recordatorio.
+  RECORDATORIO_REUNION
 }
 
 // Registro histórico de los avisos de plazo enviados por correo: requisitos §3.3 ("llevar un
@@ -936,7 +940,8 @@ model AvisoPlazo {
   userId String
   user   User   @relation("AvisosPlazo", fields: [userId], references: [id], onDelete: Cascade)
 
-  // Qué entrega: "concertacion", "bitacora:7", "momento:2", "momento:3".
+  // Qué entrega: "concertacion", "bitacora:7", "momento:2", "momento:3". En los recordatorios de
+  // reunión, "reunion:<id>@<horaInicio>" (ver `RECORDATORIO_REUNION`).
   clave       String
   tipo        TipoAvisoPlazo
   fechaLimite DateTime

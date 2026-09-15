@@ -31,12 +31,18 @@ export function TimeSlotPicker({
   horaFin,
   onChange,
   tipo = "concertacion",
+  endpoint = "/api/etapa-productiva/disponibilidad",
+  excluir,
 }: {
   fecha: string | null;
   horaInicio: string | null;
   horaFin: string | null;
   onChange: (values: { horaInicio: string; horaFin: string }) => void;
   tipo?: "concertacion" | "evaluacion";
+  // De dónde salen las franjas ocupadas: la agenda vista por el aprendiz (por defecto) o la del
+  // instructor, que al reprogramar deja fuera la reunión que está moviendo (`excluir`).
+  endpoint?: string;
+  excluir?: string;
 }) {
   const [ocupados, setOcupados] = useState<OcupadoSlot[]>([]);
   const [duracion, setDuracion] = useState(() =>
@@ -46,7 +52,8 @@ export function TimeSlotPicker({
   useEffect(() => {
     if (!fecha) return;
     let cancelled = false;
-    fetch(`/api/etapa-productiva/disponibilidad?fecha=${fecha}&tipo=${tipo}`)
+    const query = new URLSearchParams({ fecha, tipo, ...(excluir ? { excluir } : {}) });
+    fetch(`${endpoint}?${query}`)
       .then((res) => (res.ok ? res.json() : { ocupados: [] }))
       .then((data) => {
         if (!cancelled) setOcupados(data.ocupados ?? []);
@@ -54,7 +61,7 @@ export function TimeSlotPicker({
     return () => {
       cancelled = true;
     };
-  }, [fecha, tipo]);
+  }, [fecha, tipo, endpoint, excluir]);
 
   if (!fecha) {
     return (
@@ -114,7 +121,7 @@ export function TimeSlotPicker({
                   key={start}
                   type="button"
                   disabled={conflict}
-                  title={conflict ? "Horario ocupado por otro aprendiz" : undefined}
+                  title={conflict ? "Horario ocupado por otra reunión" : undefined}
                   onClick={() =>
                     onChange({ horaInicio: toHHMM(start), horaFin: toHHMM(end) })
                   }

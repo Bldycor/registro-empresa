@@ -6,6 +6,7 @@ import { rangesOverlap } from "@/lib/time";
 import { sendCitacionEmail } from "@/lib/mailer";
 import { getVideoConferenceUrl } from "@/lib/video";
 import { cambioDeHorario } from "@/lib/citacion-correo";
+import { correoCoordinacionCitaciones } from "@/lib/reuniones";
 import {
   isGoogleCalendarConfigured,
   createCalendarMeetEvent,
@@ -118,7 +119,7 @@ export async function POST(request: Request) {
   });
 
   const aprendizNombre = `${user.nombres} ${user.apellidos}`;
-  const coordinadorEmail = process.env.CITACION_EMAIL || "bcoba@sena.edu.co";
+  const coordinadorEmail = correoCoordinacionCitaciones();
   // El instructor de la ficha valora el Momento 1, así que también recibe la citación y sus
   // reprogramaciones, igual que en los Momentos 2 y 3 (decisión de Coordinación, 14 sep 2026).
   const instructorEmail = user.ficha?.instructor?.email ?? null;

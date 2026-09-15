@@ -896,6 +896,27 @@ export const ReunionExtraordinariaSchema = z
     path: ["horaFin"],
   });
 
+// El instructor reprograma una reunión (requisito §3.2: la reprogramación la puede hacer
+// cualquiera de las partes). `tipo` dice en qué tabla vive: la Concertación (Momento 1) o una
+// `Evaluacion` (Momentos 2 y 3, y reuniones extraordinarias). Que la fecha no sea pasada se revisa
+// en la ruta, con el día de Colombia.
+export const ReprogramarReunionSchema = z
+  .object({
+    tipo: z.enum(["CONCERTACION", "EVALUACION"]),
+    fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Selecciona una fecha válida."),
+    horaInicio: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Selecciona una hora de inicio válida."),
+    horaFin: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Selecciona una hora de fin válida."),
+    motivo: z.string().trim().max(300, "El motivo no puede pasar de 300 caracteres.").nullable().optional(),
+  })
+  .refine((data) => toMinutes(data.horaFin) > toMinutes(data.horaInicio), {
+    message: "La hora de fin debe ser posterior a la hora de inicio.",
+    path: ["horaFin"],
+  })
+  .refine((data) => toMinutes(data.horaFin) - toMinutes(data.horaInicio) >= 60, {
+    message: "La franja debe durar al menos una hora.",
+    path: ["horaFin"],
+  });
+
 // Respuesta del instructor. Rechazar exige una nota: es lo que el aprendiz lee para saber por qué
 // y proponer otra fecha.
 export const DecisionExtraordinariaSchema = z
