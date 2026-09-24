@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
 
 type AlertasPorEvidencia = {
   alternativa: number;
@@ -91,13 +90,6 @@ export function EvidenciaEPNav({ alertas }: { alertas?: AlertasPorEvidencia }) {
           >
             Mi perfil
           </Link>
-          <button
-            type="button"
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            className="rounded-md px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-          >
-            ← Salir
-          </button>
         </div>
       </div>
 

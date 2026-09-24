@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
 
 const roleLabel: Record<string, string> = {
   INSTRUCTOR: "Instructor",
@@ -138,21 +137,6 @@ export function PanelSidebar({ role }: { role: string }) {
           })}
         </div>
       ))}
-      <ExitProcessButton />
     </nav>
-  );
-}
-
-export function ExitProcessButton() {
-  return (
-    <div className="mt-3 flex flex-col gap-1 border-t border-zinc-200 pt-3 dark:border-zinc-800">
-      <button
-        type="button"
-        onClick={() => signOut({ callbackUrl: "/login" })}
-        className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-      >
-        ← Salir del proceso
-      </button>
-    </div>
   );
 }
