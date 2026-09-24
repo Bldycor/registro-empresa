@@ -10,6 +10,7 @@ import {
   motivoInterrupcionEPLabel,
   solicitanteReunionLabel,
   subtipoAlternativaEtapaProductivaLabel,
+  tipoNovedadEPLabel,
   tipoSolicitudAlternativaLabel,
   valoracionVariableLabel,
 } from "@/lib/validations";
@@ -417,10 +418,31 @@ export function ExpedienteAprendiz({ expediente: e, propio = false }: { expedien
       </Seccion>
 
       <Seccion titulo="Novedades">
-        {e.interrupcionesEP.length === 0 && e.aplazamientosEP.length === 0 && !e.fechaDesercion ? (
+        {e.novedadesEP.length === 0 &&
+        e.interrupcionesEP.length === 0 &&
+        e.aplazamientosEP.length === 0 &&
+        !e.fechaDesercion ? (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Sin novedades registradas.</p>
         ) : (
           <div className="flex flex-col gap-3">
+            {e.novedadesEP.map((n, idx) => (
+              <div key={`n${idx}`}>
+                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                  {tipoNovedadEPLabel[n.tipo]} · ocurrió el {dia(n.fechaHecho)}
+                </p>
+                <p className="text-sm text-zinc-700 dark:text-zinc-300">{n.descripcion}</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Registrada el {momento(n.createdAt)}
+                  {n.registradaPor ? ` por ${quien(n.registradaPor)}` : ""}
+                  {n.fechaAnotacionBitacora
+                    ? ` · anotada en la bitácora ${n.bitacoraNumero} el ${momento(n.fechaAnotacionBitacora)}`
+                    : " · sin anotar en bitácora"}
+                  {n.soporteUrl ? " · " : ""}
+                </p>
+                {n.soporteUrl && <Archivo url={n.soporteUrl} />}
+                <Nota etiqueta="Instructor" texto={n.observacionesInstructor} />
+              </div>
+            ))}
             {e.interrupcionesEP.map((i, idx) => (
               <div key={`i${idx}`}>
                 <div className="flex flex-wrap items-center justify-between gap-2">

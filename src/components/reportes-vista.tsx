@@ -172,6 +172,28 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
             detalle={`${m.momento3.noAprobados} no aprobado${m.momento3.noAprobados === 1 ? "" : "s"}`}
           />
         </div>
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <Cifra
+            etiqueta="Novedades registradas"
+            valor={m.novedades.total}
+            detalle={`${porcentaje(m.novedades.total - m.novedades.fueraDePlazo, m.novedades.total)} dentro de los 3 días hábiles`}
+          />
+          <Cifra
+            etiqueta="Novedades sin anotar en bitácora"
+            valor={m.novedades.sinAnotarEnBitacora}
+            detalle="Plazo de 5 días hábiles"
+          />
+          <Cifra
+            etiqueta="Aprendices fuera del plazo de 24 meses"
+            valor={m.alertas.plazo24Meses}
+            detalle="Acuerdo 007 de 2012 · solo advertencia"
+          />
+          <Cifra
+            etiqueta="Instructores sobre el tope"
+            valor={m.alertas.instructoresSobreTope}
+            detalle="Más de 80 aprendices activos · todo el centro"
+          />
+        </div>
       </Seccion>
 
       <Seccion
@@ -228,6 +250,8 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
               "Inicio EP",
               "Fin EP",
               "Bitácoras",
+              "Novedades",
+              "Alertas",
               "Momento 1",
               "Momento 2",
               "Momento 3",
@@ -250,6 +274,24 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
                 <td className={td}>{dia(a.finEP)}</td>
                 <td className={td}>
                   {a.bitacorasAprobadas} de {a.totalBitacoras}
+                </td>
+                <td className={td}>
+                  {a.novedades}
+                  {a.novedadesFueraDePlazo > 0 && (
+                    <span className="text-amber-700 dark:text-amber-400"> · {a.novedadesFueraDePlazo} fuera de plazo</span>
+                  )}
+                  {a.novedadesSinAnotar > 0 && (
+                    <span className="text-zinc-500 dark:text-zinc-400"> · {a.novedadesSinAnotar} sin anotar</span>
+                  )}
+                </td>
+                <td className={td}>
+                  {a.advertenciaPlazo ? (
+                    <span title={a.advertenciaPlazo} className="text-amber-700 dark:text-amber-400">
+                      Plazo de 24 meses
+                    </span>
+                  ) : (
+                    "—"
+                  )}
                 </td>
                 <td className={td}>{a.momento1}</td>
                 <td className={td}>{a.momento2}</td>

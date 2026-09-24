@@ -3,6 +3,10 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { EstadoAprendiz } from "@/generated/prisma/enums";
 import { calcularSeguimiento, type ChecklistItem } from "@/lib/seguimiento-evidencias";
 import { evaluarRiesgoDesercion } from "@/lib/desercion";
+import { plazoBitacoraNovedad, plazoRegistroNovedad } from "@/lib/novedades";
+import { advertenciaPlazoCulminacion, plazoMaximoCulminacion } from "@/lib/plazo-culminacion";
+import { aprendicesActivosPorInstructor } from "@/lib/carga-instructor";
+import { superaTope } from "@/lib/tope-instructor";
 import { fechaEnColombia } from "@/lib/plazos-institucionales";
 import { estadoAprendizLabel } from "@/lib/validations";
 
@@ -116,6 +120,8 @@ export async function construirReporte(f: FiltrosReporte) {
             programa: true,
             fechaLimiteIniciarEP: true,
             fechaFinFormacion: true,
+            fechaInicioProductiva: true,
+            reglamento: true,
             instructor: { select: { nombres: true, apellidos: true } },
           },
         },
@@ -129,6 +135,10 @@ export async function construirReporte(f: FiltrosReporte) {
           select: { numero: true, estado: true, juicioFinal: true, variables: { select: { valoracion: true } } },
         },
         certificacionEmpresario: { select: { estado: true } },
+        // Novedades de la guía §9.2, con sus dos plazos (ver src/lib/novedades.ts).
+        novedadesEP: { select: { fechaHecho: true, createdAt: true, fechaAnotacionBitacora: true } },
+        interrupcionesEP: { select: { fechaInterrupcion: true, createdAt: true } },
+        aplazamientosEP: { select: { fechaSuspension: true, createdAt: true } },
       },
       orderBy: [{ nombres: "asc" }, { apellidos: "asc" }],
     }),
@@ -155,6 +165,8 @@ export async function construirReporte(f: FiltrosReporte) {
   const porEstado = Object.fromEntries(Object.keys(estadoAprendizLabel).map((k) => [k, 0])) as Record<string, number>;
   const bitacoras = { entregadas: 0, aTiempo: 0, conAtraso: 0, aprobadas: 0 };
   const momento3 = { aprobados: 0, noAprobados: 0 };
+  const novedades = { total: 0, fueraDePlazo: 0, sinAnotarEnBitacora: 0 };
+  let conAdvertenciaPlazo = 0;
   const rubrica = { valoradas: 0, satisfactorio: 0 };
   const matriz = Object.fromEntries(
     (Object.keys(ETIQUETA_EVIDENCIA) as ChecklistItem["clave"][]).map((clave) => [
@@ -221,6 +233,39 @@ export async function construirReporte(f: FiltrosReporte) {
       }
     }
 
+    // Novedades (§9.2): las propias y las que la guía también cuenta como novedad.
+    const novedadesAprendiz = [
+      ...a.novedadesEP.map((n) => ({
+        registro: plazoRegistroNovedad(n.fechaHecho, n.createdAt),
+        sinAnotar: !n.fechaAnotacionBitacora,
+        bitacora: plazoBitacoraNovedad(n.fechaHecho, n.fechaAnotacionBitacora, hoy),
+      })),
+      ...a.interrupcionesEP.map((i) => ({
+        registro: plazoRegistroNovedad(i.fechaInterrupcion, i.createdAt),
+        sinAnotar: false,
+        bitacora: null,
+      })),
+      ...a.aplazamientosEP.map((ap) => ({
+        registro: plazoRegistroNovedad(ap.fechaSuspension, ap.createdAt),
+        sinAnotar: false,
+        bitacora: null,
+      })),
+    ];
+    const novedadesFueraDePlazo = novedadesAprendiz.filter((n) => n.registro?.vencido).length;
+    const novedadesSinAnotar = novedadesAprendiz.filter((n) => n.sinAnotar).length;
+    novedades.total += novedadesAprendiz.length;
+    novedades.fueraDePlazo += novedadesFueraDePlazo;
+    novedades.sinAnotarEnBitacora += novedadesSinAnotar;
+
+    // Plazo de 24 meses del Acuerdo 007 (solo advertencia, ver src/lib/plazo-culminacion.ts).
+    const advertenciaPlazo = advertenciaPlazoCulminacion({
+      plazo: plazoMaximoCulminacion(a.ficha),
+      fechaFin: a.fechaFinEtapaProductiva,
+      hoy,
+      estado: a.estado,
+    });
+    if (advertenciaPlazo) conAdvertenciaPlazo++;
+
     // Cumplimiento.
     for (const c of checklist) matriz[c.clave][c.estado]++;
     const atrasadas = checklist.filter((c) => c.estado === "atrasada").map((c) => `${ETIQUETA_EVIDENCIA[c.clave]}: ${c.detalle}`);
@@ -242,12 +287,20 @@ export async function construirReporte(f: FiltrosReporte) {
       finEP: a.fechaFinEtapaProductiva,
       bitacorasAprobadas: a.bitacoras.filter((b) => b.estado === "APROBADA").length,
       totalBitacoras: a.totalBitacoras,
+      novedades: novedadesAprendiz.length,
+      novedadesFueraDePlazo,
+      novedadesSinAnotar,
+      advertenciaPlazo,
       momento1: a.concertacionFuncion ? (a.concertacionFuncion.estado === "APROBADA" ? "Valorado" : "Agendado") : "Sin agendar",
       momento2: estadoMomento(m2, "Evaluado"),
       momento3: estadoMomento(m3, "Evaluado"),
       certificacion: a.certificacionEmpresario ? estadoCertificacion[a.certificacionEmpresario.estado] : "Sin cargar",
     };
   });
+
+  // Tope de 80 aprendices activos por instructor (§9.1.3): indicador institucional, no del filtro.
+  const activosPorInstructor = await aprendicesActivosPorInstructor(instructores.map((i) => i.id));
+  const instructoresSobreTope = instructores.filter((i) => superaTope(activosPorInstructor.get(i.id) ?? 0)).length;
 
   // Primero quien tiene más evidencias atrasadas; la causal de deserción desempata.
   enRiesgo.sort(
@@ -272,6 +325,8 @@ export async function construirReporte(f: FiltrosReporte) {
       bitacoras,
       momento3,
       rubrica,
+      novedades,
+      alertas: { plazo24Meses: conAdvertenciaPlazo, instructoresSobreTope },
     },
     cumplimiento: { porEvidencia: Object.values(matriz), enRiesgo },
     listado,

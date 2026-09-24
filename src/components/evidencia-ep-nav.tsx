@@ -43,6 +43,13 @@ const TABS = [
     icon: "🏁",
     key: "certificacion" as const,
   },
+  // Novedades de la etapa productiva (guía §9.2). No es una evidencia: no lleva insignia.
+  {
+    href: "/formulario/etapa-productiva/novedades",
+    label: "Novedades",
+    icon: "📌",
+    key: null,
+  },
   // Todo el proceso en una sola vista, para consultarlo o guardarlo en PDF. No lleva insignia.
   {
     href: "/formulario/etapa-productiva/expediente",

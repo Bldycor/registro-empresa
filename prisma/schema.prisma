@@ -433,6 +433,8 @@ model User {
   interrupcionesEPAval        InterrupcionEtapaProductiva[] @relation("AvalInterrupcionEP")
   aplazamientosEP             AplazamientoEtapaProductiva[] @relation("AprendizAplazamientos")
   aplazamientosEPAval         AplazamientoEtapaProductiva[] @relation("AvalAplazamientoEP")
+  novedadesEP                 NovedadEtapaProductiva[]      @relation("AprendizNovedades")
+  novedadesRegistradas        NovedadEtapaProductiva[]      @relation("NovedadRegistradaPor")
   avisosPlazo                 AvisoPlazo[]                  @relation("AvisosPlazo")
 }
 
@@ -970,4 +972,56 @@ enum SolicitanteReunion {
 enum ReglamentoAprendiz {
   ACUERDO_007_2012
   ACUERDO_009_2024
+}
+
+// Tipos de novedad de la etapa productiva que NO detienen la práctica (guía GFPI-G-040 §9.2). Las
+// que sí la detienen tienen su propio modelo: `AplazamientoEtapaProductiva` (§9.3) e
+// `InterrupcionEtapaProductiva` (§9.3.1).
+enum TipoNovedadEP {
+  CAMBIO_COFORMADOR
+  CAMBIO_FUNCIONES
+  CAMBIO_SEDE_HORARIO
+  ACCIDENTE_TRABAJO
+  INCAPACIDAD_CORTA
+  AFILIACION_ARL
+  APOYO_SOSTENIMIENTO
+  AUSENCIA_O_INACTIVIDAD
+  DIFICULTAD_PLAN_TRABAJO
+  OTRA
+}
+
+// Novedad de la etapa productiva (guía GFPI-G-040 §9.2): cualquier hecho que afecte el desarrollo
+// normal de la práctica —cambio de coformador, de funciones o de sede, un accidente de trabajo,
+// una incapacidad corta, un problema con la ARL…—. No es una evidencia: no se avala, se registra
+// y queda como constancia con su fecha.
+//
+// La guía fija dos plazos, que el sistema solo ADVIERTE (decisión de Coordinación, 24 sep 2026):
+// informarla y registrarla dentro de 3 días hábiles, y dejarla anotada en la bitácora
+// (GFPI-F-147) dentro de 5. Ver src/lib/novedades.ts, que mide los mismos plazos sobre las
+// interrupciones y los aplazamientos ya existentes.
+model NovedadEtapaProductiva {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("AprendizNovedades", fields: [userId], references: [id], onDelete: Cascade)
+
+  tipo        TipoNovedadEP
+  descripcion String
+  // Día en que ocurrió el hecho (día de calendario). De acá arrancan los dos plazos.
+  fechaHecho  DateTime
+  soporteUrl  String?
+
+  // Quién dejó el registro: el propio aprendiz o su instructor de seguimiento (los dos pueden).
+  registradaPorId String?
+  registradaPor   User?   @relation("NovedadRegistradaPor", fields: [registradaPorId], references: [id], onDelete: SetNull)
+
+  // Constancia de que la novedad quedó anotada en la bitácora del período, y en cuál.
+  bitacoraNumero         Int?
+  fechaAnotacionBitacora DateTime?
+
+  observacionesInstructor String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }

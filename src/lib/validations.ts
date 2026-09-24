@@ -1002,3 +1002,64 @@ export const ConcertacionRubricaSchema = z.object({
 });
 
 export type ConcertacionRubricaInput = z.infer<typeof ConcertacionRubricaSchema>;
+
+// Novedades de la etapa productiva (guía GFPI-G-040 §9.2): hechos que afectan el desarrollo de la
+// práctica sin detenerla. Las que sí la detienen son aplazamiento (§9.3) o interrupción (§9.3.1),
+// que tienen sus propios formularios y aval.
+export const TipoNovedadEPValues = [
+  "CAMBIO_COFORMADOR",
+  "CAMBIO_FUNCIONES",
+  "CAMBIO_SEDE_HORARIO",
+  "ACCIDENTE_TRABAJO",
+  "INCAPACIDAD_CORTA",
+  "AFILIACION_ARL",
+  "APOYO_SOSTENIMIENTO",
+  "AUSENCIA_O_INACTIVIDAD",
+  "DIFICULTAD_PLAN_TRABAJO",
+  "OTRA",
+] as const;
+export type TipoNovedadEPValue = (typeof TipoNovedadEPValues)[number];
+
+export const tipoNovedadEPLabel: Record<TipoNovedadEPValue, string> = {
+  CAMBIO_COFORMADOR: "Cambio de coformador o jefe inmediato",
+  CAMBIO_FUNCIONES: "Cambio de funciones, área o proyecto",
+  CAMBIO_SEDE_HORARIO: "Cambio de sede, dirección u horario",
+  ACCIDENTE_TRABAJO: "Accidente de trabajo",
+  INCAPACIDAD_CORTA: "Incapacidad corta (no suspende la práctica)",
+  AFILIACION_ARL: "Problema con la afiliación a la ARL",
+  APOYO_SOSTENIMIENTO: "Problema con el apoyo de sostenimiento",
+  AUSENCIA_O_INACTIVIDAD: "Ausencias o período sin actividad en la empresa",
+  DIFICULTAD_PLAN_TRABAJO: "Dificultad para cumplir el plan de trabajo",
+  OTRA: "Otra novedad",
+};
+
+export const NovedadEPSchema = z.object({
+  tipo: z.enum(TipoNovedadEPValues, { message: "Selecciona el tipo de novedad." }),
+  fechaHecho: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Selecciona el día en que ocurrió la novedad."),
+  descripcion: z
+    .string()
+    .trim()
+    .min(10, "Describe la novedad (mínimo 10 caracteres).")
+    .max(1000, "La descripción no puede pasar de 1000 caracteres."),
+  soporteUrl: z.string().trim().nullable().optional(),
+});
+
+export type NovedadEPInput = z.infer<typeof NovedadEPSchema>;
+
+// El instructor registra la novedad de uno de sus aprendices (la guía permite que cualquiera de
+// las partes la reporte; Coordinación confirmó que ambos pueden, 24 sep 2026).
+export const NovedadEPInstructorSchema = NovedadEPSchema.extend({
+  userId: z.string().min(1, "Selecciona el aprendiz."),
+});
+
+// Constancia de que la novedad quedó anotada en la bitácora del período (plazo de 5 días hábiles).
+export const NovedadBitacoraSchema = z.object({
+  bitacoraNumero: z.number().int().min(1).max(12),
+});
+
+// Comentario del instructor sobre una novedad ya registrada.
+export const NovedadObservacionSchema = z.object({
+  observacionesInstructor: z.string().trim().max(1000).nullable().optional(),
+});

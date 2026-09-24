@@ -65,7 +65,7 @@ function direccionDesnuda(from: string): string {
 const roleLabel: Record<string, string> = {
   APRENDIZ: "Aprendiz",
   INSTRUCTOR: "Instructor",
-  COORDINADOR: "Coordinador",
+  COORDINADOR: "Coordinador de Etapa Productiva",
 };
 
 // Notificación de bienvenida al registrarse: confirma la creación de la cuenta y

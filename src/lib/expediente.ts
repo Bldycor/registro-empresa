@@ -178,6 +178,20 @@ export async function cargarExpediente(userId: string) {
         },
         orderBy: { createdAt: "asc" },
       },
+      novedadesEP: {
+        select: {
+          tipo: true,
+          descripcion: true,
+          fechaHecho: true,
+          soporteUrl: true,
+          bitacoraNumero: true,
+          fechaAnotacionBitacora: true,
+          observacionesInstructor: true,
+          createdAt: true,
+          registradaPor: QUIEN,
+        },
+        orderBy: { fechaHecho: "desc" },
+      },
       avisosPlazo: {
         select: { clave: true, tipo: true, fechaLimite: true, enviadoEn: true, destinatarios: true },
         orderBy: { enviadoEn: "asc" },

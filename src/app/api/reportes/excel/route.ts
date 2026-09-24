@@ -41,6 +41,26 @@ export async function GET(request: Request) {
     ],
     [texto("Juicio final aprobado (Momento 3)"), numero(m.momento3.aprobados), null],
     [texto("Juicio final no aprobado (Momento 3)"), numero(m.momento3.noAprobados), null],
+    [
+      texto("Novedades registradas (§9.2)"),
+      numero(m.novedades.total),
+      texto(`${m.novedades.fueraDePlazo} registradas fuera de los 3 días hábiles`),
+    ],
+    [
+      texto("Novedades sin anotar en bitácora"),
+      numero(m.novedades.sinAnotarEnBitacora),
+      texto("Plazo de 5 días hábiles"),
+    ],
+    [
+      texto("Aprendices fuera del plazo de 24 meses"),
+      numero(m.alertas.plazo24Meses),
+      texto("Acuerdo 007 de 2012; solo advertencia"),
+    ],
+    [
+      texto("Instructores sobre el tope de 80"),
+      numero(m.alertas.instructoresSobreTope),
+      texto("Aprendices activos en todo el centro, sin filtrar"),
+    ],
   ];
 
   const cumplimiento = [
@@ -78,6 +98,10 @@ export async function GET(request: Request) {
       "Fin EP",
       "Bitácoras aprobadas",
       "Bitácoras previstas",
+      "Novedades",
+      "Novedades fuera de plazo",
+      "Novedades sin anotar",
+      "Alerta de plazo (24 meses)",
       "Momento 1",
       "Momento 2",
       "Momento 3",
@@ -95,6 +119,10 @@ export async function GET(request: Request) {
       fecha(a.finEP),
       numero(a.bitacorasAprobadas),
       numero(a.totalBitacoras),
+      numero(a.novedades),
+      numero(a.novedadesFueraDePlazo),
+      numero(a.novedadesSinAnotar),
+      texto(a.advertenciaPlazo),
       texto(a.momento1),
       texto(a.momento2),
       texto(a.momento3),
@@ -107,7 +135,11 @@ export async function GET(request: Request) {
     { data: metricas, sheet: "Métricas", columns: ancho(44, 22, 48) },
     { data: cumplimiento, sheet: "Cumplimiento", columns: ancho(32, 12, 12, 18, 12) },
     { data: enRiesgo, sheet: "En riesgo", columns: ancho(32, 14, 28, 60, 60) },
-    { data: aprendices, sheet: "Aprendices", columns: ancho(32, 16, 14, 30, 28, 28, 20, 12, 12, 12, 12, 14, 24, 24, 16) },
+    {
+      data: aprendices,
+      sheet: "Aprendices",
+      columns: ancho(32, 16, 14, 30, 28, 28, 20, 12, 12, 12, 12, 12, 16, 16, 40, 14, 24, 24, 16),
+    },
   ]).toBuffer();
 
   return new Response(new Uint8Array(archivo), {
