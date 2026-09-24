@@ -161,6 +161,7 @@ enum Coordinacion {
   CONTABILIDAD_FINANZAS
   COMERCIO_VENTAS
   GESTION_ADMINISTRATIVA_DOCUMENTAL
+  VIRTUALIDAD
 }
 
 // Estado institucional de la ficha (columna "ESTADO" del control de fichas). Son dos hitos

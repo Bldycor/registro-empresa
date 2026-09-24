@@ -48,6 +48,7 @@ export const CoordinacionValues = [
   "CONTABILIDAD_FINANZAS",
   "COMERCIO_VENTAS",
   "GESTION_ADMINISTRATIVA_DOCUMENTAL",
+  "VIRTUALIDAD",
 ] as const;
 export type CoordinacionValue = (typeof CoordinacionValues)[number];
 
@@ -55,6 +56,7 @@ export const coordinacionLabel: Record<CoordinacionValue, string> = {
   CONTABILIDAD_FINANZAS: "Contabilidad y Finanzas",
   COMERCIO_VENTAS: "Comercio y Ventas",
   GESTION_ADMINISTRATIVA_DOCUMENTAL: "Gestión Administrativa y Documental",
+  VIRTUALIDAD: "Virtualidad",
 };
 
 // Estado institucional de la ficha (enum `EstadoFicha`). TERMINADA y TERMINADA_POR_FECHA son
@@ -127,10 +129,6 @@ export const jornadaLabel: Record<JornadaValue, string> = {
   TARDE_NOCHE: "Tarde-Noche",
 };
 
-// Edición de los datos de gestión de una ficha ya creada (coordinador). Todos opcionales: una
-// ficha puede tener solo algunos campos diligenciados.
-// fechaInicioProductiva y fechaLimiteIniciarEP NO están acá a propósito: se calculan siempre en
-// el servidor con la fórmula oficial (ver src/lib/ficha-fechas.ts), no se editan directamente.
 // Reglamento del aprendiz que rige a la ficha (enum `ReglamentoAprendiz`). Define si aplica el
 // plazo de 24 meses del Acuerdo 007 de 2012 (ver src/lib/plazo-culminacion.ts).
 export const ReglamentoAprendizValues = ["ACUERDO_007_2012", "ACUERDO_009_2024"] as const;
@@ -140,6 +138,10 @@ export const reglamentoAprendizLabel: Record<ReglamentoAprendizValue, string> = 
   ACUERDO_009_2024: "Acuerdo 009 de 2024",
 };
 
+// Edición de los datos de gestión de una ficha ya creada (coordinador). Todos opcionales: una
+// ficha puede tener solo algunos campos diligenciados.
+// fechaInicioProductiva y fechaLimiteIniciarEP NO están acá a propósito: se calculan siempre en
+// el servidor con la fórmula oficial (ver src/lib/ficha-fechas.ts), no se editan directamente.
 export const FichaGestionSchema = z.object({
   programa: z.enum(ProgramasFormacionValues).nullable().optional(),
   estado: z.enum(EstadoFichaValues).nullable().optional(),
