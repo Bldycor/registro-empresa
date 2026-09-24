@@ -32,7 +32,7 @@ const BITACORA_SELECT = {
   },
 } as const;
 
-// Bitácoras del propio aprendiz (evidencia c) — hasta 12, quincenales desde su fecha real de
+// Bitácoras del propio aprendiz (evidencia c) — 6 o 12 (ver `totalBitacoras`), desde su fecha real de
 // inicio de Etapa Productiva.
 export async function GET() {
   const { user, response } = await requireApiUser(["APRENDIZ"]);

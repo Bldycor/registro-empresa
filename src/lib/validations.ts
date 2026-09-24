@@ -514,9 +514,10 @@ const fechaEtapaProductivaOpcional = z
 // Etapa Productiva son por aprendiz (no por ficha) — se pueden fijar o corregir aquí uno a uno,
 // además de sincronizarse desde la evidencia "Selección de Alternativa" cuando el aprendiz la
 // diligencia (la última aprobada gana).
-// Cuántas bitácoras le corresponden al aprendiz — 12 (estándar, 6 meses) o 6 (Etapa Productiva
-// corta, 3 meses). Afecta las fechas límite calculadas y las alertas de seguimiento (ver
-// src/lib/bitacora-fechas.ts y src/lib/seguimiento-evidencias.ts).
+// Cuántas bitácoras le corresponden al aprendiz. La Etapa Productiva SIEMPRE dura 6 meses; lo
+// que cambia es la frecuencia de entrega: 12 (una cada 15 días) o 6 (una por mes). Afecta las
+// fechas límite calculadas y las alertas de seguimiento (ver src/lib/bitacora-fechas.ts y
+// src/lib/seguimiento-evidencias.ts).
 export const TotalBitacorasValues = [6, 12] as const;
 export type TotalBitacorasValue = (typeof TotalBitacorasValues)[number];
 const totalBitacorasOpcional = z.union([z.literal(6), z.literal(12)]).optional();
@@ -796,7 +797,7 @@ export const BitacoraActividadSchema = z.object({
 
 export type BitacoraActividadInput = z.infer<typeof BitacoraActividadSchema>;
 
-// Evidencia (c): Bitácora quincenal del aprendiz. `numero` identifica cuál de las bitácoras se
+// Evidencia (c): Bitácora del aprendiz. `numero` identifica cuál de las bitácoras se
 // está diligenciando; la fecha límite se calcula en el servidor, no se recibe acá. El tope real
 // (6 o 12, ver `User.totalBitacoras`) varía por aprendiz, así que se valida en el route handler,
 // no acá — el límite de 12 es solo un techo razonable contra datos claramente inválidos.

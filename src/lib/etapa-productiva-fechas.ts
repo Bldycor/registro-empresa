@@ -2,7 +2,7 @@
 // crear su cuenta (individual o por importación masiva) — el usuario no las escribe a mano, el
 // sistema las deriva de la fecha institucional de la ficha (`Ficha.fechaInicioProductiva`).
 // Duración fija de 6 meses (180 días), la misma que ya asume `bitacora-fechas.ts` (12 bitácoras
-// quincenales = 180 días). Si la ficha todavía no tiene esa fecha, quedan sin definir — el
+// = 180 días, los 6 meses de práctica). Si la ficha todavía no tiene esa fecha, quedan sin definir — el
 // instructor las corrige después, individualmente o para toda la ficha a la vez.
 
 export const DURACION_ETAPA_PRODUCTIVA_DIAS = 180;

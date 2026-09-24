@@ -7,7 +7,7 @@
 // Plazos oficiales confirmados con el usuario:
 //   1. Alternativa EP y Formalización: inmediatamente al iniciar la Etapa Productiva.
 //   2. Concertación (Momento 1): 15 días después de iniciar.
-//   3. Bitácoras: cada 15 días, 12 en total por defecto — 6 si la Etapa Productiva es corta (ver
+//   3. Bitácoras: 12 en total por defecto, una cada 15 días — o 6, una por mes (ver
 //      User.totalBitacoras; el cálculo de fechas está en src/lib/bitacora-fechas.ts).
 //   4. Evaluaciones: Momento 2 al 50% del tiempo planeado (guía GFPI-G-040 §9.2); Momento 3,
 //      10-15 días antes del cierre.

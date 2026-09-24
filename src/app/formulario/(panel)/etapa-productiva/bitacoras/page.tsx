@@ -25,8 +25,9 @@ export default async function BitacorasPage() {
           Bitácoras
         </h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Registro quincenal de actividades durante tu Etapa Productiva (formato GFPI-F-147) — {aprendiz?.totalBitacoras ?? 12}{" "}
-          bitácoras, cada 15 días desde tu fecha de inicio.
+          Registro de actividades durante tu Etapa Productiva (formato GFPI-F-147) — {aprendiz?.totalBitacoras ?? 12}{" "}
+          bitácoras {(aprendiz?.totalBitacoras ?? 12) === 12 ? "(una cada 15 días)" : "(una por mes)"} durante
+          los 6 meses de práctica, desde tu fecha de inicio.
         </p>
         <div className="mt-2">
           <PlantillaEnlace plantilla={PLANTILLA_BITACORA} />

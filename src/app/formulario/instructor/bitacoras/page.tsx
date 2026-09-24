@@ -14,7 +14,7 @@ export default async function InstructorBitacorasPage() {
           Bitácoras de Etapa Productiva
         </h1>
         <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
-          Revisa y avala las bitácoras quincenales de los aprendices de tus fichas asignadas.
+          Revisa y avala las bitácoras de los aprendices de tus fichas asignadas.
         </p>
         <div className="-mt-4 mb-6">
           <PlantillaEnlace plantilla={PLANTILLA_BITACORA} />

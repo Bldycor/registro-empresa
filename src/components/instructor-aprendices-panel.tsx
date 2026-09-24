@@ -400,7 +400,7 @@ function AprendizFechasForm({
           >
             {TotalBitacorasValues.map((v) => (
               <option key={v} value={v}>
-                {v} (Etapa Productiva de {v === 12 ? "6" : "3"} meses)
+                {v} bitácoras ({v === 12 ? "una cada 15 días" : "una por mes"})
               </option>
             ))}
           </select>
@@ -510,7 +510,7 @@ function FichaFechasForm({
             <option value="">No cambiar</option>
             {TotalBitacorasValues.map((v) => (
               <option key={v} value={v}>
-                {v} (Etapa Productiva de {v === 12 ? "6" : "3"} meses)
+                {v} bitácoras ({v === 12 ? "una cada 15 días" : "una por mes"})
               </option>
             ))}
           </select>
