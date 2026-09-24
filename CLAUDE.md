@@ -103,6 +103,7 @@ docs/                             # requisitos y plan
 - **Plazos de la institución:** 8 días hábiles para el aval, 15 para el cambio de alternativa y 8 para registrar en SofiaPlus. SofiaPlus no está integrado: Coordinación anota la fecha como constancia. Los días hábiles no descuentan festivos.
 - **Tope de aprendices por instructor** (§9.1.3): 80 aprendices activos. **Solo advierte**: al asignar un instructor a una ficha, o aprendices a una ficha, la respuesta trae `advertencias` y la asignación se hace igual; el panel de Instructores muestra la carga de cada uno (`src/lib/carga-instructor.ts`, `src/lib/tope-instructor.ts`).
 - **Plazo de 24 meses** (§9.1.1 c, Acuerdo 007 de 2012): solo aplica a las fichas con `reglamento` = Acuerdo 007, que Coordinación marca en la ficha; se cuenta desde su «Inicio productiva». **Solo advierte**: en la solicitud de alternativa por avalar, en la lista de Aprendices y en el expediente. No bloquea ni suma como causal de deserción (`src/lib/plazo-culminacion.ts`).
+- **Novedades** (§9.2; `src/lib/novedades.ts`, `/formulario/etapa-productiva/novedades` y `/formulario/instructor/novedades`): cualquier hecho que afecte el desarrollo de la práctica sin detenerla (cambio de coformador, de funciones o de sede, accidente, incapacidad corta, ARL…). **No es una evidencia:** no se avala, se registra. La registran el aprendiz o su instructor; el instructor puede además comentarla. Dos plazos, desde el día del hecho y en días hábiles, que **solo advierten**: 3 para registrarla y 5 para dejar constancia de que quedó anotada en la bitácora. La misma vista mide el plazo de registro de los aplazamientos e interrupciones ya existentes, que la guía también llama novedades.
 - **Plan de mejoramiento** (§9.4): en pausa por decisión de Coordinación (15 sep 2026).
 
 **Plantillas oficiales:** GFPI-F-147 (bitácora, Excel) y GFPI-F-023 (planeación, seguimiento y evaluación, Word) están en `public/documentos` y se enlazan en Bitácoras y Evaluaciones, del aprendiz y del instructor (`src/components/plantilla-enlace.tsx`). Si SENA publica una versión nueva, se reemplaza el archivo y se actualiza el nombre ahí.
@@ -137,11 +138,13 @@ docs/                             # requisitos y plan
 - Una sola consulta (`construirReporte`) alimenta la pantalla y el Excel, con los mismos filtros: ficha, instructor, empresa, estado y rango de la fecha de inicio de la EP. Los filtros van en la URL (formulario GET).
 - Solo consulta. Los ven el instructor —de todos los aprendices, no solo de sus fichas— y Coordinación y Admin.
 - Excel real (`.xlsx`, librería `write-excel-file`, solo en el servidor) con una hoja por reporte; el PDF sale de «Imprimir o guardar en PDF», igual que el expediente.
+- Métricas incluye también las **novedades** (§9.2): cuántas se registraron, qué porcentaje dentro de los 3 días hábiles y cuántas siguen sin anotar en bitácora; más dos alertas institucionales: aprendices fuera del plazo de 24 meses e instructores por encima del tope de 80 (esta última sobre todo el centro, no sobre el filtro). El listado trae por aprendiz sus novedades, las que quedaron fuera de plazo y la alerta de plazo.
+- El menú lateral va **agrupado por tarea** (`roleNav` en `src/components/panel-sidebar.tsx`): Seguimiento / Evidencias por revisar / Reuniones y novedades / Consultas / Cuenta en el instructor, y Estructura / Aprendices / Novedades / Consultas / Cuenta en Coordinación y Admin.
 
 **Cuentas — riesgo aceptado:** las cuentas que crea otro rol reciben como contraseña inicial su cédula, que es también el usuario, y el correo de bienvenida la envía en texto plano. Coordinación ratificó las dos decisiones el 14 de septiembre de 2026, sabiendo que 23 de 37 cuentas (incluidos los 2 coordinadores) seguían con la cédula como contraseña. No cambiarlo ni volver a proponerlo sin que Coordinación lo pida.
 
 ## Roadmap
 
-El detalle está en `docs/PLAN-IMPLEMENTACION.md`. Lo principal pendiente de la guía GFPI-G-040: registro de novedades dentro de 3 y 5 días hábiles (§9.2) y el plan de mejoramiento (§9.4), este último en pausa por decisión de Coordinación.
+El detalle está en `docs/PLAN-IMPLEMENTACION.md`. De la guía GFPI-G-040 solo queda el plan de mejoramiento (§9.4), en pausa por decisión de Coordinación.
 
 Trabajar un frente a la vez, y aplicar y probar cada migración antes de construir la interfaz encima.

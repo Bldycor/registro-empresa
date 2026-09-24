@@ -157,7 +157,9 @@ Confirmado con Coordinación a partir de la *Guía para el Desarrollo de la Etap
 - **Plazo de 24 meses** (§9.1.1 c, Acuerdo 007 de 2012): aplica a las fichas que Coordinación marca con ese reglamento, contado desde su «Inicio productiva». **Solo advierte**; no bloquea ni cuenta como deserción.
 - **Plantillas oficiales** (sección 3.3): GFPI-F-147 V05 y GFPI-F-023 V06 descargables desde Bitácoras y Evaluaciones.
 
-**Pendiente de la guía:** registro de novedades dentro de 3 y 5 días hábiles (§9.2). El plan de mejoramiento cuando el juicio es No aprobado (§9.4) queda en pausa por decisión de Coordinación.
+- **Registro de novedades** (§9.2): cualquier hecho que afecte el desarrollo de la práctica se registra con el día en que ocurrió. Lo hacen el aprendiz o su instructor. Plazos de **3 días hábiles** para registrarlo y **5** para dejarlo anotado en la bitácora: **solo advierten**.
+
+**Pendiente de la guía:** el plan de mejoramiento cuando el juicio es No aprobado (§9.4), en pausa por decisión de Coordinación.
 
 ---
 
