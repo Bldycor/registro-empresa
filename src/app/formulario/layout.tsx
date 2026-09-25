@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { LogoutButton } from "@/components/logout-button";
@@ -30,14 +31,31 @@ export default async function FormularioLayout({
   // Aprendiz recién migrado entraba a una pantalla sin ningún dato suyo visible (ni su nombre),
   // lo que parecía "no se migraron sus datos" aunque el registro sí existiera correctamente.
   const header = (
-    <header className="flex items-center justify-between border-b border-zinc-200 bg-white px-6 py-4 dark:border-zinc-800 dark:bg-zinc-900 print:hidden">
-      <span className="text-sm text-zinc-600 dark:text-zinc-400">
-        Sesión iniciada como{" "}
-        <strong>
+    <header className="flex flex-wrap items-center justify-between gap-3 bg-azul px-4 py-3 text-white sm:px-6 print:hidden">
+      <div className="flex items-center gap-3">
+        <span
+          aria-hidden
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-sena text-sm font-bold text-white"
+        >
+          SP
+        </span>
+        <div className="leading-tight">
+          <p className="text-sm font-semibold">SEPA</p>
+          <p className="text-[11px] text-white/70">SENA · Seguimiento de Etapa Productiva</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="hidden text-sm text-white/80 sm:inline">
           {user.nombres} {user.apellidos}
-        </strong>
-      </span>
-      <LogoutButton />
+        </span>
+        <Link
+          href="/formulario/ayuda"
+          className="rounded-md px-3 py-1.5 text-sm font-medium text-white/90 hover:bg-white/10"
+        >
+          Ayuda
+        </Link>
+        <LogoutButton />
+      </div>
     </header>
   );
 
@@ -123,7 +141,7 @@ export default async function FormularioLayout({
     // Antes de completar el perfil de empresa no hay nada más que navegar — la única pantalla
     // disponible es /formulario (el propio formulario de perfil), así que no se muestra el nav.
     return (
-      <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-black print:bg-white">
+      <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-zinc-950 print:bg-white">
         {header}
         {profile && <EvidenciaEPNav alertas={alertas} />}
         <main className="flex flex-1 flex-col">{children}</main>
@@ -132,7 +150,7 @@ export default async function FormularioLayout({
   }
 
   return (
-    <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-black">
+    <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
       {header}
       <div className="flex flex-1 flex-col sm:flex-row">
         <PanelSidebar role={user.role} />

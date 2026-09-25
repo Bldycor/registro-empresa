@@ -41,6 +41,7 @@ const roleNav: Record<string, Grupo[]> = {
       ],
     },
     { titulo: "Consultas", items: [{ href: "/formulario/reportes", label: "Reportes" }] },
+    { titulo: "Ayuda", items: [{ href: "/formulario/ayuda", label: "Guía de uso" }] },
     { titulo: "Cuenta", items: [{ href: "/formulario/instructor/perfil", label: "Mi perfil" }] },
   ],
   COORDINADOR: [
@@ -67,6 +68,7 @@ const roleNav: Record<string, Grupo[]> = {
       ],
     },
     { titulo: "Consultas", items: [{ href: "/formulario/reportes", label: "Reportes" }] },
+    { titulo: "Ayuda", items: [{ href: "/formulario/ayuda", label: "Guía de uso" }] },
     { titulo: "Cuenta", items: [{ href: "/formulario/coordinador/perfil", label: "Mi perfil" }] },
   ],
   // ADMIN tiene control total: todo lo del Coordinador, más la gestión de coordinadores.
@@ -95,6 +97,7 @@ const roleNav: Record<string, Grupo[]> = {
       ],
     },
     { titulo: "Consultas", items: [{ href: "/formulario/reportes", label: "Reportes" }] },
+    { titulo: "Ayuda", items: [{ href: "/formulario/ayuda", label: "Guía de uso" }] },
     { titulo: "Cuenta", items: [{ href: "/formulario/coordinador/perfil", label: "Mi perfil" }] },
   ],
 };
@@ -116,7 +119,7 @@ export function PanelSidebar({ role }: { role: string }) {
       </p>
       {grupos.map((grupo) => (
         <div key={grupo.titulo} className="flex flex-col gap-1">
-          <p className="mt-3 px-3 text-[11px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-600">
+          <p className="mt-3 px-3 text-[11px] font-semibold uppercase tracking-wide text-sena">
             {grupo.titulo}
           </p>
           {grupo.items.map((item) => {
@@ -127,8 +130,8 @@ export function PanelSidebar({ role }: { role: string }) {
                 href={item.href}
                 className={`rounded-md px-3 py-2 text-sm transition-colors ${
                   active
-                    ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
-                    : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    ? "bg-sena text-white dark:bg-sena dark:text-white"
+                    : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-sena-oscuro"
                 }`}
               >
                 {item.label}

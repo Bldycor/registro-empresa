@@ -175,14 +175,14 @@ export function NovedadesEP({ totalBitacoras }: { totalBitacoras: number }) {
         <button
           type="button"
           onClick={() => setAbierto(true)}
-          className="w-fit rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900"
+          className="w-fit rounded-md bg-sena px-4 py-2 text-sm font-medium text-white hover:bg-sena-oscuro dark:bg-sena dark:text-white"
         >
           Registrar una novedad
         </button>
       ) : (
         <form
           onSubmit={registrar}
-          className="flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900"
+          className="flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-sena"
         >
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -244,7 +244,7 @@ export function NovedadesEP({ totalBitacoras }: { totalBitacoras: number }) {
             <button
               type="submit"
               disabled={loading || subiendo || !tipo || !fechaHecho || descripcion.trim().length < 10}
-              className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
+              className="rounded-md bg-sena px-4 py-2 text-sm font-medium text-white hover:bg-sena-oscuro disabled:opacity-50 dark:bg-sena dark:text-white"
             >
               {loading ? "Registrando…" : "Registrar novedad"}
             </button>

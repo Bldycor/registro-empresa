@@ -38,8 +38,23 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center bg-zinc-50 px-4 dark:bg-black">
-      <div className="w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="flex flex-1 items-center justify-center bg-zinc-50 px-4 py-10 dark:bg-zinc-950">
+      <div className="w-full max-w-sm">
+        <div className="mb-5 flex items-center gap-3">
+          <span
+            aria-hidden
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-sena text-base font-bold text-white"
+          >
+            SP
+          </span>
+          <div className="leading-tight">
+            <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">SEPA</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              SENA · Seguimiento de Etapa Productiva
+            </p>
+          </div>
+        </div>
+        <div className="w-full rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <h1 className="mb-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Iniciar sesión
         </h1>
@@ -102,7 +117,7 @@ function LoginForm() {
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="mt-2 rounded-md bg-sena px-4 py-2 text-sm font-medium text-white hover:bg-sena-oscuro disabled:opacity-50 dark:bg-sena dark:text-white dark:hover:bg-sena-oscuro"
           >
             {loading ? "Ingresando..." : "Ingresar"}
           </button>
@@ -113,7 +128,8 @@ function LoginForm() {
           <Link href="/register" className="font-medium text-zinc-900 underline dark:text-zinc-50">
             Regístrate
           </Link>
-        </p>
+          </p>
+        </div>
       </div>
     </div>
   );

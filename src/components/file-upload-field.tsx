@@ -110,7 +110,7 @@ export function FileUploadField({
           const file = e.target.files?.[0];
           if (file) handleFile(file);
         }}
-        className="text-sm text-zinc-600 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-900 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-zinc-800 dark:text-zinc-400 dark:file:bg-zinc-50 dark:file:text-zinc-900"
+        className="text-sm text-zinc-600 file:mr-3 file:rounded-md file:border-0 file:bg-sena file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-zinc-800 dark:text-zinc-400 dark:file:bg-zinc-50 dark:file:text-zinc-900"
       />
 
       {loading && (

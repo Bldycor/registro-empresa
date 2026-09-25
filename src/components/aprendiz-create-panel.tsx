@@ -228,7 +228,7 @@ export function AprendizCreatePanel({
         <button
           type="submit"
           disabled={loading || fichas.length === 0}
-          className="mt-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="mt-2 rounded-md bg-sena px-4 py-2 text-sm font-medium text-white hover:bg-sena-oscuro disabled:opacity-50 dark:bg-sena dark:text-white dark:hover:bg-sena-oscuro"
         >
           {loading ? "Creando aprendiz..." : "Crear aprendiz"}
         </button>
@@ -322,7 +322,7 @@ export function AprendizCreatePanel({
         <button
           type="submit"
           disabled={importLoading || importText.trim().length === 0}
-          className="mt-3 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="mt-3 rounded-md bg-sena px-4 py-2 text-sm font-medium text-white hover:bg-sena-oscuro disabled:opacity-50 dark:bg-sena dark:text-white dark:hover:bg-sena-oscuro"
         >
           {importLoading ? "Importando..." : "Importar"}
         </button>

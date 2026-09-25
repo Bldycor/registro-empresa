@@ -127,7 +127,7 @@ export function TimeSlotPicker({
                   }
                   className={`rounded-md border px-2 py-1.5 text-sm transition-colors ${
                     selected
-                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
+                      ? "border-zinc-900 bg-sena text-white dark:border-zinc-50 dark:bg-sena dark:text-white"
                       : conflict
                         ? "cursor-not-allowed border-zinc-200 text-zinc-300 line-through dark:border-zinc-800 dark:text-zinc-700"
                         : "border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"

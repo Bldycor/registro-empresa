@@ -404,7 +404,7 @@ export function AlternativasEPPanel({
                         type="button"
                         disabled={busy === s.id}
                         onClick={() => registrarSofiaPlus(s.id, fechaSofia[s.id] ?? hoyColombia())}
-                        className="rounded-md bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                        className="rounded-md bg-sena px-3 py-1 text-xs font-medium text-white hover:bg-sena-oscuro disabled:opacity-50 dark:bg-sena dark:text-white dark:hover:bg-sena-oscuro"
                       >
                         Registrar
                       </button>

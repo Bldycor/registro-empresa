@@ -82,6 +82,13 @@ docs/                             # requisitos y plan
   `SeleccionAlternativaEP` (GFPI-F-165, la avala Coordinación) · `FormalizacionEtapaProductiva` · `ConcertacionFuncion` (Momento 1, con valoración `ConcertacionVariable`) · `Bitacora` (+ `BitacoraActividad`, GFPI-F-147) · `Evaluacion` (Momentos 2 y 3, rúbrica `EvaluacionVariable`, GFPI-F-023) · `CertificacionEmpresario`.
 - **Novedades:** `InterrupcionEtapaProductiva` (se cambia de alternativa) y `AplazamientoEtapaProductiva` (se vuelve con la misma).
 
+## Identidad visual y navegación
+
+- **Paleta SENA en `src/app/globals.css`.** La app se construyó sobre la escala `zinc` y el acento `emerald`; en vez de reescribir las clases de 84 pantallas, el bloque `@theme` redefine qué color es cada peldaño: los neutros pasan al azul institucional (#00304D) y los acentos al verde SENA (#39A900). Hay además colores propios por nombre: `bg-sena`, `hover:bg-sena-oscuro`, `bg-sena-claro`, `bg-azul`. **Cambiar la identidad se hace ahí, no en los componentes.**
+- **Acciones en verde SENA** (`bg-sena`), igual que el elemento activo de los menús. El encabezado es la barra azul con la marca SEPA, el nombre del usuario, «Ayuda» y «Cerrar sesión» — la única forma de salir.
+- **Menús agrupados por tarea** (`roleNav` en `src/components/panel-sidebar.tsx` y `TABS` en `evidencia-ep-nav.tsx`). Si se agrega una opción, describirla también en la guía de ayuda.
+- **Guía de ayuda por rol** (`src/lib/ayuda.ts`, `/formulario/ayuda`): qué hace el rol y para qué sirve cada opción de su menú. Es contenido, no lógica; el administrador ve lo mismo que Coordinación más «Coordinadores».
+
 ## Reglas de negocio — son decisiones institucionales, no cambiarlas sin consultar
 
 **Estados del aprendiz** (`EstadoAprendiz`):

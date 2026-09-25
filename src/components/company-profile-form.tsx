@@ -107,7 +107,7 @@ export function CompanyProfileForm({
               router.push("/formulario/etapa-productiva");
               router.refresh();
             }}
-            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="rounded-md bg-sena px-4 py-2 text-sm font-medium text-white hover:bg-sena-oscuro dark:bg-sena dark:text-white dark:hover:bg-sena-oscuro"
           >
             Continuar a Concertación de funciones →
           </button>
@@ -195,7 +195,7 @@ export function CompanyProfileForm({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mt-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="mt-2 rounded-md bg-sena px-4 py-2 text-sm font-medium text-white hover:bg-sena-oscuro disabled:opacity-50 dark:bg-sena dark:text-white dark:hover:bg-sena-oscuro"
           >
             {isSubmitting
               ? "Guardando..."

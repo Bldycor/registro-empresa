@@ -114,10 +114,10 @@ export function DatePicker({
               onClick={() => onChange(dateStr)}
               className={`rounded-md py-1.5 text-sm transition-colors ${
                 selected
-                  ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
+                  ? "bg-sena text-white dark:bg-sena dark:text-white"
                   : disabled
                     ? "cursor-not-allowed text-zinc-300 dark:text-zinc-700"
-                    : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-sena-oscuro"
               }`}
             >
               {date.getDate()}

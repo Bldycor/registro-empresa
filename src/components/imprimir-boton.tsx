@@ -7,7 +7,7 @@ export function ImprimirBoton() {
     <button
       type="button"
       onClick={() => window.print()}
-      className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 print:hidden"
+      className="rounded-md bg-sena px-4 py-2 text-sm font-medium text-white hover:bg-sena-oscuro dark:bg-sena dark:text-white dark:hover:bg-sena-oscuro print:hidden"
     >
       Imprimir o guardar en PDF
     </button>

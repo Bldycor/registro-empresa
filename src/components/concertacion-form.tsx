@@ -147,7 +147,7 @@ export function ConcertacionForm({
                 href={enlace}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex w-fit items-center gap-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                className="inline-flex w-fit items-center gap-2 rounded-md bg-sena px-4 py-2 text-sm font-medium text-white hover:bg-sena-oscuro dark:bg-sena dark:text-white dark:hover:bg-sena-oscuro"
               >
                 Unirse a la videollamada
               </a>
@@ -227,7 +227,7 @@ export function ConcertacionForm({
               router.push("/formulario/actualizar");
               router.refresh();
             }}
-            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="rounded-md bg-sena px-4 py-2 text-sm font-medium text-white hover:bg-sena-oscuro dark:bg-sena dark:text-white dark:hover:bg-sena-oscuro"
           >
             Ir al panel de datos →
           </button>
@@ -284,7 +284,7 @@ export function ConcertacionForm({
           <button
             type="submit"
             disabled={isSubmitting || !fecha || !horaInicio || !horaFin}
-            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="rounded-md bg-sena px-4 py-2 text-sm font-medium text-white hover:bg-sena-oscuro disabled:opacity-50 dark:bg-sena dark:text-white dark:hover:bg-sena-oscuro"
           >
             {isSubmitting ? "Guardando..." : citaActual ? "Guardar cambios" : "Confirmar cita"}
           </button>

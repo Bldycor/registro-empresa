@@ -56,6 +56,7 @@ const TABS = [
     icon: "🗂️",
     key: null,
   },
+  { href: "/formulario/ayuda", label: "Ayuda", icon: "❔", key: null },
 ];
 
 // Nav horizontal del panel del Aprendiz — reemplaza el sidebar izquierdo (stepper) que existía
@@ -72,7 +73,7 @@ export function EvidenciaEPNav({ alertas }: { alertas?: AlertasPorEvidencia }) {
     <div className="sticky top-0 z-10 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 print:hidden">
       <div className="flex items-center justify-between gap-4 px-4 pt-3 sm:px-6">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+          <p className="text-xs font-semibold uppercase tracking-wide text-sena">
             Panel del aprendiz
           </p>
           <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
@@ -84,8 +85,8 @@ export function EvidenciaEPNav({ alertas }: { alertas?: AlertasPorEvidencia }) {
             href="/formulario/actualizar"
             className={`mr-2 inline-block rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               pathname === "/formulario/actualizar"
-                ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
-                : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                ? "bg-sena text-white dark:bg-sena dark:text-white"
+                : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-sena-oscuro"
             }`}
           >
             Mi perfil
@@ -103,8 +104,8 @@ export function EvidenciaEPNav({ alertas }: { alertas?: AlertasPorEvidencia }) {
               href={tab.href}
               className={`relative flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                 active
-                  ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
-                  : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                  ? "bg-sena text-white dark:bg-sena dark:text-white"
+                  : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-sena-oscuro"
               }`}
             >
               <span aria-hidden>{tab.icon}</span>

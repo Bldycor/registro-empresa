@@ -158,7 +158,7 @@ export function DatePickerField({
                   onClick={() => selectDay(day)}
                   className={`rounded-md py-1.5 text-sm transition-colors ${
                     isSelected
-                      ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
+                      ? "bg-sena text-white dark:bg-sena dark:text-white"
                       : disabled
                         ? "cursor-not-allowed text-zinc-300 dark:text-zinc-700"
                         : isToday

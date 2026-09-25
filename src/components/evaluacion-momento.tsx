@@ -190,7 +190,7 @@ export function EvaluacionMomento({
             <button
               type="submit"
               disabled={loading || !fecha || !horaInicio || !horaFin || !modalidad}
-              className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
+              className="rounded-md bg-sena px-4 py-2 text-sm font-medium text-white hover:bg-sena-oscuro disabled:opacity-50 dark:bg-sena dark:text-white"
             >
               {loading ? "Agendando..." : data ? "Guardar cambios" : "Agendar reunión"}
             </button>
@@ -241,7 +241,7 @@ export function EvaluacionMomento({
                 href={data.videollamadaUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex w-fit items-center gap-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900"
+                className="inline-flex w-fit items-center gap-2 rounded-md bg-sena px-4 py-2 text-sm font-medium text-white hover:bg-sena-oscuro dark:bg-sena dark:text-white"
               >
                 Unirse a la videollamada
               </a>

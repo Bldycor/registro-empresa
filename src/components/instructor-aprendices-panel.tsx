@@ -411,7 +411,7 @@ function AprendizFechasForm({
         type="button"
         onClick={guardar}
         disabled={loading}
-        className="w-fit rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        className="w-fit rounded-md bg-sena px-3 py-1.5 text-xs font-medium text-white hover:bg-sena-oscuro disabled:opacity-50 dark:bg-sena dark:text-white dark:hover:bg-sena-oscuro"
       >
         {loading ? "Guardando..." : "Guardar cambios"}
       </button>
@@ -526,7 +526,7 @@ function FichaFechasForm({
         type="button"
         onClick={aplicar}
         disabled={loading}
-        className="w-fit rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        className="w-fit rounded-md bg-sena px-3 py-1.5 text-xs font-medium text-white hover:bg-sena-oscuro disabled:opacity-50 dark:bg-sena dark:text-white dark:hover:bg-sena-oscuro"
       >
         {loading ? "Aplicando..." : "Aplicar a toda la ficha"}
       </button>

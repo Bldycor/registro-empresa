@@ -1,5 +1,46 @@
 @import "tailwindcss";
 
+/* Identidad visual SENA.
+   La aplicación se construyó sobre la escala `zinc` de Tailwind y el verde `emerald` como acento.
+   En vez de reescribir las clases de 84 pantallas, acá se redefine qué color es cada peldaño:
+   los grises pasan a un azul institucional (#00304D) y los acentos, al verde SENA (#39A900).
+   Así toda la interfaz hereda la identidad y el trabajo fino queda para encabezado, menús y ayuda. */
+@theme {
+  /* Colores propios, para usarlos por nombre: bg-sena, text-sena, bg-azul… */
+  --color-sena: #39a900;
+  --color-sena-oscuro: #2f8c00;
+  --color-sena-claro: #e9f6e1;
+  --color-azul: #00304d;
+  --color-azul-claro: #0a4a73;
+  --color-celeste: #50e5f9;
+  --color-amarillo: #fdc300;
+
+  /* Neutros con temple azul institucional (antes, grises puros). */
+  --color-zinc-50: #f5f8fa;
+  --color-zinc-100: #e9eff3;
+  --color-zinc-200: #d5e0e7;
+  --color-zinc-300: #b5c6d1;
+  --color-zinc-400: #8098a8;
+  --color-zinc-500: #5d7788;
+  --color-zinc-600: #45606f;
+  --color-zinc-700: #2f4a5c;
+  --color-zinc-800: #123449;
+  --color-zinc-900: #00304d;
+  --color-zinc-950: #001f33;
+
+  /* Los acentos verdes de la app pasan al verde SENA. */
+  --color-emerald-50: #eef8e7;
+  --color-emerald-100: #dcf0cc;
+  --color-emerald-200: #c3e5aa;
+  --color-emerald-300: #97d472;
+  --color-emerald-400: #6cc23f;
+  --color-emerald-500: #4fb61a;
+  --color-emerald-600: #39a900;
+  --color-emerald-700: #2f8c00;
+  --color-emerald-800: #246e00;
+  --color-emerald-900: #1b5200;
+}
+
 /* El modo oscuro solo aplica en pantalla: al imprimir (o guardar en PDF, p. ej. el expediente del
    aprendiz) todo sale en claro, sin fondos oscuros ni texto gris claro sobre papel blanco. */
 @custom-variant dark {
@@ -10,7 +51,7 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #00304d;
 }
 
 @theme inline {
@@ -22,13 +63,19 @@
 
 @media screen and (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #001f33;
+    --foreground: #e9eff3;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* Foco visible y consistente en toda la app (accesibilidad). */
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-sena);
+  outline-offset: 2px;
 }

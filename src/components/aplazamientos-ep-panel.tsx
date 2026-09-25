@@ -335,7 +335,7 @@ export function AplazamientosEPPanel() {
                             fechaReanudacionReal: reanudacion[a.id] ?? hoyISO(),
                           })
                         }
-                        className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
+                        className="rounded-md bg-sena px-3 py-1.5 text-sm font-medium text-white hover:bg-sena-oscuro disabled:opacity-50 dark:bg-sena dark:text-white"
                       >
                         Registrar reanudación
                       </button>

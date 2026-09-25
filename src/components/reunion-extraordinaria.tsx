@@ -154,7 +154,7 @@ export function ReunionExtraordinaria({
                     href={r.videollamadaUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-2 inline-flex w-fit rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900"
+                    className="mt-2 inline-flex w-fit rounded-md bg-sena px-3 py-1.5 text-xs font-medium text-white hover:bg-sena-oscuro dark:bg-sena dark:text-white"
                   >
                     Unirse a la videollamada
                   </a>
@@ -273,7 +273,7 @@ export function ReunionExtraordinaria({
             <button
               type="submit"
               disabled={loading || !fecha || !horaInicio || !horaFin || !modalidad || motivo.trim().length < 10}
-              className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
+              className="rounded-md bg-sena px-4 py-2 text-sm font-medium text-white hover:bg-sena-oscuro disabled:opacity-50 dark:bg-sena dark:text-white"
             >
               {loading ? "Enviando…" : "Enviar solicitud"}
             </button>
