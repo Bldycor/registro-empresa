@@ -221,3 +221,122 @@ export function guiaDelRol(role: string): GuiaRol {
   }
   return COORDINADOR;
 }
+
+// Ayuda corta de cada opción de menú, para el ícono y la descripción que se ven al navegar
+// (menú lateral del instructor/Coordinación y pestañas del aprendiz). La guía larga es la de
+// arriba; esto es el recordatorio de una línea.
+export const ayudaMenu: Record<string, { icono: string; resumen: string }> = {
+  // Aprendiz
+  "/formulario/etapa-productiva/alternativa": {
+    icono: "📋",
+    resumen: "Declara tu alternativa (GFPI-F-165) y pide aplazamiento o interrupción.",
+  },
+  "/formulario/etapa-productiva/formalizacion": {
+    icono: "📄",
+    resumen: "Sube el documento que formaliza tu vínculo con la empresa.",
+  },
+  "/formulario/etapa-productiva/bitacoras": {
+    icono: "📓",
+    resumen: "Registra tus actividades: 6 bitácoras (una por mes) o 12 (una cada 15 días).",
+  },
+  "/formulario/etapa-productiva/evaluaciones": {
+    icono: "✅",
+    resumen: "Agenda los tres Momentos y las reuniones extraordinarias.",
+  },
+  "/formulario/etapa-productiva/certificacion": {
+    icono: "🏁",
+    resumen: "Sube la carta de terminación que expide la empresa.",
+  },
+  "/formulario/etapa-productiva/novedades": {
+    icono: "📌",
+    resumen: "Reporta lo que afecte tu práctica: 3 días hábiles para registrarlo.",
+  },
+  "/formulario/etapa-productiva/expediente": {
+    icono: "🗂️",
+    resumen: "Todo tu proceso en una página, lista para guardar en PDF.",
+  },
+  // Instructor
+  "/formulario/instructor/seguimiento": {
+    icono: "🚦",
+    resumen: "El semáforo de las seis evidencias de cada aprendiz.",
+  },
+  "/formulario/instructor/aprendices": {
+    icono: "🎓",
+    resumen: "Tus aprendices y sus fechas de etapa productiva.",
+  },
+  "/formulario/instructor/alternativas": {
+    icono: "📋",
+    resumen: "Consulta la alternativa declarada por cada aprendiz.",
+  },
+  "/formulario/instructor/formalizaciones": {
+    icono: "📄",
+    resumen: "Aprueba o devuelve el documento de formalización.",
+  },
+  "/formulario/instructor/bitacoras": { icono: "📓", resumen: "Revisa y avala las bitácoras." },
+  "/formulario/instructor/evaluaciones": {
+    icono: "✅",
+    resumen: "Registra la rúbrica de los Momentos y reprograma reuniones.",
+  },
+  "/formulario/instructor/certificacion": {
+    icono: "🏁",
+    resumen: "Avala la carta del empresario.",
+  },
+  "/formulario/instructor/extraordinarias": {
+    icono: "📅",
+    resumen: "Aprueba o rechaza las reuniones adicionales.",
+  },
+  "/formulario/instructor/novedades": {
+    icono: "📌",
+    resumen: "Novedades de tus aprendices y sus plazos.",
+  },
+  "/formulario/instructor/perfil": { icono: "👤", resumen: "Tus datos de contacto." },
+  // Coordinación y Admin
+  "/formulario/admin/coordinadores": {
+    icono: "🛡️",
+    resumen: "Cuentas de coordinación (solo administrador).",
+  },
+  "/formulario/coordinador/fichas": {
+    icono: "🗃️",
+    resumen: "Precarga fichas, asigna instructor y fija fechas y reglamento.",
+  },
+  "/formulario/coordinador/instructores": {
+    icono: "👥",
+    resumen: "Crea instructores y revisa su carga frente al tope de 80.",
+  },
+  "/formulario/coordinador/competencias": {
+    icono: "🧩",
+    resumen: "Catálogo de competencias por programa.",
+  },
+  "/formulario/coordinador/aprendices": {
+    icono: "🎓",
+    resumen: "Crea, edita e importa aprendices; declara deserción.",
+  },
+  "/formulario/coordinador/alternativas": {
+    icono: "📋",
+    resumen: "Avala la alternativa y anota el registro en SofiaPlus.",
+  },
+  "/formulario/coordinador/interrupciones": {
+    icono: "⏸️",
+    resumen: "Avala interrupciones y confirma los días cumplidos.",
+  },
+  "/formulario/coordinador/aplazamientos": {
+    icono: "⏳",
+    resumen: "Registra la decisión del Comité, con su acta.",
+  },
+  "/formulario/coordinador/perfil": { icono: "👤", resumen: "Tus datos de contacto." },
+  // Comunes
+  "/formulario/reportes": {
+    icono: "📊",
+    resumen: "Métricas, cumplimiento y listado, con Excel y PDF.",
+  },
+  "/formulario/ayuda": { icono: "❓", resumen: "Qué hace tu rol y para qué sirve cada opción." },
+  "/formulario/actualizar": { icono: "👤", resumen: "Tus datos personales y los de la empresa." },
+};
+
+// Frase de bienvenida por rol: qué va a hacer aquí quien entra.
+export const bienvenidaRol: Record<string, string> = {
+  APRENDIZ: "Aquí entregas tus evidencias, agendas tus reuniones y sigues tu etapa productiva al día.",
+  INSTRUCTOR: "Aquí revisas las evidencias de tus aprendices, valoras los Momentos y llevas su seguimiento.",
+  COORDINADOR: "Aquí administras fichas e instructores, autorizas alternativas y resuelves novedades.",
+  ADMIN: "Aquí administras todo el proceso: cuentas, fichas, alternativas, novedades y reportes.",
+};

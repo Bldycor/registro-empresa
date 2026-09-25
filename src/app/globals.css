@@ -79,3 +79,37 @@ body {
   outline: 2px solid var(--color-sena);
   outline-offset: 2px;
 }
+
+/* Animaciones de la bienvenida y de las tarjetas. Discretas: aparecer y subir un poco. */
+@keyframes sepa-aparecer {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes sepa-subir {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sepa-progreso {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+.sepa-aparece { animation: sepa-aparecer 0.25s ease-out both; }
+.sepa-sube { animation: sepa-subir 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.sepa-progreso { animation: sepa-progreso 5s linear both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sepa-aparece,
+  .sepa-sube,
+  .sepa-progreso {
+    animation: none;
+  }
+  .sepa-progreso { width: 0; }
+}
+
+/* Transiciones suaves en lo que responde al puntero, sin tocar cada componente. */
+@media (prefers-reduced-motion: no-preference) {
+  a, button, [role="button"] {
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+}

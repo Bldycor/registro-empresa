@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ayudaMenu } from "@/lib/ayuda";
 
 type AlertasPorEvidencia = {
   alternativa: number;
@@ -56,7 +57,7 @@ const TABS = [
     icon: "🗂️",
     key: null,
   },
-  { href: "/formulario/ayuda", label: "Ayuda", icon: "❔", key: null },
+  { href: "/formulario/ayuda", label: "Ayuda", icon: "❓", key: null },
 ];
 
 // Nav horizontal del panel del Aprendiz — reemplaza el sidebar izquierdo (stepper) que existía
@@ -68,6 +69,9 @@ const TABS = [
 // actuar sin tener que entrar a cada pestaña.
 export function EvidenciaEPNav({ alertas }: { alertas?: AlertasPorEvidencia }) {
   const pathname = usePathname();
+  const ayudaActiva = TABS.find((t) => pathname?.startsWith(t.href))
+    ? ayudaMenu[TABS.find((t) => pathname?.startsWith(t.href))!.href]?.resumen
+    : null;
 
   return (
     <div className="sticky top-0 z-10 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 print:hidden">
@@ -102,6 +106,7 @@ export function EvidenciaEPNav({ alertas }: { alertas?: AlertasPorEvidencia }) {
             <Link
               key={tab.href}
               href={tab.href}
+              title={ayudaMenu[tab.href]?.resumen}
               className={`relative flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                 active
                   ? "bg-sena text-white dark:bg-sena dark:text-white"
@@ -122,6 +127,14 @@ export function EvidenciaEPNav({ alertas }: { alertas?: AlertasPorEvidencia }) {
           );
         })}
       </nav>
+
+      {/* Qué se hace en la pestaña abierta: la misma frase que el menú lateral muestra al
+          instructor y a Coordinación (ver src/lib/ayuda.ts). */}
+      {ayudaActiva && (
+        <p className="border-t border-zinc-100 px-4 py-2 text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400 sm:px-6">
+          {ayudaActiva}
+        </p>
+      )}
     </div>
   );
 }

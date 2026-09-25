@@ -38,23 +38,74 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center bg-zinc-50 px-4 py-10 dark:bg-zinc-950">
-      <div className="w-full max-w-sm">
-        <div className="mb-5 flex items-center gap-3">
-          <span
-            aria-hidden
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-sena text-base font-bold text-white"
-          >
-            SP
-          </span>
-          <div className="leading-tight">
-            <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">SEPA</p>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              SENA · Seguimiento de Etapa Productiva
+    <div className="flex flex-1 items-center justify-center bg-zinc-50 p-4 dark:bg-zinc-950 sm:p-8">
+      <div className="sepa-sube grid w-full max-w-5xl overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900 md:grid-cols-2">
+        <aside className="relative hidden flex-col justify-between gap-8 bg-gradient-to-br from-azul via-azul-claro to-sena p-10 text-white md:flex">
+          <div>
+            <div className="mb-8 flex items-center gap-3">
+              <span
+                aria-hidden
+                className="grid h-11 w-11 place-items-center rounded-xl bg-white/15 text-base font-bold backdrop-blur"
+              >
+                SP
+              </span>
+              <div className="leading-tight">
+                <p className="text-lg font-semibold">SEPA</p>
+                <p className="text-xs text-white/70">SENA · Seguimiento de Etapa Productiva</p>
+              </div>
+            </div>
+            <h2 className="text-3xl font-semibold leading-tight [text-wrap:balance]">
+              La etapa productiva, de principio a fin y en un solo lugar.
+            </h2>
+            <p className="mt-4 text-sm leading-relaxed text-white/80">
+              Seis evidencias, tres momentos de evaluación y las novedades del proceso: cada una con
+              su fecha, su responsable y su constancia. Aprendices, instructores y coordinación
+              trabajando sobre la misma información.
             </p>
           </div>
-        </div>
-        <div className="w-full rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+
+          <ul className="flex flex-col gap-4 text-sm">
+            <li className="flex gap-3">
+              <span aria-hidden className="text-lg">📋</span>
+              <span className="text-white/85">
+                <strong className="font-semibold text-white">Evidencias</strong> — alternativa,
+                formalización, bitácoras, evaluaciones y certificación, con su aval.
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span aria-hidden className="text-lg">📅</span>
+              <span className="text-white/85">
+                <strong className="font-semibold text-white">Reuniones</strong> — agenda, citación
+                por correo, recordatorio y reprogramación.
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span aria-hidden className="text-lg">📊</span>
+              <span className="text-white/85">
+                <strong className="font-semibold text-white">Seguimiento</strong> — plazos de la
+                guía GFPI-G-040, expediente y reportes.
+              </span>
+            </li>
+          </ul>
+
+          <p className="text-xs text-white/60">Servicio Nacional de Aprendizaje · SENA</p>
+        </aside>
+
+        <div className="flex flex-col justify-center p-8 sm:p-10">
+          <div className="mb-6 flex items-center gap-3 md:hidden">
+            <span
+              aria-hidden
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-sena text-base font-bold text-white"
+            >
+              SP
+            </span>
+            <div className="leading-tight">
+              <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">SEPA</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                SENA · Seguimiento de Etapa Productiva
+              </p>
+            </div>
+          </div>
         <h1 className="mb-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Iniciar sesión
         </h1>
