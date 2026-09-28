@@ -1063,3 +1063,91 @@ export const NovedadBitacoraSchema = z.object({
 export const NovedadObservacionSchema = z.object({
   observacionesInstructor: z.string().trim().max(1000).nullable().optional(),
 });
+
+// --- Plan de mejoramiento (guía GFPI-G-040 §9.4; reglamento del aprendiz, Acuerdo 009 de 2024) ---
+
+export const EstadoPlanMejoramientoValues = [
+  "POR_AUTORIZAR",
+  "VIGENTE",
+  "CUMPLIDO",
+  "NO_CUMPLIDO",
+  "DEVUELTO",
+] as const;
+export type EstadoPlanMejoramientoValue = (typeof EstadoPlanMejoramientoValues)[number];
+
+export const estadoPlanMejoramientoLabel: Record<EstadoPlanMejoramientoValue, string> = {
+  POR_AUTORIZAR: "Por autorizar",
+  VIGENTE: "Vigente",
+  CUMPLIDO: "Cumplido",
+  NO_CUMPLIDO: "No cumplido",
+  DEVUELTO: "Devuelto al instructor",
+};
+
+// Tope del Acuerdo 009: el plan se ejecuta en el tiempo que indique el instructor, sin pasar de
+// 20 días calendario desde la suscripción (acá, la autorización de Coordinación).
+export const PLAZO_MAXIMO_PLAN_MEJORAMIENTO_DIAS = 20;
+
+// Lo redacta el instructor. Los tres bloques de contenido son los que exige el reglamento.
+export const PlanMejoramientoSchema = z.object({
+  userId: z.string().min(1, "Selecciona el aprendiz."),
+  momento: z.number().int().min(1).max(3),
+  resultadosNoSuperados: z
+    .string()
+    .trim()
+    .min(10, "Escribe los resultados de aprendizaje que no se superaron (mínimo 10 caracteres).")
+    .max(2000, "No puede pasar de 2000 caracteres."),
+  actividades: z
+    .string()
+    .trim()
+    .min(10, "Escribe las actividades de aprendizaje (mínimo 10 caracteres).")
+    .max(2000, "No puede pasar de 2000 caracteres."),
+  evidencias: z
+    .string()
+    .trim()
+    .min(10, "Escribe las evidencias de conocimiento, desempeño y producto (mínimo 10 caracteres).")
+    .max(2000, "No puede pasar de 2000 caracteres."),
+  llamadosPrevios: z
+    .string()
+    .trim()
+    .min(10, "Deja constancia de los dos llamados de atención previos (fechas y motivo).")
+    .max(1000, "No puede pasar de 1000 caracteres."),
+  diasPlazo: z
+    .number()
+    .int()
+    .min(1, "El plazo es de al menos un día.")
+    .max(
+      PLAZO_MAXIMO_PLAN_MEJORAMIENTO_DIAS,
+      `El Acuerdo 009 no permite pasar de ${PLAZO_MAXIMO_PLAN_MEJORAMIENTO_DIAS} días calendario.`,
+    ),
+});
+
+export type PlanMejoramientoInput = z.infer<typeof PlanMejoramientoSchema>;
+
+// Decisión de Coordinación: autorizar (y ahí arranca el plazo) o devolver con su observación.
+export const PlanMejoramientoDecisionSchema = z.object({
+  decision: z.enum(["AUTORIZAR", "DEVOLVER"]),
+  observacionesCoordinacion: z.string().trim().max(1000).nullable().optional(),
+});
+
+// Corrección: si Coordinación lo devuelve, el instructor lo reescribe y lo vuelve a enviar.
+export const PlanMejoramientoCorreccionSchema = PlanMejoramientoSchema.omit({ userId: true }).extend({
+  accion: z.literal("CORREGIR"),
+});
+
+// Cierre: lo verifica el instructor, que escribe qué revisó. Puede adjuntar el escrito firmado.
+export const PlanMejoramientoCierreSchema = z.object({
+  accion: z.literal("CERRAR"),
+  resultado: z.enum(["CUMPLIDO", "NO_CUMPLIDO"]),
+  verificacion: z
+    .string()
+    .trim()
+    .min(10, "Escribe qué verificaste (mínimo 10 caracteres).")
+    .max(2000, "No puede pasar de 2000 caracteres."),
+  soporteUrl: z.string().trim().nullable().optional(),
+});
+
+// El instructor manda una de las dos acciones sobre un plan ya creado.
+export const PlanMejoramientoAccionSchema = z.discriminatedUnion("accion", [
+  PlanMejoramientoCierreSchema,
+  PlanMejoramientoCorreccionSchema,
+]);

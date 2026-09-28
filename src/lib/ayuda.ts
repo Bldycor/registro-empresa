@@ -33,7 +33,7 @@ const APRENDIZ: GuiaRol = {
         },
         {
           opcion: "Evaluaciones",
-          que: "Agendas los tres Momentos con tu instructor: concertación (Momento 1), seguimiento (Momento 2) y cierre (Momento 3). Si surge un problema, desde aquí pides una reunión extraordinaria, a nombre tuyo o de tu coformador.",
+          que: "Agendas los tres Momentos con tu instructor: concertación (Momento 1), seguimiento (Momento 2) y cierre (Momento 3). Si surge un problema, desde aquí pides una reunión extraordinaria, a nombre tuyo o de tu coformador. Si en algún Momento quedan resultados de aprendizaje sin superar, en esta misma pantalla aparece tu plan de mejoramiento: qué debes presentar y hasta cuándo.",
         },
         {
           opcion: "Certificación",
@@ -114,6 +114,10 @@ const INSTRUCTOR: GuiaRol = {
           opcion: "Novedades",
           que: "Las novedades de tus aprendices con su plazo: si se registraron dentro de los 3 días hábiles y si quedaron anotadas en la bitácora dentro de los 5. Puedes registrar una que te reporten por fuera y dejar tu comentario.",
         },
+        {
+          opcion: "Planes de mejoramiento",
+          que: "Cuando un aprendiz no supera resultados de aprendizaje en alguno de los tres Momentos —y ya se le hicieron los dos llamados de atención—, aquí redactas el plan: qué quedó pendiente, qué actividades hará, qué evidencias presentará y en cuántos días calendario (máximo 20). Lo autoriza la coordinación académica, que es quien se lo comunica por escrito; tú verificas después si se cumplió. Un plan sin cerrar o no cumplido advierte, pero no impide certificar, y puedes abrir un segundo plan si el caso lo amerita.",
+        },
       ],
     },
     {
@@ -179,6 +183,10 @@ const COORDINADOR: GuiaRol = {
         {
           opcion: "Aplazamientos EP",
           que: "Registras la decisión del Comité de Evaluación y Seguimiento sobre un aplazamiento, con el número y la fecha del acta, que son obligatorios.",
+        },
+        {
+          opcion: "Planes de mejoramiento",
+          que: "Autorizas los planes que redactan los instructores. El reglamento del aprendiz (Acuerdo 009) pide la firma del coordinador académico: tu autorización es esa firma, y con ella arranca el plazo y le llega la comunicación escrita al aprendiz. No requiere acta del Comité. Si algo falta, lo devuelves al instructor con tu observación.",
         },
       ],
     },
@@ -289,6 +297,10 @@ export const ayudaMenu: Record<string, { icono: string; resumen: string }> = {
     icono: "📌",
     resumen: "Novedades de tus aprendices y sus plazos.",
   },
+  "/formulario/instructor/planes": {
+    icono: "📝",
+    resumen: "Redacta y verifica los planes de mejoramiento de tus aprendices.",
+  },
   "/formulario/instructor/perfil": { icono: "👤", resumen: "Tus datos de contacto." },
   // Coordinación y Admin
   "/formulario/admin/coordinadores": {
@@ -322,6 +334,10 @@ export const ayudaMenu: Record<string, { icono: string; resumen: string }> = {
   "/formulario/coordinador/aplazamientos": {
     icono: "⏳",
     resumen: "Registra la decisión del Comité, con su acta.",
+  },
+  "/formulario/coordinador/planes": {
+    icono: "📝",
+    resumen: "Autoriza el plan de mejoramiento: tu firma arranca el plazo.",
   },
   "/formulario/coordinador/perfil": { icono: "👤", resumen: "Tus datos de contacto." },
   // Comunes

@@ -192,6 +192,27 @@ export async function cargarExpediente(userId: string) {
         },
         orderBy: { fechaHecho: "desc" },
       },
+      // Planes de mejoramiento (§9.4): quedan como constancia del proceso, cumplidos o no.
+      planesMejoramiento: {
+        select: {
+          momento: true,
+          estado: true,
+          resultadosNoSuperados: true,
+          actividades: true,
+          evidencias: true,
+          diasPlazo: true,
+          fechaLimite: true,
+          fechaAutorizacion: true,
+          fechaCierre: true,
+          verificacion: true,
+          soporteUrl: true,
+          createdAt: true,
+          creadoPor: QUIEN,
+          autorizadoPor: QUIEN,
+          cerradoPor: QUIEN,
+        },
+        orderBy: { createdAt: "asc" },
+      },
       avisosPlazo: {
         select: { clave: true, tipo: true, fechaLimite: true, enviadoEn: true, destinatarios: true },
         orderBy: { enviadoEn: "asc" },

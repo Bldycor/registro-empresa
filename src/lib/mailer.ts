@@ -4,6 +4,7 @@ import { readFile } from "fs/promises";
 import path from "path";
 import { getVideoConferenceUrl } from "@/lib/video";
 import { componerAvisoPlazos, type AvisoPlazoCorreo } from "@/lib/aviso-plazos-correo";
+import { componerPlanMejoramiento } from "@/lib/plan-mejoramiento-correo";
 import {
   atributosInvitacion,
   componerCitacion,
@@ -412,6 +413,34 @@ export async function sendRechazoExtraordinariaEmail(params: {
   const info = await transporter.sendMail({ from, to: params.aprendizEmail, ...correo });
   if (usingTestAccount) {
     console.log(`[mailer] Vista previa (Ethereal) del rechazo extraordinario: ${nodemailer.getTestMessageUrl(info)}`);
+  }
+  return { info };
+}
+
+// Plan de mejoramiento autorizado (guía GFPI-G-040 §9.4; Acuerdo 009): es la comunicación escrita
+// del coordinador al aprendiz. Copia al instructor que lo redactó, que es quien lo verifica.
+export async function sendPlanMejoramientoEmail(params: {
+  aprendizEmail: string;
+  aprendizNombre: string;
+  instructorEmail: string | null;
+  momento: number;
+  resultadosNoSuperados: string;
+  actividades: string;
+  evidencias: string;
+  fechaLimite: Date;
+  diasPlazo: number;
+  autorizadoPor: string;
+  observacionesCoordinacion: string | null;
+}) {
+  const from = process.env.EMAIL_FROM || "no-responder@registro-empresa.local";
+  const { to, cc, ...correo } = componerPlanMejoramiento({
+    ...params,
+    appUrl: urlApp("/formulario/etapa-productiva/evaluaciones"),
+  });
+  const transporter = await getTransporter();
+  const info = await transporter.sendMail({ from, to, cc: cc.length ? cc : undefined, ...correo });
+  if (usingTestAccount) {
+    console.log(`[mailer] Vista previa (Ethereal) del plan de mejoramiento: ${nodemailer.getTestMessageUrl(info)}`);
   }
   return { info };
 }

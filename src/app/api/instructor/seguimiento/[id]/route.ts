@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { calcularSeguimiento } from "@/lib/seguimiento-evidencias";
 import { sendPorCertificarEmail } from "@/lib/mailer";
+import { advertenciasPlanMejoramiento } from "@/lib/plan-mejoramiento";
 
 const BodySchema = z.object({ porCertificar: z.boolean() });
 
@@ -129,6 +130,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     );
   }
 
+  // Planes de mejoramiento sin cerrar o cerrados como no cumplidos (§9.4). Por decisión de
+  // Coordinación (28 sep 2026) SOLO ADVIERTEN: el aprendiz queda marcado igual y la advertencia
+  // viaja en la respuesta para que el instructor la vea.
+  const advertencias = await advertenciasPlanMejoramiento(id);
+
   const actualizado = await prisma.user.update({
     where: { id },
     data: { estado: "POR_CERTIFICAR", porCertificarPorId: user.id, fechaPorCertificar: new Date() },
@@ -141,5 +147,5 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     console.error("[api/instructor/seguimiento] No se pudo enviar el correo de Por certificar:", error);
   }
 
-  return NextResponse.json({ aprendiz: actualizado });
+  return NextResponse.json({ aprendiz: actualizado, advertencias });
 }

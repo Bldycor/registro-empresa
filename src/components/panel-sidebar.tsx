@@ -43,6 +43,7 @@ const roleNav: Record<string, Grupo[]> = {
       items: [
         { href: "/formulario/instructor/extraordinarias", label: "Reuniones extraordinarias" },
         { href: "/formulario/instructor/novedades", label: "Novedades" },
+        { href: "/formulario/instructor/planes", label: "Planes de mejoramiento" },
       ],
     },
     { titulo: "Consultas", icono: "📊", items: [{ href: "/formulario/reportes", label: "Reportes" }] },
@@ -79,6 +80,7 @@ const roleNav: Record<string, Grupo[]> = {
       items: [
         { href: "/formulario/coordinador/interrupciones", label: "Interrupciones EP" },
         { href: "/formulario/coordinador/aplazamientos", label: "Aplazamientos EP" },
+        { href: "/formulario/coordinador/planes", label: "Planes de mejoramiento" },
       ],
     },
     { titulo: "Consultas", icono: "📊", items: [{ href: "/formulario/reportes", label: "Reportes" }] },
@@ -117,6 +119,7 @@ const roleNav: Record<string, Grupo[]> = {
       items: [
         { href: "/formulario/coordinador/interrupciones", label: "Interrupciones EP" },
         { href: "/formulario/coordinador/aplazamientos", label: "Aplazamientos EP" },
+        { href: "/formulario/coordinador/planes", label: "Planes de mejoramiento" },
       ],
     },
     { titulo: "Consultas", icono: "📊", items: [{ href: "/formulario/reportes", label: "Reportes" }] },

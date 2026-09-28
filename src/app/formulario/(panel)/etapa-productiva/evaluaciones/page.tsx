@@ -5,6 +5,7 @@ import { ConcertacionForm } from "@/components/concertacion-form";
 import { EvaluacionMomento, type EvaluacionMomentoData } from "@/components/evaluacion-momento";
 import { ReunionExtraordinaria } from "@/components/reunion-extraordinaria";
 import { PlantillaEnlace, PLANTILLA_EVALUACION } from "@/components/plantilla-enlace";
+import { PlanesAprendiz } from "@/components/plan-mejoramiento";
 
 export const dynamic = "force-dynamic";
 
@@ -93,6 +94,10 @@ export default async function EtapaProductivaPage() {
         <div className="mt-2">
           <PlantillaEnlace plantilla={PLANTILLA_EVALUACION} />
         </div>
+      </div>
+
+      <div className="w-full max-w-2xl">
+        <PlanesAprendiz />
       </div>
 
       <div className="w-full max-w-2xl">

@@ -103,6 +103,9 @@ export function InstructorSeguimientoPanel() {
   const [filtroPrograma, setFiltroPrograma] = useState("");
   const [pendiente, setPendiente] = useState<string | null>(null);
   const [errores, setErrores] = useState<Record<string, string>>({});
+  // Advertencias que devuelve el servidor al marcar Por certificar: hoy, planes de mejoramiento
+  // sin cerrar o no cumplidos (§9.4). No impiden nada, se muestran.
+  const [advertencias, setAdvertencias] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     fetch("/api/instructor/seguimiento")
@@ -113,6 +116,7 @@ export function InstructorSeguimientoPanel() {
   async function marcarPorCertificar(aprendizId: string, valor: boolean) {
     setPendiente(aprendizId);
     setErrores((prev) => ({ ...prev, [aprendizId]: "" }));
+    setAdvertencias((prev) => ({ ...prev, [aprendizId]: [] }));
 
     const res = await fetch(`/api/instructor/seguimiento/${aprendizId}`, {
       method: "PATCH",
@@ -129,6 +133,10 @@ export function InstructorSeguimientoPanel() {
         [aprendizId]: typeof data.error === "string" ? data.error : "No se pudo actualizar.",
       }));
       return;
+    }
+
+    if (Array.isArray(data.advertencias) && data.advertencias.length > 0) {
+      setAdvertencias((prev) => ({ ...prev, [aprendizId]: data.advertencias }));
     }
 
     setAprendices((prev) =>
@@ -296,6 +304,11 @@ export function InstructorSeguimientoPanel() {
                         : "Marcar como Por certificar (le envía el correo con la ficha de requisitos)"}
                     </label>
                     {errores[a.id] && <p className="text-xs text-red-600">{errores[a.id]}</p>}
+                    {advertencias[a.id]?.map((texto) => (
+                      <p key={texto} className="text-xs text-amber-700 dark:text-amber-400">
+                        {texto} Queda marcado igual; es solo una advertencia.
+                      </p>
+                    ))}
                   </div>
                 )}
               </li>

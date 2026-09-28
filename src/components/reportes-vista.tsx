@@ -184,6 +184,16 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
             detalle="Plazo de 5 días hábiles"
           />
           <Cifra
+            etiqueta="Planes de mejoramiento"
+            valor={m.planesMejoramiento.total}
+            detalle={`${m.planesMejoramiento.abiertos} sin cerrar · ${m.planesMejoramiento.noCumplidos} no cumplidos`}
+          />
+          <Cifra
+            etiqueta="Planes con plazo vencido"
+            valor={m.planesMejoramiento.vencidos}
+            detalle="Máximo 20 días calendario · solo advertencia"
+          />
+          <Cifra
             etiqueta="Aprendices fuera del plazo de 24 meses"
             valor={m.alertas.plazo24Meses}
             detalle="Acuerdo 007 de 2012 · solo advertencia"
@@ -251,6 +261,7 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
               "Fin EP",
               "Bitácoras",
               "Novedades",
+              "Planes de mejoramiento",
               "Alertas",
               "Momento 1",
               "Momento 2",
@@ -282,6 +293,21 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
                   )}
                   {a.novedadesSinAnotar > 0 && (
                     <span className="text-zinc-500 dark:text-zinc-400"> · {a.novedadesSinAnotar} sin anotar</span>
+                  )}
+                </td>
+                <td className={td}>
+                  {a.planesMejoramiento === 0 ? (
+                    "—"
+                  ) : (
+                    <>
+                      {a.planesMejoramiento}
+                      {a.planesAbiertos > 0 && (
+                        <span className="text-amber-700 dark:text-amber-400"> · {a.planesAbiertos} sin cerrar</span>
+                      )}
+                      {a.planesNoCumplidos > 0 && (
+                        <span className="text-red-700 dark:text-red-400"> · {a.planesNoCumplidos} no cumplidos</span>
+                      )}
+                    </>
                   )}
                 </td>
                 <td className={td}>

@@ -435,6 +435,10 @@ model User {
   aplazamientosEPAval         AplazamientoEtapaProductiva[] @relation("AvalAplazamientoEP")
   novedadesEP                 NovedadEtapaProductiva[]      @relation("AprendizNovedades")
   novedadesRegistradas        NovedadEtapaProductiva[]      @relation("NovedadRegistradaPor")
+  planesMejoramiento          PlanMejoramiento[]            @relation("AprendizPlanesMejoramiento")
+  planesMejoramientoCreados   PlanMejoramiento[]            @relation("PlanMejoramientoCreadoPor")
+  planesMejoramientoAutorizados PlanMejoramiento[]          @relation("PlanMejoramientoAutorizadoPor")
+  planesMejoramientoCerrados  PlanMejoramiento[]            @relation("PlanMejoramientoCerradoPor")
   avisosPlazo                 AvisoPlazo[]                  @relation("AvisosPlazo")
 }
 
@@ -1019,6 +1023,75 @@ model NovedadEtapaProductiva {
   fechaAnotacionBitacora DateTime?
 
   observacionesInstructor String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// Estado de un plan de mejoramiento (Acuerdo 009 de 2024, art. de medidas formativas académicas;
+// guía GFPI-G-040 §9.4). Lo redacta el instructor y no está vigente hasta que el coordinador
+// académico lo autoriza: es él quien lo comunica por escrito al aprendiz.
+enum EstadoPlanMejoramiento {
+  POR_AUTORIZAR
+  VIGENTE
+  CUMPLIDO
+  NO_CUMPLIDO
+  // Coordinación lo devuelve al instructor sin autorizarlo (con su observación).
+  DEVUELTO
+}
+
+// Plan de mejoramiento: medida formativa académica cuando el aprendiz no supera resultados de
+// aprendizaje en cualquiera de los tres Momentos de evaluación. Según el reglamento del aprendiz
+// (Acuerdo 009 de 2024): lo elabora el instructor o el equipo ejecutor, lo firman el aprendiz y
+// el coordinador académico, **no requiere acta**, y se ejecuta en el plazo que fije el instructor
+// sin pasar de 20 días calendario desde la suscripción ni de la fecha final de la etapa
+// productiva. La verificación es del instructor. No hay formato oficial: es un escrito, así que
+// SEPA arma el documento imprimible y guarda el firmado como soporte.
+//
+// Incumplirlo NO es causal de deserción ni bloquea la certificación: queda como constancia, y el
+// instructor puede abrir un segundo plan si el caso lo amerita.
+model PlanMejoramiento {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("AprendizPlanesMejoramiento", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Momento de evaluación del que sale el plan: 1 (concertación), 2 (seguimiento) o 3 (cierre).
+  momento Int
+
+  // Contenido que el Acuerdo 009 exige en el escrito.
+  resultadosNoSuperados String
+  actividades           String
+  evidencias            String
+  // Constancia de los dos llamados de atención académicos previos que pide el reglamento: qué
+  // fechas y por qué. Es texto, no un registro aparte — SEPA no lleva los llamados de atención.
+  llamadosPrevios       String
+
+  // Días calendario que el instructor le da al aprendiz (1 a 20). La fecha límite no se conoce
+  // al redactarlo: se calcula cuando Coordinación autoriza (esa es la suscripción), y se recorta
+  // si cayera después del fin de la etapa productiva.
+  diasPlazo   Int
+  fechaLimite DateTime?
+
+  estado EstadoPlanMejoramiento @default(POR_AUTORIZAR)
+
+  creadoPorId String?
+  creadoPor   User?   @relation("PlanMejoramientoCreadoPor", fields: [creadoPorId], references: [id], onDelete: SetNull)
+
+  autorizadoPorId           String?
+  autorizadoPor             User?     @relation("PlanMejoramientoAutorizadoPor", fields: [autorizadoPorId], references: [id], onDelete: SetNull)
+  fechaAutorizacion         DateTime?
+  observacionesCoordinacion String?
+
+  // Cierre: lo verifica el instructor y deja escrito qué revisó.
+  cerradoPorId String?
+  cerradoPor   User?     @relation("PlanMejoramientoCerradoPor", fields: [cerradoPorId], references: [id], onDelete: SetNull)
+  fechaCierre  DateTime?
+  verificacion String?
+
+  // El escrito firmado por el aprendiz y el coordinador académico.
+  soporteUrl String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

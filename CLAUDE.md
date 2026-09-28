@@ -81,6 +81,7 @@ docs/                             # requisitos y plan
 - **Las seis evidencias**, todas con `EstadoEvidencia` (`PENDIENTE` / `APROBADA` / `RECHAZADA`) y `avaladoPor` + `fechaAval`:
   `SeleccionAlternativaEP` (GFPI-F-165, la avala Coordinación) · `FormalizacionEtapaProductiva` · `ConcertacionFuncion` (Momento 1, con valoración `ConcertacionVariable`) · `Bitacora` (+ `BitacoraActividad`, GFPI-F-147) · `Evaluacion` (Momentos 2 y 3, rúbrica `EvaluacionVariable`, GFPI-F-023) · `CertificacionEmpresario`.
 - **Novedades:** `InterrupcionEtapaProductiva` (se cambia de alternativa) y `AplazamientoEtapaProductiva` (se vuelve con la misma).
+- **`PlanMejoramiento`** — plan de mejoramiento del §9.4, con su `EstadoPlanMejoramiento` (`POR_AUTORIZAR` → `VIGENTE` → `CUMPLIDO`/`NO_CUMPLIDO`, o `DEVUELTO` al instructor). No es una evidencia: no se avala, se autoriza, se cumple y queda como constancia.
 
 ## Identidad visual y navegación
 
@@ -114,7 +115,13 @@ docs/                             # requisitos y plan
 - **Tope de aprendices por instructor** (§9.1.3): 80 aprendices activos. **Solo advierte**: al asignar un instructor a una ficha, o aprendices a una ficha, la respuesta trae `advertencias` y la asignación se hace igual; el panel de Instructores muestra la carga de cada uno (`src/lib/carga-instructor.ts`, `src/lib/tope-instructor.ts`).
 - **Plazo de 24 meses** (§9.1.1 c, Acuerdo 007 de 2012): solo aplica a las fichas con `reglamento` = Acuerdo 007, que Coordinación marca en la ficha; se cuenta desde su «Inicio productiva». **Solo advierte**: en la solicitud de alternativa por avalar, en la lista de Aprendices y en el expediente. No bloquea ni suma como causal de deserción (`src/lib/plazo-culminacion.ts`).
 - **Novedades** (§9.2; `src/lib/novedades.ts`, `/formulario/etapa-productiva/novedades` y `/formulario/instructor/novedades`): cualquier hecho que afecte el desarrollo de la práctica sin detenerla (cambio de coformador, de funciones o de sede, accidente, incapacidad corta, ARL…). **No es una evidencia:** no se avala, se registra. La registran el aprendiz o su instructor; el instructor puede además comentarla. Dos plazos, desde el día del hecho y en días hábiles, que **solo advierten**: 3 para registrarla y 5 para dejar constancia de que quedó anotada en la bitácora. La misma vista mide el plazo de registro de los aplazamientos e interrupciones ya existentes, que la guía también llama novedades.
-- **Plan de mejoramiento** (§9.4): en pausa por decisión de Coordinación (15 sep 2026).
+- **Plan de mejoramiento** (§9.4 y reglamento del aprendiz, **Acuerdo 009 de 2024**; `src/lib/plan-mejoramiento.ts`, `/formulario/instructor/planes` y `/formulario/coordinador/planes`): medida formativa académica cuando el aprendiz no supera resultados de aprendizaje en **cualquiera de los tres Momentos**, agotados los dos llamados de atención previos (SEPA **no** lleva esos llamados: el instructor deja constancia escrita de ellos en el plan).
+  - Lo **elabora el instructor** con lo que exige el reglamento: resultados no superados, actividades de aprendizaje, evidencias de conocimiento/desempeño/producto, y el plazo en días.
+  - Lo **autoriza el coordinador académico**, y esa autorización es la *suscripción*: recién ahí se fija la fecha límite y sale la **comunicación escrita** al aprendiz (correo con copia al instructor). Coordinación puede devolverlo con su observación, y el instructor lo corrige y lo reenvía. **No requiere acta** del Comité — a diferencia del aplazamiento.
+  - **Plazo:** los días calendario que ponga el instructor, máximo **20**, contados desde la autorización, y nunca más allá del fin de la etapa productiva (si cae después, se recorta hasta ese día).
+  - Lo **verifica el instructor** y lo cierra como *Cumplido* o *No cumplido*, siempre con constancia escrita; puede adjuntar el escrito firmado.
+  - **Solo advierte:** un plan sin cerrar, vencido o no cumplido no bloquea «Por certificar» ni es causal de deserción — la respuesta trae `advertencias` y el panel de Seguimiento las muestra. Cabe un **segundo plan** a criterio del instructor, una vez cerrado el anterior (solo uno abierto a la vez por aprendiz).
+  - **No hay formato oficial:** es un escrito firmado por el aprendiz y el coordinador académico, así que SEPA guarda su contenido y el archivo firmado como soporte.
 
 **Plantillas oficiales:** GFPI-F-147 (bitácora, Excel) y GFPI-F-023 (planeación, seguimiento y evaluación, Word) están en `public/documentos` y se enlazan en Bitácoras y Evaluaciones, del aprendiz y del instructor (`src/components/plantilla-enlace.tsx`). Si SENA publica una versión nueva, se reemplaza el archivo y se actualiza el nombre ahí.
 
@@ -148,13 +155,13 @@ docs/                             # requisitos y plan
 - Una sola consulta (`construirReporte`) alimenta la pantalla y el Excel, con los mismos filtros: ficha, instructor, empresa, estado y rango de la fecha de inicio de la EP. Los filtros van en la URL (formulario GET).
 - Solo consulta. Los ven el instructor —de todos los aprendices, no solo de sus fichas— y Coordinación y Admin.
 - Excel real (`.xlsx`, librería `write-excel-file`, solo en el servidor) con una hoja por reporte; el PDF sale de «Imprimir o guardar en PDF», igual que el expediente.
-- Métricas incluye también las **novedades** (§9.2): cuántas se registraron, qué porcentaje dentro de los 3 días hábiles y cuántas siguen sin anotar en bitácora; más dos alertas institucionales: aprendices fuera del plazo de 24 meses e instructores por encima del tope de 80 (esta última sobre todo el centro, no sobre el filtro). El listado trae por aprendiz sus novedades, las que quedaron fuera de plazo y la alerta de plazo.
+- Métricas incluye también las **novedades** (§9.2): cuántas se registraron, qué porcentaje dentro de los 3 días hábiles y cuántas siguen sin anotar en bitácora; los **planes de mejoramiento** (§9.4): cuántos hay, cuántos siguen sin cerrar, cuántos con el plazo vencido y cuántos no cumplidos; más dos alertas institucionales: aprendices fuera del plazo de 24 meses e instructores por encima del tope de 80 (esta última sobre todo el centro, no sobre el filtro). El listado trae por aprendiz sus novedades, las que quedaron fuera de plazo, sus planes de mejoramiento y la alerta de plazo.
 - El menú lateral va **agrupado por tarea** (`roleNav` en `src/components/panel-sidebar.tsx`): Seguimiento / Evidencias por revisar / Reuniones y novedades / Consultas / Cuenta en el instructor, y Estructura / Aprendices / Novedades / Consultas / Cuenta en Coordinación y Admin.
 
 **Cuentas — riesgo aceptado:** las cuentas que crea otro rol reciben como contraseña inicial su cédula, que es también el usuario, y el correo de bienvenida la envía en texto plano. Coordinación ratificó las dos decisiones el 14 de septiembre de 2026, sabiendo que 23 de 37 cuentas (incluidos los 2 coordinadores) seguían con la cédula como contraseña. No cambiarlo ni volver a proponerlo sin que Coordinación lo pida.
 
 ## Roadmap
 
-El detalle está en `docs/PLAN-IMPLEMENTACION.md`. De la guía GFPI-G-040 solo queda el plan de mejoramiento (§9.4), en pausa por decisión de Coordinación.
+El detalle está en `docs/PLAN-IMPLEMENTACION.md`. De la guía GFPI-G-040 no queda nada pendiente: el plan de mejoramiento (§9.4) se construyó el 28 de septiembre de 2026 con las reglas del Acuerdo 009.
 
 Trabajar un frente a la vez, y aplicar y probar cada migración antes de construir la interfaz encima.

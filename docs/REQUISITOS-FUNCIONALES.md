@@ -159,7 +159,9 @@ Confirmado con Coordinación a partir de la *Guía para el Desarrollo de la Etap
 
 - **Registro de novedades** (§9.2): cualquier hecho que afecte el desarrollo de la práctica se registra con el día en que ocurrió. Lo hacen el aprendiz o su instructor. Plazos de **3 días hábiles** para registrarlo y **5** para dejarlo anotado en la bitácora: **solo advierten**.
 
-**Pendiente de la guía:** el plan de mejoramiento cuando el juicio es No aprobado (§9.4), en pausa por decisión de Coordinación.
+- **Plan de mejoramiento** (§9.4; reglamento del aprendiz, Acuerdo 009 de 2024): cuando el aprendiz no supera resultados de aprendizaje en **cualquiera de los tres Momentos**, agotados los dos llamados de atención previos. Lo elabora el instructor —resultados no superados, actividades, evidencias— y lo **autoriza el coordinador académico**, que es quien se lo comunica por escrito; no requiere acta. Máximo **20 días calendario** desde esa autorización, sin pasar del fin de la etapa productiva. Lo verifica el instructor. **Solo advierte:** no bloquea la certificación ni es causal de deserción, y cabe un segundo plan.
+
+**Pendiente de la guía:** nada. El plan de mejoramiento (§9.4) se construyó el 28 de septiembre de 2026.
 
 ---
 

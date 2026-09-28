@@ -4,6 +4,7 @@ import { formatoMomento } from "@/lib/plazos-institucionales";
 import {
   alternativaEtapaProductivaLabel,
   estadoAprendizLabel,
+  estadoPlanMejoramientoLabel,
   juicioEtapaProductivaLabel,
   modalidadEjecucionEPLabel,
   motivoAplazamientoEPLabel,
@@ -413,6 +414,44 @@ export function ExpedienteAprendiz({ expediente: e, propio = false }: { expedien
             </div>
             <Aval fechaAval={e.certificacionEmpresario.fechaAval} avaladoPor={e.certificacionEmpresario.avaladoPor} />
             <Nota etiqueta="Observaciones" texto={e.certificacionEmpresario.observaciones} />
+          </div>
+        )}
+      </Seccion>
+
+      <Seccion titulo="Planes de mejoramiento">
+        {e.planesMejoramiento.length === 0 ? (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Sin planes de mejoramiento.</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {e.planesMejoramiento.map((pm, idx) => (
+              <div key={`pm${idx}`}>
+                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                  Momento {pm.momento} · {estadoPlanMejoramientoLabel[pm.estado]}
+                  {pm.fechaLimite ? ` · hasta el ${dia(pm.fechaLimite)}` : ` · ${pm.diasPlazo} días propuestos`}
+                </p>
+                <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                  <strong>Resultados por superar:</strong> {pm.resultadosNoSuperados}
+                </p>
+                <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                  <strong>Actividades:</strong> {pm.actividades}
+                </p>
+                <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                  <strong>Evidencias:</strong> {pm.evidencias}
+                </p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Redactado el {momento(pm.createdAt)}
+                  {pm.creadoPor ? ` por ${quien(pm.creadoPor)}` : ""}
+                  {pm.fechaAutorizacion
+                    ? ` · autorizado el ${momento(pm.fechaAutorizacion)}${pm.autorizadoPor ? ` por ${quien(pm.autorizadoPor)}` : ""}`
+                    : " · sin autorizar"}
+                  {pm.fechaCierre
+                    ? ` · cerrado el ${momento(pm.fechaCierre)}${pm.cerradoPor ? ` por ${quien(pm.cerradoPor)}` : ""}`
+                    : ""}
+                </p>
+                <Nota etiqueta="Verificación" texto={pm.verificacion} />
+                {pm.soporteUrl && <Archivo url={pm.soporteUrl} />}
+              </div>
+            ))}
           </div>
         )}
       </Seccion>

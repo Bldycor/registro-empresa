@@ -52,6 +52,13 @@ export async function GET(request: Request) {
       texto("Plazo de 5 días hábiles"),
     ],
     [
+      texto("Planes de mejoramiento (§9.4)"),
+      numero(m.planesMejoramiento.total),
+      texto(
+        `${m.planesMejoramiento.abiertos} sin cerrar; ${m.planesMejoramiento.vencidos} con el plazo vencido; ${m.planesMejoramiento.noCumplidos} no cumplidos`,
+      ),
+    ],
+    [
       texto("Aprendices fuera del plazo de 24 meses"),
       numero(m.alertas.plazo24Meses),
       texto("Acuerdo 007 de 2012; solo advertencia"),
@@ -101,6 +108,9 @@ export async function GET(request: Request) {
       "Novedades",
       "Novedades fuera de plazo",
       "Novedades sin anotar",
+      "Planes de mejoramiento",
+      "Planes sin cerrar",
+      "Planes no cumplidos",
       "Alerta de plazo (24 meses)",
       "Momento 1",
       "Momento 2",
@@ -122,6 +132,9 @@ export async function GET(request: Request) {
       numero(a.novedades),
       numero(a.novedadesFueraDePlazo),
       numero(a.novedadesSinAnotar),
+      numero(a.planesMejoramiento),
+      numero(a.planesAbiertos),
+      numero(a.planesNoCumplidos),
       texto(a.advertenciaPlazo),
       texto(a.momento1),
       texto(a.momento2),
@@ -138,7 +151,7 @@ export async function GET(request: Request) {
     {
       data: aprendices,
       sheet: "Aprendices",
-      columns: ancho(32, 16, 14, 30, 28, 28, 20, 12, 12, 12, 12, 12, 16, 16, 40, 14, 24, 24, 16),
+      columns: ancho(32, 16, 14, 30, 28, 28, 20, 12, 12, 12, 12, 12, 16, 16, 20, 16, 18, 40, 14, 24, 24, 16),
     },
   ]).toBuffer();
 

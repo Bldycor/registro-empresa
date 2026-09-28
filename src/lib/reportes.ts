@@ -4,6 +4,7 @@ import type { EstadoAprendiz } from "@/generated/prisma/enums";
 import { calcularSeguimiento, type ChecklistItem } from "@/lib/seguimiento-evidencias";
 import { evaluarRiesgoDesercion } from "@/lib/desercion";
 import { plazoBitacoraNovedad, plazoRegistroNovedad } from "@/lib/novedades";
+import { estaAbierto } from "@/lib/plan-mejoramiento";
 import { advertenciaPlazoCulminacion, plazoMaximoCulminacion } from "@/lib/plazo-culminacion";
 import { aprendicesActivosPorInstructor } from "@/lib/carga-instructor";
 import { superaTope } from "@/lib/tope-instructor";
@@ -137,6 +138,8 @@ export async function construirReporte(f: FiltrosReporte) {
         certificacionEmpresario: { select: { estado: true } },
         // Novedades de la guía §9.2, con sus dos plazos (ver src/lib/novedades.ts).
         novedadesEP: { select: { fechaHecho: true, createdAt: true, fechaAnotacionBitacora: true } },
+        // Planes de mejoramiento de la guía §9.4 (ver src/lib/plan-mejoramiento.ts). Solo cuentan.
+        planesMejoramiento: { select: { estado: true, fechaLimite: true } },
         interrupcionesEP: { select: { fechaInterrupcion: true, createdAt: true } },
         aplazamientosEP: { select: { fechaSuspension: true, createdAt: true } },
       },
@@ -166,6 +169,7 @@ export async function construirReporte(f: FiltrosReporte) {
   const bitacoras = { entregadas: 0, aTiempo: 0, conAtraso: 0, aprobadas: 0 };
   const momento3 = { aprobados: 0, noAprobados: 0 };
   const novedades = { total: 0, fueraDePlazo: 0, sinAnotarEnBitacora: 0 };
+  const planesMejoramiento = { total: 0, abiertos: 0, vencidos: 0, noCumplidos: 0 };
   let conAdvertenciaPlazo = 0;
   const rubrica = { valoradas: 0, satisfactorio: 0 };
   const matriz = Object.fromEntries(
@@ -257,6 +261,19 @@ export async function construirReporte(f: FiltrosReporte) {
     novedades.fueraDePlazo += novedadesFueraDePlazo;
     novedades.sinAnotarEnBitacora += novedadesSinAnotar;
 
+    // Planes de mejoramiento (§9.4): cuántos siguen abiertos, con el plazo pasado, o se cerraron
+    // como no cumplidos. Ninguno bloquea nada: son constancia del acompañamiento.
+    const planesAprendiz = a.planesMejoramiento;
+    const planesAbiertos = planesAprendiz.filter((pm) => estaAbierto(pm.estado)).length;
+    const planesVencidos = planesAprendiz.filter(
+      (pm) => pm.estado === "VIGENTE" && pm.fechaLimite !== null && pm.fechaLimite < hoy,
+    ).length;
+    const planesNoCumplidos = planesAprendiz.filter((pm) => pm.estado === "NO_CUMPLIDO").length;
+    planesMejoramiento.total += planesAprendiz.length;
+    planesMejoramiento.abiertos += planesAbiertos;
+    planesMejoramiento.vencidos += planesVencidos;
+    planesMejoramiento.noCumplidos += planesNoCumplidos;
+
     // Plazo de 24 meses del Acuerdo 007 (solo advertencia, ver src/lib/plazo-culminacion.ts).
     const advertenciaPlazo = advertenciaPlazoCulminacion({
       plazo: plazoMaximoCulminacion(a.ficha),
@@ -290,6 +307,9 @@ export async function construirReporte(f: FiltrosReporte) {
       novedades: novedadesAprendiz.length,
       novedadesFueraDePlazo,
       novedadesSinAnotar,
+      planesMejoramiento: planesAprendiz.length,
+      planesAbiertos,
+      planesNoCumplidos,
       advertenciaPlazo,
       momento1: a.concertacionFuncion ? (a.concertacionFuncion.estado === "APROBADA" ? "Valorado" : "Agendado") : "Sin agendar",
       momento2: estadoMomento(m2, "Evaluado"),
@@ -326,6 +346,7 @@ export async function construirReporte(f: FiltrosReporte) {
       momento3,
       rubrica,
       novedades,
+      planesMejoramiento,
       alertas: { plazo24Meses: conAdvertenciaPlazo, instructoresSobreTope },
     },
     cumplimiento: { porEvidencia: Object.values(matriz), enRiesgo },
