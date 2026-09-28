@@ -33,7 +33,7 @@ const APRENDIZ: GuiaRol = {
         },
         {
           opcion: "Evaluaciones",
-          que: "Agendas los tres Momentos con tu instructor: concertación (Momento 1), seguimiento (Momento 2) y cierre (Momento 3). Si surge un problema, desde aquí pides una reunión extraordinaria, a nombre tuyo o de tu coformador. Si en algún Momento quedan resultados de aprendizaje sin superar, en esta misma pantalla aparece tu plan de mejoramiento: qué debes presentar y hasta cuándo.",
+          que: "Agendas los tres Momentos con tu instructor: concertación (Momento 1), seguimiento (Momento 2) y cierre (Momento 3). En cada uno diligencias el formato GFPI-F-023 —llega con tus datos, los de tu ficha, tu instructor y tu empresa ya puestos; tú completas lo que falta—, lo revisas en la vista previa y lo envías junto con el formato firmado en PDF. En el Momento 1 propones el plan de trabajo (competencias, resultados, actividades y evidencias) y tu instructor lo ajusta contigo. Si surge un problema, desde aquí pides una reunión extraordinaria, a nombre tuyo o de tu coformador. Si en algún Momento quedan resultados de aprendizaje sin superar, en esta misma pantalla aparece tu plan de mejoramiento: qué debes presentar y hasta cuándo.",
         },
         {
           opcion: "Certificación",
@@ -98,7 +98,7 @@ const INSTRUCTOR: GuiaRol = {
         },
         {
           opcion: "Evaluaciones",
-          que: "Registras la rúbrica de los tres Momentos —13 variables en los Momentos 2 y 3, más el juicio final en el 3— y la retroalimentación. Desde aquí también reprogramas una reunión: a todos les llega el aviso con el horario anterior y el nuevo.",
+          que: "Registras la rúbrica de los tres Momentos —13 variables en los Momentos 2 y 3 (Factores Técnicos y Actitudinales), más el juicio final y el número de visitas en el 3— y la retroalimentación. Acá ves también el formato GFPI-F-023 que envió el aprendiz y, en el Momento 1, el plan de trabajo que propuso, para ajustarlo con él. Desde aquí también reprogramas una reunión: a todos les llega el aviso con el horario anterior y el nuevo.",
         },
         { opcion: "Certificación", que: "Avalas la carta de terminación que expide la empresa." },
       ],
@@ -249,7 +249,7 @@ export const ayudaMenu: Record<string, { icono: string; resumen: string }> = {
   },
   "/formulario/etapa-productiva/evaluaciones": {
     icono: "✅",
-    resumen: "Agenda los tres Momentos y las reuniones extraordinarias.",
+    resumen: "Agenda los Momentos, diligencia el GFPI-F-023 y adjunta el firmado.",
   },
   "/formulario/etapa-productiva/certificacion": {
     icono: "🏁",

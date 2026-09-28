@@ -291,6 +291,23 @@ export function ExpedienteAprendiz({ expediente: e, propio = false }: { expedien
             </div>
             <Aval fechaAval={e.concertacionFuncion.fechaAval} avaladoPor={e.concertacionFuncion.avaladoPor} />
             <Nota etiqueta="Competencias concertadas" texto={e.concertacionFuncion.competenciasDesarrollar?.split("\n").join("; ")} />
+            <Nota etiqueta="Resultados de aprendizaje" texto={e.concertacionFuncion.resultadosAprendizaje} />
+            <Nota etiqueta="Actividades a desarrollar" texto={e.concertacionFuncion.actividadesDesarrollar} />
+            <Nota etiqueta="Evidencias de aprendizaje" texto={e.concertacionFuncion.evidenciasAprendizaje} />
+            <Nota etiqueta="Horario" texto={e.concertacionFuncion.horario} />
+            <Nota
+              etiqueta="ARL"
+              texto={
+                e.concertacionFuncion.arlFechaAfiliacion
+                  ? `Afiliación del ${dia(e.concertacionFuncion.arlFechaAfiliacion)}${e.concertacionFuncion.arlNumeroPoliza ? ` · póliza ${e.concertacionFuncion.arlNumeroPoliza}` : ""}`
+                  : null
+              }
+            />
+            {e.concertacionFuncion.archivoUrl && (
+              <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                Formato GFPI-F-023 firmado: <Archivo url={e.concertacionFuncion.archivoUrl} />
+              </p>
+            )}
             {e.concertacionFuncion.variables.length > 0 && (
               <Tabla encabezados={["Planeación", "Valoración", "Observación"]}>
                 {e.concertacionFuncion.variables.map((v) => (
@@ -367,9 +384,19 @@ export function ExpedienteAprendiz({ expediente: e, propio = false }: { expedien
                     Juicio final: {m.juicioFinal ? juicioEtapaProductivaLabel[m.juicioFinal] : "sin definir"}
                   </p>
                 )}
+                {n === 3 && m.numeroVisitas != null && (
+                  <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                    Visitas realizadas en toda la etapa productiva: {m.numeroVisitas}
+                  </p>
+                )}
                 <Nota etiqueta="Retroalimentación del instructor" texto={m.retroalimentacionInstructor} />
                 <Nota etiqueta="Retroalimentación del coformador" texto={m.retroalimentacionCoformador} />
                 <Nota etiqueta="Comentario del aprendiz" texto={m.retroalimentacionAprendiz} />
+                {m.archivoUrl && (
+                  <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                    Formato GFPI-F-023 firmado: <Archivo url={m.archivoUrl} />
+                  </p>
+                )}
               </div>
             )}
           </Seccion>

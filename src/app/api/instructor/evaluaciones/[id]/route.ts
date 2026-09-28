@@ -77,6 +77,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         retroalimentacionInstructor: d.retroalimentacionInstructor || null,
         retroalimentacionCoformador: d.retroalimentacionCoformador || null,
         juicioFinal: d.juicioFinal ?? null,
+        numeroVisitas: d.numeroVisitas ?? null,
         estado: d.finalizar ? "APROBADA" : "PENDIENTE",
         avaladoPorId: d.finalizar ? user.id : null,
         fechaAval: d.finalizar ? new Date() : null,

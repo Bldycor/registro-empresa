@@ -46,6 +46,9 @@ type Evaluacion = {
   programa?: string | null;
   competenciasDesarrollar?: string | null;
   resultadosAprendizaje?: string | null;
+  // Formato GFPI-F-023 del momento, firmado y subido por el aprendiz.
+  archivoUrl?: string | null;
+  numeroVisitas?: number | null;
   user: {
     id: string;
     nombres: string;
@@ -218,6 +221,10 @@ function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved:
   const [retroInstructor, setRetroInstructor] = useState(evaluacion.retroalimentacionInstructor ?? "");
   const [retroCoformador, setRetroCoformador] = useState(evaluacion.retroalimentacionCoformador ?? "");
   const [juicioFinal, setJuicioFinal] = useState(evaluacion.juicioFinal ?? "");
+  // Solo el Momento 3 lo pide (formato GFPI-F-023).
+  const [numeroVisitas, setNumeroVisitas] = useState(
+    evaluacion.numeroVisitas != null ? String(evaluacion.numeroVisitas) : "",
+  );
   const [loading, setLoading] = useState<"borrador" | "finalizar" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -285,6 +292,7 @@ function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved:
               retroalimentacionInstructor: retroInstructor || null,
               retroalimentacionCoformador: retroCoformador || null,
               juicioFinal: juicioFinal || null,
+              numeroVisitas: numeroVisitas.trim() === "" ? null : Number(numeroVisitas),
             }),
         finalizar,
       }),
@@ -313,6 +321,17 @@ function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved:
           className="w-fit text-sm text-emerald-700 underline dark:text-emerald-500"
         >
           Ver enlace de la videollamada
+        </a>
+      )}
+
+      {evaluacion.archivoUrl && (
+        <a
+          href={evaluacion.archivoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-fit text-sm text-emerald-700 underline dark:text-emerald-500"
+        >
+          Ver el formato GFPI-F-023 que envió el aprendiz
         </a>
       )}
 
@@ -399,6 +418,20 @@ function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved:
                 </option>
               ))}
             </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              Visitas realizadas en toda la etapa productiva
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={99}
+              value={numeroVisitas}
+              onChange={(e) => setNumeroVisitas(e.target.value)}
+              disabled={bloqueado}
+              className={`${inputClass} w-28`}
+            />
           </div>
           {evaluacion.retroalimentacionAprendiz && (
             <div>

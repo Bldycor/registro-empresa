@@ -973,6 +973,9 @@ export const EvaluacionRubricaSchema = z.object({
   retroalimentacionInstructor: z.string().trim().nullable().optional(),
   retroalimentacionCoformador: z.string().trim().nullable().optional(),
   juicioFinal: z.enum(JuicioEtapaProductivaValues).nullable().optional(),
+  // «Número de visitas realizadas en toda la etapa productiva», que el formato GFPI-F-023 pide
+  // solo en el Momento 3. Lo sabe el instructor, no el aprendiz.
+  numeroVisitas: z.number().int().min(0).max(99).nullable().optional(),
   finalizar: z.boolean(),
 });
 
@@ -1151,3 +1154,57 @@ export const PlanMejoramientoAccionSchema = z.discriminatedUnion("accion", [
   PlanMejoramientoCierreSchema,
   PlanMejoramientoCorreccionSchema,
 ]);
+
+// --- Formato GFPI-F-023 diligenciado por el aprendiz (los tres Momentos) ---
+
+// Datos que la plantilla pide y que el sistema no guardaba. Los escribe el aprendiz una sola vez
+// (decisión de Coordinación, 28 sep 2026) y valen para los tres momentos. Todos opcionales: lo que
+// no sepa queda en blanco en el formato — nunca se rellena con un valor inventado.
+const textoCorto = z.string().trim().max(200).nullable().optional();
+
+export const DatosFormatoEPSchema = z.object({
+  regional: textoCorto,
+  centroFormacion: textoCorto,
+  estrategiaFormativa: textoCorto,
+  correoInstitucional: z
+    .union([z.string().trim().email("Escribe un correo válido."), z.literal("")])
+    .nullable()
+    .optional(),
+  nitEmpresa: textoCorto,
+  asistenciaNombre: textoCorto,
+  asistenciaTipo: textoCorto,
+  asistenciaContacto: textoCorto,
+});
+
+const textoLargo = z.string().trim().max(4000).nullable().optional();
+
+// Momento 1: el aprendiz propone el plan de trabajo y completa los datos de ARL y horario. El
+// instructor lo revisa y lo corrige al avalar (decisión de Coordinación, 28 sep 2026).
+export const FormatoMomento1Schema = z.object({
+  momento: z.literal(1),
+  competenciasDesarrollar: textoLargo,
+  resultadosAprendizaje: textoLargo,
+  actividadesDesarrollar: textoLargo,
+  evidenciasAprendizaje: textoLargo,
+  observacionesAdicionales: textoLargo,
+  arlFechaAfiliacion: z
+    .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Selecciona la fecha de afiliación."), z.literal("")])
+    .nullable()
+    .optional(),
+  arlNumeroPoliza: textoCorto,
+  horario: z.string().trim().max(500).nullable().optional(),
+  archivoUrl: z.string().trim().nullable().optional(),
+});
+
+// Momentos 2 y 3: la rúbrica es del instructor; al aprendiz le corresponden sus observaciones y
+// el formato firmado.
+export const FormatoMomento23Schema = z.object({
+  momento: z.union([z.literal(2), z.literal(3)]),
+  retroalimentacionAprendiz: textoLargo,
+  archivoUrl: z.string().trim().nullable().optional(),
+});
+
+export const FormatoEPSchema = z.object({
+  datos: DatosFormatoEPSchema.optional(),
+  momento: z.discriminatedUnion("momento", [FormatoMomento1Schema, FormatoMomento23Schema]),
+});

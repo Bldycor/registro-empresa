@@ -439,6 +439,7 @@ model User {
   planesMejoramientoCreados   PlanMejoramiento[]            @relation("PlanMejoramientoCreadoPor")
   planesMejoramientoAutorizados PlanMejoramiento[]          @relation("PlanMejoramientoAutorizadoPor")
   planesMejoramientoCerrados  PlanMejoramiento[]            @relation("PlanMejoramientoCerradoPor")
+  datosFormatoEP              DatosFormatoEP?               @relation("AprendizDatosFormato")
   avisosPlazo                 AvisoPlazo[]                  @relation("AvisosPlazo")
 }
 
@@ -737,6 +738,10 @@ model ConcertacionFuncion {
   actividadesDesarrollar    String?
   evidenciasAprendizaje     String?
   observacionesAdicionales  String?
+  // Formato GFPI-F-023 del Momento 1 firmado (aprendiz, instructor y co-formador), en PDF. Lo
+  // sube el aprendiz, igual que en Alternativa EP y Formalización.
+  archivoUrl                String?
+
   arlFechaAfiliacion        DateTime?
   arlNumeroPoliza           String?
   horario                   String?
@@ -801,6 +806,11 @@ model Evaluacion {
   googleEventId   String?
   modalidad       ModalidadEjecucionEP?
   enlaceGrabacion String?
+
+  // Formato GFPI-F-023 del momento firmado, en PDF. Lo sube el aprendiz.
+  archivoUrl      String?
+  // «Número de visitas realizadas en toda la etapa productiva» — solo lo pide el Momento 3.
+  numeroVisitas   Int?
 
   // Solo se diligencia en el Momento 3 (cierre).
   juicioFinal                 JuicioEtapaProductiva?
@@ -1097,4 +1107,31 @@ model PlanMejoramiento {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+}
+
+// Datos que el formato GFPI-F-023 pide y que no salen de ningún otro lado del sistema. Los
+// escribe el propio aprendiz una sola vez (decisión de Coordinación, 28 sep 2026) y sirven para
+// los tres momentos. Todo es opcional: si el aprendiz no lo sabe, el formato sale con ese campo
+// en blanco — **nunca** se rellena con un valor inventado.
+model DatosFormatoEP {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation("AprendizDatosFormato", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Información general del formato.
+  regional            String?
+  centroFormacion     String?
+  estrategiaFormativa String?
+
+  // Datos del aprendiz y de la empresa que el sistema no guardaba.
+  correoInstitucional String?
+  nitEmpresa          String?
+
+  // «Persona en situación de discapacidad (si aplica)».
+  asistenciaNombre   String?
+  asistenciaTipo     String?
+  asistenciaContacto String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

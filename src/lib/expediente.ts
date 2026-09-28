@@ -91,6 +91,13 @@ export async function cargarExpediente(userId: string) {
           observaciones: true,
           competenciasDesarrollar: true,
           resultadosAprendizaje: true,
+          actividadesDesarrollar: true,
+          evidenciasAprendizaje: true,
+          arlFechaAfiliacion: true,
+          arlNumeroPoliza: true,
+          horario: true,
+          // Formato GFPI-F-023 del Momento 1 firmado, subido por el aprendiz.
+          archivoUrl: true,
           avaladoPor: QUIEN,
           variables: { select: { variable: true, valoracion: true, observaciones: true } },
         },
@@ -125,6 +132,9 @@ export async function cargarExpediente(userId: string) {
           observaciones: true,
           fechaAval: true,
           juicioFinal: true,
+          numeroVisitas: true,
+          // Formato GFPI-F-023 del momento firmado, subido por el aprendiz.
+          archivoUrl: true,
           retroalimentacionInstructor: true,
           retroalimentacionCoformador: true,
           retroalimentacionAprendiz: true,

@@ -15,6 +15,9 @@ const EVALUACION_SELECT = {
   retroalimentacionCoformador: true,
   retroalimentacionInstructor: true,
   retroalimentacionAprendiz: true,
+  // Formato GFPI-F-023 del momento, firmado y subido por el aprendiz.
+  archivoUrl: true,
+  numeroVisitas: true,
   estado: true,
   fechaAval: true,
   variables: {
@@ -41,6 +44,7 @@ const CONCERTACION_SELECT = {
   fechaAval: true,
   competenciasDesarrollar: true,
   resultadosAprendizaje: true,
+  archivoUrl: true,
   variables: {
     select: { variable: true, valoracion: true, observaciones: true },
   },
@@ -96,6 +100,8 @@ export async function GET() {
       programa: c.user.ficha?.programa ?? null,
       competenciasDesarrollar: c.competenciasDesarrollar,
       resultadosAprendizaje: c.resultadosAprendizaje,
+      archivoUrl: c.archivoUrl,
+      numeroVisitas: null,
       variables: c.variables,
       user: c.user,
     })),

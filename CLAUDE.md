@@ -123,6 +123,13 @@ docs/                             # requisitos y plan
   - **Solo advierte:** un plan sin cerrar, vencido o no cumplido no bloquea «Por certificar» ni es causal de deserción — la respuesta trae `advertencias` y el panel de Seguimiento las muestra. Cabe un **segundo plan** a criterio del instructor, una vez cerrado el anterior (solo uno abierto a la vez por aprendiz).
   - **No hay formato oficial:** es un escrito firmado por el aprendiz y el coordinador académico, así que SEPA guarda su contenido y el archivo firmado como soporte.
 
+**Formato GFPI-F-023 por momento** (`src/lib/formato-gfpi023.ts`, `src/components/formato-ep.tsx`, `/api/etapa-productiva/formato`):
+- En cada uno de los tres Momentos el aprendiz **diligencia el formato, lo revisa en una vista previa y lo envía** junto con el PDF firmado, igual que en Alternativa EP y Formalización (`ConcertacionFuncion.archivoUrl`, `Evaluacion.archivoUrl`).
+- **El formato llega pre-diligenciado** con lo que SEPA ya guarda: ficha (programa, grupo, nivel, modalidad, jornada, fin de la etapa lectiva), datos del aprendiz, instructor de seguimiento, empresa y coformador, fechas de la EP, y los datos propios del momento.
+- **Nunca se inventa un dato.** Lo que el sistema no sabe sale en blanco y la previa lo lista como pendiente. Lo que la plantilla pide y no salía de ninguna tabla —Regional, Centro de formación, Estrategia formativa, correo institucional, NIT de la empresa y los datos de asistencia por discapacidad— lo escribe **el aprendiz** una sola vez y vive en `DatosFormatoEP`; vale para los tres momentos.
+- **Momento 1:** el aprendiz **propone** el plan de trabajo (competencias, resultados, actividades, evidencias) y completa ARL, póliza y horario; el instructor lo ajusta con él al valorar. **Momentos 2 y 3:** el aprendiz escribe sus observaciones/retroalimentación; las **13 variables** (8 Factores Técnicos + 5 Actitudinales) las valora **solo el instructor**, y en el Momento 3 también registra el número de visitas.
+- Enviar **no dispara correos**: el formato y su adjunto quedan como evidencia del momento para que el instructor los revise (decisión de Coordinación, 28 sep 2026). Una vez avalado el momento, el formato ya no se reescribe.
+
 **Plantillas oficiales:** GFPI-F-147 (bitácora, Excel) y GFPI-F-023 (planeación, seguimiento y evaluación, Word) están en `public/documentos` y se enlazan en Bitácoras y Evaluaciones, del aprendiz y del instructor (`src/components/plantilla-enlace.tsx`). Si SENA publica una versión nueva, se reemplaza el archivo y se actualiza el nombre ahí.
 
 **Citaciones a reuniones** (`sendCitacionEmail`, redacción en `src/lib/citacion-correo.ts`):
