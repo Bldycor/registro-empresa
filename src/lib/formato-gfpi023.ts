@@ -205,6 +205,9 @@ export type FormatoMomento = {
   // Rúbrica de los Momentos 2 y 3, tal como la valoró el instructor. Vacía mientras no la registre.
   variables: { categoria: "TECNICO" | "ACTITUDINAL"; nombre: string; valoracion: string | null; observaciones: string | null }[];
   archivoUrl: string | null;
+  // Si el momento ya existe en SEPA (agendado o registrado). Cuando no existe —porque la reunión
+  // se hizo por fuera del sistema—, el aprendiz registra la fecha real al enviar el formato.
+  existe: boolean;
   // Campos del formato que siguen vacíos, para avisarle al aprendiz antes de enviar.
   faltantes: string[];
 };
@@ -346,6 +349,7 @@ export async function construirFormato(
       observaciones: v.observaciones,
     })),
     archivoUrl: momento === 1 ? (concertacion?.archivoUrl ?? null) : (evaluacion?.archivoUrl ?? null),
+    existe: momento === 1 ? concertacion !== null : evaluacion !== null,
     faltantes,
   };
 }

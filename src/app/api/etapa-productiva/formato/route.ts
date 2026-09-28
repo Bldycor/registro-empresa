@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { FormatoEPSchema } from "@/lib/validations";
 import { construirFormato } from "@/lib/formato-gfpi023";
+import { fechaEnColombia } from "@/lib/plazos-institucionales";
 
 // Formato GFPI-F-023 del aprendiz, momento por momento: lo que el sistema ya sabe más lo que él
 // diligencia, para revisarlo antes de enviarlo y adjuntar el PDF firmado.
@@ -68,16 +69,59 @@ export async function PATCH(request: Request) {
     });
   }
 
+  // Momento que se hizo por fuera de SEPA: el aprendiz registra el día real y queda como
+  // constancia, sin citación —la reunión ya ocurrió—. Una fecha futura no se acepta por acá: esa
+  // se agenda por el camino normal, que sí avisa a todos.
+  const hoy = fechaEnColombia(new Date());
+  const fechaRealizado = (m.fechaRealizado ?? "").trim();
+  const horaInicio = (m.horaInicio ?? "").trim() || "00:00";
+  const horaFin = (m.horaFin ?? "").trim() || "00:00";
+
+  function faltaRegistro(momento: number) {
+    if (!fechaRealizado) {
+      return NextResponse.json(
+        {
+          error: {
+            fechaRealizado: [
+              `Ese momento no está agendado en SEPA. Si ya se hizo, escribe el día en que ocurrió; si todavía no, agéndalo arriba para que salga la citación.`,
+            ],
+          },
+        },
+        { status: 400 },
+      );
+    }
+    if (fechaRealizado > hoy) {
+      return NextResponse.json(
+        {
+          error: {
+            fechaRealizado: [
+              `Esa fecha es futura: agenda el Momento ${momento} arriba para que salga la citación a tu instructor y a tu coformador.`,
+            ],
+          },
+        },
+        { status: 400 },
+      );
+    }
+    return null;
+  }
+
   if (m.momento === 1) {
-    const concertacion = await prisma.concertacionFuncion.findUnique({
+    let concertacion = await prisma.concertacionFuncion.findUnique({
       where: { userId: user.id },
       select: { id: true, estado: true },
     });
     if (!concertacion) {
-      return NextResponse.json(
-        { error: { _root: ["Primero agenda el Momento 1 para poder diligenciar su formato."] } },
-        { status: 409 },
-      );
+      const problema = faltaRegistro(1);
+      if (problema) return problema;
+      concertacion = await prisma.concertacionFuncion.create({
+        data: {
+          userId: user.id,
+          fecha: toDateOnly(fechaRealizado),
+          horaInicio,
+          horaFin,
+        },
+        select: { id: true, estado: true },
+      });
     }
     // Una vez avalado, el formato es el que revisó el instructor: no se reescribe.
     if (concertacion.estado === "APROBADA") {
@@ -102,15 +146,24 @@ export async function PATCH(request: Request) {
       },
     });
   } else {
-    const evaluacion = await prisma.evaluacion.findFirst({
+    let evaluacion = await prisma.evaluacion.findFirst({
       where: { userId: user.id, numero: m.momento, esExtraordinario: false },
       select: { id: true, estado: true },
     });
     if (!evaluacion) {
-      return NextResponse.json(
-        { error: { _root: [`Primero agenda el Momento ${m.momento} para poder diligenciar su formato.`] } },
-        { status: 409 },
-      );
+      const problema = faltaRegistro(m.momento);
+      if (problema) return problema;
+      evaluacion = await prisma.evaluacion.create({
+        data: {
+          userId: user.id,
+          numero: m.momento,
+          esExtraordinario: false,
+          fecha: toDateOnly(fechaRealizado),
+          horaInicio,
+          horaFin,
+        },
+        select: { id: true, estado: true },
+      });
     }
     if (evaluacion.estado === "APROBADA") {
       return NextResponse.json(

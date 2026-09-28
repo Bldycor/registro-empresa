@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { DatePickerField } from "@/components/date-picker-field";
 import { FileUploadField } from "@/components/file-upload-field";
+import { fechaEnColombia } from "@/lib/plazos-institucionales";
 
 // Formato GFPI-F-023 del aprendiz, momento por momento (requisito del 28 sep 2026).
 //
@@ -25,6 +26,7 @@ type Formato = {
   textos: { titulo: string; cuerpo: string | null }[];
   variables: { categoria: "TECNICO" | "ACTITUDINAL"; nombre: string; valoracion: string | null; observaciones: string | null }[];
   archivoUrl: string | null;
+  existe: boolean;
   faltantes: string[];
 };
 
@@ -65,6 +67,8 @@ const CAMPO_DE_DATO: Record<string, keyof Datos> = {
   [`${BLOQUE_DISCAPACIDAD}::Tipo de asistencia`]: "asistenciaTipo",
   [`${BLOQUE_DISCAPACIDAD}::Contacto telefónico`]: "asistenciaContacto",
 };
+
+const hoyEnColombia = fechaEnColombia(new Date());
 
 const inputClass =
   "rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950";
@@ -166,6 +170,8 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
     horario: "",
   });
   const [retroalimentacion, setRetroalimentacion] = useState("");
+  // Solo cuando el momento no está en SEPA porque se hizo por fuera.
+  const [realizado, setRealizado] = useState({ fecha: "", horaInicio: "", horaFin: "" });
 
   // Se recarga al abrirlo, no solo al montar: los datos generales son los mismos para los tres
   // momentos, así que si el aprendiz acaba de escribirlos en otro momento, aquí ya se ven.
@@ -297,10 +303,13 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
   async function enviar() {
     setEnviando(true);
     setError(null);
+    const cuandoSeHizo = formato?.existe
+      ? {}
+      : { fechaRealizado: realizado.fecha, horaInicio: realizado.horaInicio, horaFin: realizado.horaFin };
     const cuerpo =
       momento === 1
-        ? { momento: 1 as const, ...plan, archivoUrl }
-        : { momento, retroalimentacionAprendiz: retroalimentacion, archivoUrl };
+        ? { momento: 1 as const, ...plan, ...cuandoSeHizo, archivoUrl }
+        : { momento, retroalimentacionAprendiz: retroalimentacion, ...cuandoSeHizo, archivoUrl };
 
     const res = await fetch("/api/etapa-productiva/formato", {
       method: "PATCH",
@@ -313,7 +322,7 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
       setError(
         typeof data.error === "string"
           ? data.error
-          : (data.error?._root?.[0] ?? "No se pudo enviar el formato."),
+          : (data.error?.fechaRealizado?.[0] ?? data.error?._root?.[0] ?? "No se pudo enviar el formato."),
       );
       return;
     }
@@ -398,6 +407,46 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
               ))}
             </div>
           </details>
+
+          {!formato.existe && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-900/20">
+              <p className="text-sm font-medium text-amber-900 dark:text-amber-300">
+                Este momento todavía no está registrado en SEPA
+              </p>
+              <p className="mt-1 text-xs text-amber-800 dark:text-amber-400">
+                Si la reunión ya se hizo —por ejemplo, antes de empezar a usar la plataforma—,
+                escribe el día en que ocurrió y quedará como constancia junto con tu formato. Si
+                todavía no se ha hecho, agéndala arriba: así sale la citación para tu instructor y
+                tu coformador.
+              </p>
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <DatePickerField
+                  label="Día en que se hizo"
+                  value={realizado.fecha}
+                  onChange={(v) => setRealizado((prev) => ({ ...prev, fecha: v }))}
+                  max={hoyEnColombia}
+                />
+                <label className="flex flex-col gap-1 text-sm text-zinc-700 dark:text-zinc-300">
+                  Hora de inicio
+                  <input
+                    type="time"
+                    value={realizado.horaInicio}
+                    onChange={(e) => setRealizado((prev) => ({ ...prev, horaInicio: e.target.value }))}
+                    className={inputClass}
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-sm text-zinc-700 dark:text-zinc-300">
+                  Hora de fin
+                  <input
+                    type="time"
+                    value={realizado.horaFin}
+                    onChange={(e) => setRealizado((prev) => ({ ...prev, horaFin: e.target.value }))}
+                    className={inputClass}
+                  />
+                </label>
+              </div>
+            </div>
+          )}
 
           {momento === 1 ? (
             <>

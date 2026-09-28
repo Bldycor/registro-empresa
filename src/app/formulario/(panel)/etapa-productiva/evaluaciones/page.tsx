@@ -127,17 +127,17 @@ export default async function EtapaProductivaPage() {
             })) ?? []
           }
         />
-        {concertacion && <FormatoEP momento={1} />}
+        <FormatoEP momento={1} />
       </div>
 
       <div className="w-full max-w-2xl">
         <EvaluacionMomento numero={2} data={mapEvaluacion(2)} instructorNombre={instructorNombre} />
-        {mapEvaluacion(2) && <FormatoEP momento={2} />}
+        <FormatoEP momento={2} />
       </div>
 
       <div className="w-full max-w-2xl">
         <EvaluacionMomento numero={3} data={mapEvaluacion(3)} instructorNombre={instructorNombre} />
-        {mapEvaluacion(3) && <FormatoEP momento={3} />}
+        <FormatoEP momento={3} />
       </div>
 
       <div className="w-full max-w-2xl">

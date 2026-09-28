@@ -1178,9 +1178,27 @@ export const DatosFormatoEPSchema = z.object({
 
 const textoLargo = z.string().trim().max(4000).nullable().optional();
 
+// Cuando el momento se hizo por fuera de SEPA no hay reunión agendada: el aprendiz registra el
+// día y la franja en que ocurrió, para poder dejar el formato y su soporte. Solo se acepta una
+// fecha pasada — una reunión futura se agenda por el camino normal, que sí manda la citación.
+const MomentoRealizadoSchema = z.object({
+  fechaRealizado: z
+    .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Selecciona el día en que se hizo."), z.literal("")])
+    .nullable()
+    .optional(),
+  horaInicio: z
+    .union([z.string().regex(/^\d{2}:\d{2}$/, "Usa el formato HH:mm."), z.literal("")])
+    .nullable()
+    .optional(),
+  horaFin: z
+    .union([z.string().regex(/^\d{2}:\d{2}$/, "Usa el formato HH:mm."), z.literal("")])
+    .nullable()
+    .optional(),
+});
+
 // Momento 1: el aprendiz propone el plan de trabajo y completa los datos de ARL y horario. El
 // instructor lo revisa y lo corrige al avalar (decisión de Coordinación, 28 sep 2026).
-export const FormatoMomento1Schema = z.object({
+export const FormatoMomento1Schema = MomentoRealizadoSchema.extend({
   momento: z.literal(1),
   competenciasDesarrollar: textoLargo,
   resultadosAprendizaje: textoLargo,
@@ -1198,7 +1216,7 @@ export const FormatoMomento1Schema = z.object({
 
 // Momentos 2 y 3: la rúbrica es del instructor; al aprendiz le corresponden sus observaciones y
 // el formato firmado.
-export const FormatoMomento23Schema = z.object({
+export const FormatoMomento23Schema = MomentoRealizadoSchema.extend({
   momento: z.union([z.literal(2), z.literal(3)]),
   retroalimentacionAprendiz: textoLargo,
   archivoUrl: z.string().trim().nullable().optional(),
