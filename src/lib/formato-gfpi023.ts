@@ -21,7 +21,12 @@ import {
 // que la plantilla pide y no salen de ninguna tabla los escribe el aprendiz una sola vez y viven
 // en `DatosFormatoEP` (decisión de Coordinación, 28 sep 2026).
 
-export type CampoFormato = { etiqueta: string; valor: string | null };
+export type CampoFormato = {
+  etiqueta: string;
+  valor: string | null;
+  // Marca los valores que se leyeron del PDF adjunto, para que el aprendiz los verifique.
+  delDocumento?: boolean;
+};
 export type BloqueFormato = { titulo: string; campos: CampoFormato[] };
 
 const MODALIDAD_FORMACION: Record<string, string> = {
@@ -113,6 +118,14 @@ export function encabezadoFormato(
   centro: ParametrosCentro,
 ): BloqueFormato[] {
   const d = a.datosFormatoEP;
+  // Lo leído del formato adjunto es el último recurso: solo entra donde no hay nada más.
+  const doc = (d?.datosDocumento ?? {}) as Record<string, string | null | undefined>;
+
+  const conDocumento = (etiqueta: string, propio: string | null, claveDoc: string): CampoFormato =>
+    propio
+      ? { etiqueta, valor: propio }
+      : { etiqueta, valor: limpio(doc[claveDoc]), delDocumento: Boolean(limpio(doc[claveDoc])) };
+
   const delCentro = (clave: "regional" | "centroFormacion" | "estrategiaFormativa") =>
     limpio(centro?.[clave]) ?? limpio(d?.[clave]);
   const f = a.ficha;
@@ -136,19 +149,20 @@ export function encabezadoFormato(
     {
       titulo: "Información general",
       campos: [
-        { etiqueta: "Regional", valor: delCentro("regional") },
-        { etiqueta: "Centro de formación", valor: delCentro("centroFormacion") },
+        conDocumento("Regional", delCentro("regional"), "regional"),
+        conDocumento("Centro de formación", delCentro("centroFormacion"), "centroFormacion"),
         {
           etiqueta: "Nivel formativo",
           valor: f?.nivelFormacion ? nivelFormacionLabel[f.nivelFormacion as NivelFormacionValue] : null,
         },
         { etiqueta: "Programa de formación", valor: limpio(f?.programa) },
         { etiqueta: "N.° de grupo (ficha)", valor: limpio(f?.codigo) },
-        {
-          etiqueta: "Modalidad de formación",
-          valor: f?.modalidadFormacion ? (MODALIDAD_FORMACION[f.modalidadFormacion] ?? null) : null,
-        },
-        { etiqueta: "Estrategia formativa", valor: delCentro("estrategiaFormativa") },
+        conDocumento(
+          "Modalidad de formación",
+          f?.modalidadFormacion ? (MODALIDAD_FORMACION[f.modalidadFormacion] ?? null) : null,
+          "modalidadFormacion",
+        ),
+        conDocumento("Estrategia formativa", delCentro("estrategiaFormativa"), "estrategiaFormativa"),
         { etiqueta: "Jornada", valor: f?.jornada ? jornadaLabel[f.jornada as JornadaValue] : null },
         { etiqueta: "Fecha fin de la etapa lectiva", valor: dia(f?.fechaFinFormacion ?? null) },
       ],
@@ -157,17 +171,18 @@ export function encabezadoFormato(
       titulo: "Datos del aprendiz",
       campos: [
         { etiqueta: "Nombre completo", valor: `${a.nombres} ${a.apellidos}`.trim() },
-        {
-          etiqueta: "Tipo de documento",
-          valor: a.tipoDocumento ? (TIPO_DOCUMENTO[a.tipoDocumento] ?? null) : null,
-        },
+        conDocumento(
+          "Tipo de documento",
+          a.tipoDocumento ? (TIPO_DOCUMENTO[a.tipoDocumento] ?? null) : null,
+          "tipoDocumento",
+        ),
         { etiqueta: "N.° de identificación", valor: a.cedula },
         { etiqueta: "Contacto telefónico", valor: limpio(a.celular) },
         { etiqueta: "Dirección", valor: limpio(a.direccionResidencia) },
         { etiqueta: "Correo electrónico personal", valor: limpio(a.email) },
-        { etiqueta: "Correo electrónico institucional", valor: limpio(d?.correoInstitucional) },
+        conDocumento("Correo electrónico institucional", limpio(d?.correoInstitucional), "correoInstitucional"),
         { etiqueta: "Alternativa de etapa productiva registrada", valor: alternativaTexto },
-        { etiqueta: "Fecha de registro en SofiaPlus", valor: dia(alternativa?.registroSofiaPlus ?? null) },
+        conDocumento("Fecha de registro en SofiaPlus", dia(alternativa?.registroSofiaPlus ?? null), "registroSofiaPlus"),
       ],
     },
     {
@@ -186,7 +201,7 @@ export function encabezadoFormato(
       campos: [
         { etiqueta: "Nombre de la empresa o entidad", valor: limpio(e?.empresaPatrocinadora) },
         { etiqueta: "Dirección", valor: limpio(e?.direccionEmpresa) },
-        { etiqueta: "NIT", valor: limpio(d?.nitEmpresa) },
+        conDocumento("NIT", limpio(d?.nitEmpresa), "nitEmpresa"),
         { etiqueta: "Correo electrónico", valor: limpio(e?.correoCoformador) },
         { etiqueta: "Jefe inmediato / co-formador / tutor", valor: limpio(e?.nombreCoformador) },
         { etiqueta: "Cargo", valor: limpio(e?.cargoCoformador) },

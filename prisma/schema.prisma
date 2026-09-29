@@ -1133,6 +1133,12 @@ model DatosFormatoEP {
   asistenciaTipo     String?
   asistenciaContacto String?
 
+  // Lo que se pudo leer del formato GFPI-F-023 que el aprendiz adjuntó (ver src/lib/leer-gfpi023.ts).
+  // Sirve para rellenar solo lo que el sistema no sabe: nunca pisa un dato propio ni algo que el
+  // aprendiz haya escrito. Se guarda tal cual se leyó, para poder mostrar de dónde salió.
+  datosDocumento   Json?
+  documentoLeidoEn DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

@@ -15,7 +15,7 @@ import { fechaEnColombia } from "@/lib/plazos-institucionales";
 // con un valor de ejemplo. Las 13 variables de la rúbrica (Factores Técnicos y Actitudinales) las
 // valora solo el instructor; acá se muestran como quedaron, en solo lectura.
 
-type Campo = { etiqueta: string; valor: string | null };
+type Campo = { etiqueta: string; valor: string | null; delDocumento?: boolean };
 type Bloque = { titulo: string; campos: Campo[] };
 
 type Formato = {
@@ -90,13 +90,20 @@ function Vacio() {
   return <span className="text-zinc-400 dark:text-zinc-500">(sin diligenciar)</span>;
 }
 
-function Fila({ etiqueta, valor }: Campo) {
+function Fila({ etiqueta, valor, delDocumento }: Campo) {
   return (
     <div className="flex flex-col gap-0.5 border-b border-zinc-100 py-1.5 last:border-0 dark:border-zinc-800 sm:flex-row sm:gap-3">
       <dt className="shrink-0 text-xs uppercase tracking-wide text-zinc-400 dark:text-zinc-500 sm:w-64">
         {etiqueta}
       </dt>
-      <dd className="text-sm text-zinc-800 dark:text-zinc-200">{valor ? valor : <Vacio />}</dd>
+      <dd className="text-sm text-zinc-800 dark:text-zinc-200">
+        {valor ? valor : <Vacio />}
+        {valor && delDocumento && (
+          <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+            leído del PDF
+          </span>
+        )}
+      </dd>
     </div>
   );
 }
@@ -154,6 +161,7 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
   const [subiendo, setSubiendo] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
+  const [lectura, setLectura] = useState<string | null>(null);
 
   // Campos propios del momento.
   const [plan, setPlan] = useState({
@@ -235,7 +243,10 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
     ...b,
     campos: b.campos.map((c) => {
       const clave = CAMPO_DE_DATO[`${b.titulo}::${c.etiqueta}`];
-      return clave ? { ...c, valor: datos[clave].trim() || null } : c;
+      if (!clave) return c;
+      const escrito = datos[clave].trim();
+      // Lo que el aprendiz escribe manda sobre lo que se leyó del PDF.
+      return escrito ? { ...c, valor: escrito, delDocumento: false } : c;
     }),
   });
 
@@ -326,6 +337,15 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
     setFormato(data.formato);
     setEnviado(true);
     setVista("cerrado");
+    if (data.lectura?.sinTexto) {
+      setLectura("El PDF que adjuntaste no tiene texto (parece una foto o un escaneo), así que no se pudo leer nada de él.");
+    } else if (data.lectura?.leidos > 0) {
+      setLectura(
+        `Del PDF se tomaron ${data.lectura.leidos} datos para completar el formato. Revísalos: mandan los que tú escribas.`,
+      );
+    } else {
+      setLectura(null);
+    }
   }
 
   const tecnicas = formato.variables.filter((v) => v.categoria === "TECNICO");
@@ -364,9 +384,16 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
       </div>
 
       {enviado && vista === "cerrado" && (
-        <p className="mt-2 rounded-md bg-sena-claro px-3 py-2 text-sm text-azul dark:bg-emerald-900/20 dark:text-emerald-400">
-          Formato enviado. Tu instructor lo verá con el resto de la evidencia del momento.
-        </p>
+        <>
+          <p className="mt-2 rounded-md bg-sena-claro px-3 py-2 text-sm text-azul dark:bg-emerald-900/20 dark:text-emerald-400">
+            Formato enviado. Tu instructor lo verá con el resto de la evidencia del momento.
+          </p>
+          {lectura && (
+            <p className="mt-2 rounded-md bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-950 dark:text-zinc-400">
+              {lectura}
+            </p>
+          )}
+        </>
       )}
 
       {vista === "editar" && (
@@ -516,6 +543,13 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
               />
             </label>
           )}
+
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Al adjuntar el formato firmado, SEPA lo lee y completa con él los campos que le falten
+            —modalidad, tipo de documento, NIT, fecha de SofiaPlus, ARL, plan de trabajo—. Lo que tú
+            escribas manda sobre lo que diga el PDF, y si el archivo es una foto o un escaneo no se
+            puede leer nada.
+          </p>
 
           <FileUploadField
             label="Formato GFPI-F-023 firmado (PDF)"
