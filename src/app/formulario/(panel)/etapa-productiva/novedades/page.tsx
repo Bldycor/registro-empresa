@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { TOTAL_BITACORAS } from "@/lib/bitacora-fechas";
 import { requireUser } from "@/lib/auth-guards";
 import { NovedadesEP } from "@/components/novedades-ep";
 
@@ -27,7 +28,7 @@ export default async function NovedadesPage() {
       </div>
 
       <div className="w-full max-w-2xl">
-        <NovedadesEP totalBitacoras={aprendiz?.totalBitacoras ?? 12} />
+        <NovedadesEP totalBitacoras={aprendiz?.totalBitacoras ?? TOTAL_BITACORAS} />
       </div>
     </div>
   );

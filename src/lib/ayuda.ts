@@ -29,7 +29,7 @@ const APRENDIZ: GuiaRol = {
         },
         {
           opcion: "Bitácoras",
-          que: "Registras las actividades que realizas (formato GFPI-F-147). Son 6 —una por mes— o 12 —una cada 15 días—, durante los seis meses. La evidencia se cumple con 6 bitácoras aprobadas. Puedes descargar la plantilla oficial desde esa misma pantalla.",
+          que: "Registras las actividades que realizas (formato GFPI-F-147). Son seis bitácoras, una por cada mes de los seis de práctica. Puedes descargar la plantilla oficial desde esa misma pantalla, y al adjuntar tu bitácora firmada en PDF el sistema toma de ella las actividades realizadas y te las deja diligenciadas.",
         },
         {
           opcion: "Evaluaciones",
@@ -249,7 +249,7 @@ export const ayudaMenu: Record<string, { icono: string; resumen: string }> = {
   },
   "/formulario/etapa-productiva/bitacoras": {
     icono: "📓",
-    resumen: "Registra tus actividades: 6 bitácoras (una por mes) o 12 (una cada 15 días).",
+    resumen: "Registra tus actividades: seis bitácoras, una por mes.",
   },
   "/formulario/etapa-productiva/evaluaciones": {
     icono: "✅",

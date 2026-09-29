@@ -131,6 +131,8 @@ export function BitacoraForm({
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [subiendoArchivo, setSubiendoArchivo] = useState(false);
+  const [leyendo, setLeyendo] = useState(false);
+  const [lectura, setLectura] = useState<string | null>(null);
   const [catalogoCompetencias, setCatalogoCompetencias] = useState<CompetenciaCatalogo[] | null>(
     null
   );
@@ -141,6 +143,73 @@ export function BitacoraForm({
       .then((data) => setCatalogoCompetencias(data.competencias ?? []))
       .catch(() => setCatalogoCompetencias([]));
   }, []);
+
+  // Del D/M/AAAA del documento al AAAA-MM-DD que usan los campos de fecha.
+  function aFechaCampo(valor: string): string {
+    const m = valor.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if (!m) return "";
+    const [, d, mes, anio] = m;
+    return `${anio.length === 2 ? `20${anio}` : anio}-${mes.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+
+  // Al adjuntar la bitácora firmada se lee y se diligencia lo que esté vacío. Nada se guarda
+  // hasta que el aprendiz revisa y pulsa enviar.
+  async function leerDelDocumento(url: string) {
+    setLeyendo(true);
+    setLectura(null);
+    try {
+      const res = await fetch("/api/etapa-productiva/bitacoras/leer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archivoUrl: url }),
+      });
+      const d = await res.json();
+      const leido = d.datos ?? {};
+
+      if (d.sinTexto) {
+        setLectura("Ese PDF no tiene texto (parece una foto o un escaneo): diligencia los campos a mano.");
+        return;
+      }
+      if (!d.leidos) {
+        setLectura("No se reconoció ningún campo de la bitácora en ese PDF: diligencia los campos a mano.");
+        return;
+      }
+
+      const siNo = (v: boolean | null | undefined) => (v === true ? "true" : v === false ? "false" : "");
+
+      setForm((prev) => {
+        const actividades = [...prev.actividades];
+        if (actividades[0]) {
+          actividades[0] = {
+            ...actividades[0],
+            descripcion: actividades[0].descripcion.trim() || (leido.descripcion ?? ""),
+            competencias: actividades[0].competencias.trim() || (leido.competencias ?? ""),
+            evidenciaCumplimiento:
+              actividades[0].evidenciaCumplimiento.trim() || (leido.evidenciaCumplimiento ?? ""),
+            observaciones: actividades[0].observaciones.trim() || (leido.observaciones ?? ""),
+          };
+        }
+        return {
+          ...prev,
+          periodoDesde: prev.periodoDesde || (leido.periodoDesde ? aFechaCampo(leido.periodoDesde) : ""),
+          periodoHasta: prev.periodoHasta || (leido.periodoHasta ? aFechaCampo(leido.periodoHasta) : ""),
+          arlAfiliado: prev.arlAfiliado || siNo(leido.arlAfiliado),
+          arlNivelRiesgo: prev.arlNivelRiesgo || (leido.arlNivelRiesgo ?? ""),
+          arlRiesgoCorresponde: prev.arlRiesgoCorresponde || siNo(leido.arlRiesgoCorresponde),
+          arlTieneEPP: prev.arlTieneEPP || siNo(leido.arlTieneEPP),
+          actividades,
+        };
+      });
+
+      setLectura(
+        `De la bitácora se tomaron ${d.leidos} ${d.leidos === 1 ? "dato" : "datos"} y quedaron puestos en el formulario. Revísalos y corrige lo que haga falta antes de enviar.`,
+      );
+    } catch {
+      setLectura("No se pudo leer el documento: diligencia los campos a mano y envíalo igual.");
+    } finally {
+      setLeyendo(false);
+    }
+  }
 
   function update<K extends keyof FormFields>(key: K, value: FormFields[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -421,11 +490,21 @@ export function BitacoraForm({
           label="Bitácora diligenciada (adjunto)"
           pathPrefix="bitacora-ep"
           value={form.archivoUrl || null}
-          onChange={(url) => update("archivoUrl", url)}
+          onChange={(url) => {
+            update("archivoUrl", url);
+            if (url) leerDelDocumento(url);
+          }}
           error={errors.archivoUrl?.[0]}
           required
           onUploadingChange={setSubiendoArchivo}
         />
+
+        {leyendo && <p className="text-xs text-zinc-500 dark:text-zinc-400">Leyendo la bitácora…</p>}
+        {lectura && (
+          <p className="rounded-md bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-950 dark:text-zinc-400">
+            {lectura}
+          </p>
+        )}
 
         {errors._root && <p className="text-sm text-red-600">{errors._root[0]}</p>}
         {success && (

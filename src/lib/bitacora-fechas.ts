@@ -4,15 +4,14 @@
 // institucional agregada.
 import { DURACION_ETAPA_PRODUCTIVA_DIAS } from "@/lib/etapa-productiva-fechas";
 
-export const TOTAL_BITACORAS = 12;
+// Toda etapa productiva son SEIS bitácoras, una por cada mes de los seis de práctica (decisión de
+// Coordinación, 29 sep 2026). Antes se podía elegir entre 6 y 12 —una cada 15 días—; esa opción se
+// eliminó y los aprendices que la tenían pasaron a 6.
+export const TOTAL_BITACORAS = 6;
 
-// Las bitácoras se reparten a lo largo de TODO el período de práctica, así que el intervalo sale
-// de dividir ese período entre cuántas son: 12 → una cada 15 días (quincenal), 6 → una cada 30
-// días (mensual, una por mes hasta cumplir el período).
-//
-// Antes el intervalo estaba fijo en 15 días para cualquier total. A quien tenía 6 bitácoras se le
-// vencían las seis dentro de los primeros tres meses, y el resto de la práctica quedaba sin
-// ninguna fecha — con el efecto de mostrarle todo atrasado a mitad de camino.
+// Se reparten a lo largo de TODO el período: el intervalo sale de dividir el período entre las
+// seis, o sea una cada ~30 días. El parámetro `total` se conserva porque hay datos viejos con otro
+// valor, pero lo normal —y lo único que el sistema crea— son seis.
 export function diasEntreBitacoras(total: number = TOTAL_BITACORAS): number {
   return Math.max(1, Math.round(DURACION_ETAPA_PRODUCTIVA_DIAS / Math.max(1, total)));
 }

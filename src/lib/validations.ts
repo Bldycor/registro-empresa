@@ -518,9 +518,12 @@ const fechaEtapaProductivaOpcional = z
 // que cambia es la frecuencia de entrega: 12 (una cada 15 días) o 6 (una por mes). Afecta las
 // fechas límite calculadas y las alertas de seguimiento (ver src/lib/bitacora-fechas.ts y
 // src/lib/seguimiento-evidencias.ts).
-export const TotalBitacorasValues = [6, 12] as const;
+// Ya no hay nada que elegir: toda etapa productiva son seis bitácoras, una por mes.
+export const TotalBitacorasValues = [6] as const;
 export type TotalBitacorasValue = (typeof TotalBitacorasValues)[number];
-const totalBitacorasOpcional = z.union([z.literal(6), z.literal(12)]).optional();
+// Toda etapa productiva son seis bitácoras, una por mes (decisión de Coordinación, 29 sep 2026).
+// El campo se conserva en las entradas por compatibilidad, pero solo admite 6.
+const totalBitacorasOpcional = z.literal(6).optional();
 
 export const AprendizGestionSchema = z
   .object({

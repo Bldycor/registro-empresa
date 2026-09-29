@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { TOTAL_BITACORAS } from "@/lib/bitacora-fechas";
 import Link from "next/link";
 import { DatePickerField } from "@/components/date-picker-field";
 import { fechaMinimaInicioEtapaProductiva } from "@/lib/etapa-productiva-fechas";
-import { TotalBitacorasValues, type AlternativaEtapaProductivaValue } from "@/lib/validations";
+import { type AlternativaEtapaProductivaValue } from "@/lib/validations";
 
 type FichaFechas = {
   fechaInicioProductiva: string | null;
@@ -299,7 +300,6 @@ function AprendizRow({
           aprendizId={aprendiz.id}
           fechaInicioInicial={aprendiz.fechaInicioEtapaProductiva?.slice(0, 10) ?? ""}
           fechaFinInicial={aprendiz.fechaFinEtapaProductiva?.slice(0, 10) ?? ""}
-          totalBitacorasInicial={aprendiz.totalBitacoras}
           ficha={aprendiz.ficha}
           esVinculoLaboral={aprendiz.alternativaEtapaProductiva === "VINCULO_LABORAL"}
           onGuardado={onGuardado}
@@ -313,7 +313,6 @@ function AprendizFechasForm({
   aprendizId,
   fechaInicioInicial,
   fechaFinInicial,
-  totalBitacorasInicial,
   ficha,
   esVinculoLaboral,
   onGuardado,
@@ -321,14 +320,14 @@ function AprendizFechasForm({
   aprendizId: string;
   fechaInicioInicial: string;
   fechaFinInicial: string;
-  totalBitacorasInicial: number;
   ficha: FichaFechas;
   esVinculoLaboral: boolean;
   onGuardado: (cambios: Partial<Aprendiz>) => void;
 }) {
   const [fechaInicio, setFechaInicio] = useState(fechaInicioInicial);
   const [fechaFin, setFechaFin] = useState(fechaFinInicial);
-  const [totalBitacoras, setTotalBitacoras] = useState(totalBitacorasInicial);
+  // Siempre seis: el valor inicial solo se usa para mostrar lo que hay guardado.
+  const totalBitacoras = TOTAL_BITACORAS;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -391,20 +390,12 @@ function AprendizFechasForm({
           max={maximaInicio ? aFechaInput(maximaInicio) : undefined}
         />
         <DatePickerField label="Fecha de fin" value={fechaFin} onChange={setFechaFin} min={fechaInicio || undefined} />
-        <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
-          Total de bitácoras
-          <select
-            value={totalBitacoras}
-            onChange={(e) => setTotalBitacoras(Number(e.target.value))}
-            className={inputClass}
-          >
-            {TotalBitacorasValues.map((v) => (
-              <option key={v} value={v}>
-                {v} bitácoras ({v === 12 ? "una cada 15 días" : "una por mes"})
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
+          Bitácoras
+          <p className="rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">
+            {TOTAL_BITACORAS} bitácoras, una por mes
+          </p>
+        </div>
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
       <button
@@ -428,7 +419,7 @@ function FichaFechasForm({
 }) {
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
-  const [totalBitacoras, setTotalBitacoras] = useState<"" | "6" | "12">("");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aplicados, setAplicados] = useState<number | null>(null);
@@ -453,7 +444,7 @@ function FichaFechasForm({
       body: JSON.stringify({
         fechaInicioEtapaProductiva: fechaInicio,
         fechaFinEtapaProductiva: fechaFin || null,
-        totalBitacoras: totalBitacoras ? Number(totalBitacoras) : undefined,
+
       }),
     });
     const data = await res.json();
@@ -500,21 +491,12 @@ function FichaFechasForm({
           max={maximaInicio ? aFechaInput(maximaInicio) : undefined}
         />
         <DatePickerField label="Fecha de fin (opcional)" value={fechaFin} onChange={setFechaFin} min={fechaInicio || undefined} />
-        <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
-          Total de bitácoras (opcional)
-          <select
-            value={totalBitacoras}
-            onChange={(e) => setTotalBitacoras(e.target.value as "" | "6" | "12")}
-            className={inputClass}
-          >
-            <option value="">No cambiar</option>
-            {TotalBitacorasValues.map((v) => (
-              <option key={v} value={v}>
-                {v} bitácoras ({v === 12 ? "una cada 15 días" : "una por mes"})
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
+          Bitácoras
+          <p className="rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">
+            {TOTAL_BITACORAS} bitácoras, una por mes
+          </p>
+        </div>
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
       {aplicados !== null && (

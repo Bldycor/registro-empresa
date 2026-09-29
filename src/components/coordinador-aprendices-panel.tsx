@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TOTAL_BITACORAS } from "@/lib/bitacora-fechas";
 import Link from "next/link";
 import { AprendizCreatePanel } from "@/components/aprendiz-create-panel";
 import { DatePickerField } from "@/components/date-picker-field";
@@ -11,7 +12,6 @@ import {
   estadoAprendizLabel,
   AlternativaEtapaProductivaValues,
   alternativaEtapaProductivaLabel,
-  TotalBitacorasValues,
   CoordinacionValues,
   coordinacionLabel,
   type ComunaValue,
@@ -833,20 +833,12 @@ export function CoordinadorAprendicesPanel({
                           onChange={(v) => updateGestion("fechaFinEtapaProductiva", v)}
                           min={gestionForm.fechaInicioEtapaProductiva || undefined}
                         />
-                        <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
-                          Total de bitácoras
-                          <select
-                            value={gestionForm.totalBitacoras}
-                            onChange={(e) => updateGestion("totalBitacoras", Number(e.target.value))}
-                            className={inputClass}
-                          >
-                            {TotalBitacorasValues.map((v) => (
-                              <option key={v} value={v}>
-                                {v} bitácoras ({v === 12 ? "una cada 15 días" : "una por mes"})
-                              </option>
-                            ))}
-                          </select>
-                        </label>
+                        <div className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
+                          Bitácoras
+                          <p className="rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">
+                            {TOTAL_BITACORAS} bitácoras, una por mes
+                          </p>
+                        </div>
                       </div>
 
                       <div className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">

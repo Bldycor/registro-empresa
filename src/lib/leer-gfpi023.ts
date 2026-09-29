@@ -12,6 +12,8 @@
 //   que él ya haya escrito manda sobre lo que diga el PDF.
 // - Un PDF escaneado (una foto del papel) no tiene texto: ahí no se lee nada y se avisa.
 
+import { textoDelPdf } from "@/lib/leer-pdf";
+
 export type DatosDocumento = {
   regional: string | null;
   centroFormacion: string | null;
@@ -315,29 +317,6 @@ export type LecturaDocumento = {
   // El PDF no tenía texto (probablemente es una foto o un escaneo).
   sinTexto: boolean;
 };
-
-// Extrae el texto del PDF. `pdfjs-dist` se importa aquí adentro para que su peso no entre en las
-// rutas que no leen documentos.
-async function textoDelPdf(archivo: ArrayBuffer): Promise<string> {
-  const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  // En el servidor no hay Web Worker: se importa el del propio pdfjs para que quede registrado en
-  // `globalThis` y la librería no intente cargarlo por su cuenta (falla al empaquetar).
-  await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
-  const pdf = await getDocument({
-    data: new Uint8Array(archivo),
-    // Sin fuentes del sistema ni canvas: solo se necesita el texto.
-    useSystemFonts: false,
-    disableFontFace: true,
-    isEvalSupported: false,
-  }).promise;
-
-  let texto = "";
-  for (let pagina = 1; pagina <= pdf.numPages; pagina++) {
-    const contenido = await (await pdf.getPage(pagina)).getTextContent();
-    texto += contenido.items.map((item) => ("str" in item ? item.str : "")).join(" ") + "\n";
-  }
-  return texto.replace(/ /g, " ").replace(/[ \t]+/g, " ");
-}
 
 export async function leerFormato(
   archivo: ArrayBuffer,
