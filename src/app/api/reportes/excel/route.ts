@@ -143,11 +143,60 @@ export async function GET(request: Request) {
     ]),
   ];
 
+  // Los dos consolidados nuevos: mismas cifras, cortadas por ficha y por programa.
+  const filasConsolidado = (
+    filas: typeof r.consolidado.porFicha,
+    primera: string,
+  ) => [
+    [
+      primera,
+      "Aprendices",
+      "Con atrasos",
+      "Por certificar",
+      "Certificados",
+      "Bitácoras aprobadas",
+      "Bitácoras previstas",
+      "Rúbrica satisfactoria",
+      "Variables valoradas",
+      "Momento 3 aprobados",
+      "Momento 3 no aprobados",
+      "Novedades",
+      "Novedades fuera de plazo",
+      "Planes de mejoramiento abiertos",
+    ].map(negrita),
+    ...filas.map((f) => [
+      texto(f.etiqueta),
+      numero(f.aprendices),
+      numero(f.conAtrasos),
+      numero(f.porCertificar),
+      numero(f.certificados),
+      numero(f.bitacorasAprobadas),
+      numero(f.bitacorasPrevistas),
+      texto(f.rubricaValoradas === 0 ? "" : porcentaje(f.rubricaSatisfactorio, f.rubricaValoradas)),
+      numero(f.rubricaValoradas),
+      numero(f.momento3Aprobados),
+      numero(f.momento3NoAprobados),
+      numero(f.novedades),
+      numero(f.novedadesFueraDePlazo),
+      numero(f.planesAbiertos),
+    ]),
+  ];
+
   const ancho = (...w: number[]) => w.map((width) => ({ width }));
   const archivo = await writeExcelFile([
     { data: metricas, sheet: "Métricas", columns: ancho(44, 22, 48) },
     { data: cumplimiento, sheet: "Cumplimiento", columns: ancho(32, 12, 12, 18, 12) },
     { data: enRiesgo, sheet: "En riesgo", columns: ancho(32, 14, 28, 60, 60) },
+    {
+      data: filasConsolidado(r.consolidado.porFicha, "Ficha"),
+      sheet: "Por ficha",
+      columns: ancho(18, 12, 12, 14, 12, 18, 18, 20, 18, 18, 20, 12, 20, 26),
+    },
+    {
+      data: filasConsolidado(r.consolidado.porPrograma, "Programa"),
+      sheet: "Por programa",
+      columns: ancho(40, 12, 12, 14, 12, 18, 18, 20, 18, 18, 20, 12, 20, 26),
+    },
     {
       data: aprendices,
       sheet: "Aprendices",

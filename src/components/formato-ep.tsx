@@ -58,9 +58,6 @@ const DATOS_VACIOS: Datos = {
 const BLOQUE_DISCAPACIDAD = "Persona en situación de discapacidad (si aplica)";
 
 const CAMPO_DE_DATO: Record<string, keyof Datos> = {
-  "Información general::Regional": "regional",
-  "Información general::Centro de formación": "centroFormacion",
-  "Información general::Estrategia formativa": "estrategiaFormativa",
   "Datos del aprendiz::Correo electrónico institucional": "correoInstitucional",
   "Ente co-formador::NIT": "nitEmpresa",
   [`${BLOQUE_DISCAPACIDAD}::Nombre de quien asiste al aprendiz`]: "asistenciaNombre",
@@ -380,14 +377,13 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
             </summary>
             <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
               Los escribes una sola vez y sirven para los tres momentos. Lo que no sepas, déjalo
-              vacío: el formato saldrá con ese campo en blanco.
+              vacío: el formato saldrá con ese campo en blanco. La regional, el centro de formación
+              y la estrategia formativa no se escriben acá: los configura la coordinación y entran
+              solos en los tres momentos.
             </p>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {(
                 [
-                  ["regional", "Regional"],
-                  ["centroFormacion", "Centro de formación"],
-                  ["estrategiaFormativa", "Estrategia formativa"],
                   ["correoInstitucional", "Correo electrónico institucional"],
                   ["nitEmpresa", "NIT de la empresa"],
                   ["asistenciaNombre", "Discapacidad: nombre de quien te asiste"],

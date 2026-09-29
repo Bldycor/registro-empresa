@@ -64,6 +64,7 @@ const roleNav: Record<string, Grupo[]> = {
         { href: "/formulario/coordinador/fichas", label: "Fichas" },
         { href: "/formulario/coordinador/instructores", label: "Instructores" },
         { href: "/formulario/coordinador/competencias", label: "Competencias" },
+        { href: "/formulario/coordinador/configuracion", label: "Datos del centro" },
       ],
     },
     {
@@ -103,6 +104,7 @@ const roleNav: Record<string, Grupo[]> = {
         { href: "/formulario/coordinador/fichas", label: "Fichas" },
         { href: "/formulario/coordinador/instructores", label: "Instructores" },
         { href: "/formulario/coordinador/competencias", label: "Competencias" },
+        { href: "/formulario/coordinador/configuracion", label: "Datos del centro" },
       ],
     },
     {

@@ -98,9 +98,23 @@ async function cargarAprendiz(userId: string) {
   return prisma.user.findUnique({ where: { id: userId }, select: SELECT_FORMATO });
 }
 
-// Los tres bloques de cabecera del formato, iguales para los tres momentos.
-export function encabezadoFormato(a: NonNullable<AprendizFormato>): BloqueFormato[] {
+export type ParametrosCentro = {
+  regional: string | null;
+  centroFormacion: string | null;
+  estrategiaFormativa: string | null;
+} | null;
+
+// Los bloques de cabecera del formato, iguales para los tres momentos. Regional, Centro y
+// Estrategia salen de la configuración del centro —una sola vez, la fija Coordinación— para que
+// el aprendiz no los escriba en cada momento; si todavía no están configurados, se respeta lo que
+// el aprendiz hubiera escrito antes, y si tampoco hay, el campo queda en blanco.
+export function encabezadoFormato(
+  a: NonNullable<AprendizFormato>,
+  centro: ParametrosCentro,
+): BloqueFormato[] {
   const d = a.datosFormatoEP;
+  const delCentro = (clave: "regional" | "centroFormacion" | "estrategiaFormativa") =>
+    limpio(centro?.[clave]) ?? limpio(d?.[clave]);
   const f = a.ficha;
   const e = a.companyProfile;
   const alternativa = a.seleccionesAlternativa[0];
@@ -122,8 +136,8 @@ export function encabezadoFormato(a: NonNullable<AprendizFormato>): BloqueFormat
     {
       titulo: "Información general",
       campos: [
-        { etiqueta: "Regional", valor: limpio(d?.regional) },
-        { etiqueta: "Centro de formación", valor: limpio(d?.centroFormacion) },
+        { etiqueta: "Regional", valor: delCentro("regional") },
+        { etiqueta: "Centro de formación", valor: delCentro("centroFormacion") },
         {
           etiqueta: "Nivel formativo",
           valor: f?.nivelFormacion ? nivelFormacionLabel[f.nivelFormacion as NivelFormacionValue] : null,
@@ -134,7 +148,7 @@ export function encabezadoFormato(a: NonNullable<AprendizFormato>): BloqueFormat
           etiqueta: "Modalidad de formación",
           valor: f?.modalidadFormacion ? (MODALIDAD_FORMACION[f.modalidadFormacion] ?? null) : null,
         },
-        { etiqueta: "Estrategia formativa", valor: limpio(d?.estrategiaFormativa) },
+        { etiqueta: "Estrategia formativa", valor: delCentro("estrategiaFormativa") },
         { etiqueta: "Jornada", valor: f?.jornada ? jornadaLabel[f.jornada as JornadaValue] : null },
         { etiqueta: "Fecha fin de la etapa lectiva", valor: dia(f?.fechaFinFormacion ?? null) },
       ],
@@ -222,10 +236,16 @@ export async function construirFormato(
   userId: string,
   momento: 1 | 2 | 3,
 ): Promise<FormatoMomento | null> {
-  const a = await cargarAprendiz(userId);
+  const [a, centro] = await Promise.all([
+    cargarAprendiz(userId),
+    prisma.configuracionCentro.findUnique({
+      where: { id: "centro" },
+      select: { regional: true, centroFormacion: true, estrategiaFormativa: true },
+    }),
+  ]);
   if (!a) return null;
 
-  const encabezado = encabezadoFormato(a);
+  const encabezado = encabezadoFormato(a, centro);
 
   const [concertacion, evaluacion] = await Promise.all([
     momento === 1

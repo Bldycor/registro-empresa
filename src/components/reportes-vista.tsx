@@ -37,6 +37,82 @@ function Cifra({ etiqueta, valor, detalle }: { etiqueta: string; valor: string |
   );
 }
 
+type FilaConsolidado = {
+  clave: string;
+  etiqueta: string;
+  aprendices: number;
+  conAtrasos: number;
+  porCertificar: number;
+  certificados: number;
+  bitacorasAprobadas: number;
+  bitacorasPrevistas: number;
+  rubricaSatisfactorio: number;
+  rubricaValoradas: number;
+  momento3Aprobados: number;
+  momento3NoAprobados: number;
+  novedades: number;
+  novedadesFueraDePlazo: number;
+  planesAbiertos: number;
+};
+
+function TablaConsolidado({ filas, primera }: { filas: FilaConsolidado[]; primera: string }) {
+  return (
+    <Tabla
+      encabezados={[
+        primera,
+        "Aprendices",
+        "Con atrasos",
+        "Por certificar",
+        "Certificados",
+        "Bitácoras aprobadas",
+        "Rúbrica satisfactoria",
+        "Momento 3",
+        "Novedades",
+        "Planes abiertos",
+      ]}
+    >
+      {filas.map((f) => (
+        <tr key={f.clave}>
+          <td className={td}>{f.etiqueta}</td>
+          <td className={td}>{f.aprendices}</td>
+          <td className={td}>
+            {f.conAtrasos}
+            {f.conAtrasos > 0 && (
+              <span className="text-amber-700 dark:text-amber-400">
+                {" "}
+                ({porcentaje(f.conAtrasos, f.aprendices)})
+              </span>
+            )}
+          </td>
+          <td className={td}>{f.porCertificar}</td>
+          <td className={td}>{f.certificados}</td>
+          <td className={td}>
+            {f.bitacorasAprobadas} de {f.bitacorasPrevistas}
+            {f.bitacorasPrevistas > 0 && ` · ${porcentaje(f.bitacorasAprobadas, f.bitacorasPrevistas)}`}
+          </td>
+          <td className={td}>
+            {f.rubricaValoradas === 0
+              ? "—"
+              : `${porcentaje(f.rubricaSatisfactorio, f.rubricaValoradas)} de ${f.rubricaValoradas}`}
+          </td>
+          <td className={td}>
+            {f.momento3Aprobados + f.momento3NoAprobados === 0
+              ? "—"
+              : `${f.momento3Aprobados} aprobados · ${f.momento3NoAprobados} no aprobados`}
+          </td>
+          <td className={td}>
+            {f.novedades}
+            {f.novedadesFueraDePlazo > 0 && (
+              <span className="text-amber-700 dark:text-amber-400"> · {f.novedadesFueraDePlazo} fuera de plazo</span>
+            )}
+          </td>
+          <td className={td}>{f.planesAbiertos}</td>
+        </tr>
+      ))}
+    </Tabla>
+  );
+}
+
 function Tabla({ encabezados, children }: { encabezados: string[]; children: React.ReactNode }) {
   return (
     <div className="overflow-x-auto">
@@ -242,6 +318,28 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
               </tr>
             ))}
           </Tabla>
+        )}
+      </Seccion>
+
+      <Seccion
+        titulo="Consolidado por ficha"
+        descripcion="Las mismas cifras, cortadas por ficha: dónde se concentran los atrasos y cómo va cada grupo."
+      >
+        {r.consolidado.porFicha.length === 0 ? (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Ningún aprendiz cumple los filtros.</p>
+        ) : (
+          <TablaConsolidado filas={r.consolidado.porFicha} primera="Ficha" />
+        )}
+      </Seccion>
+
+      <Seccion
+        titulo="Consolidado por programa de formación"
+        descripcion="El mismo corte, agrupando todas las fichas de cada programa."
+      >
+        {r.consolidado.porPrograma.length === 0 ? (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Ningún aprendiz cumple los filtros.</p>
+        ) : (
+          <TablaConsolidado filas={r.consolidado.porPrograma} primera="Programa" />
         )}
       </Seccion>
 

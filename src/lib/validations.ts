@@ -1226,3 +1226,10 @@ export const FormatoEPSchema = z.object({
   datos: DatosFormatoEPSchema.optional(),
   momento: z.discriminatedUnion("momento", [FormatoMomento1Schema, FormatoMomento23Schema]),
 });
+
+// Parámetros del centro para el formato GFPI-F-023 (los fija Coordinación una sola vez).
+export const ConfiguracionCentroSchema = z.object({
+  regional: z.string().trim().max(200).nullable().optional(),
+  centroFormacion: z.string().trim().max(200).nullable().optional(),
+  estrategiaFormativa: z.string().trim().max(200).nullable().optional(),
+});

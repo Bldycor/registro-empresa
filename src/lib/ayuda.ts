@@ -155,6 +155,10 @@ const COORDINADOR: GuiaRol = {
           que: "Creas instructores —uno a uno o importando una hoja de cálculo— y ves la carga de cada uno: cuántos aprendices activos tiene y si pasa del tope de 80 que fija la guía.",
         },
         {
+          opcion: "Datos del centro",
+          que: "La regional, el centro de formación y la estrategia formativa que el formato GFPI-F-023 pide en su encabezado. Se escriben una sola vez y entran solos en los tres momentos de todos los aprendices, para que ninguno los teclee mal. Lo que dejes vacío sale en blanco en el formato.",
+        },
+        {
           opcion: "Competencias",
           que: "El catálogo de competencias y resultados de aprendizaje por programa, que el instructor usa al concertar el plan de trabajo del Momento 1.",
         },
@@ -334,6 +338,10 @@ export const ayudaMenu: Record<string, { icono: string; resumen: string }> = {
   "/formulario/coordinador/aplazamientos": {
     icono: "⏳",
     resumen: "Registra la decisión del Comité, con su acta.",
+  },
+  "/formulario/coordinador/configuracion": {
+    icono: "🏛️",
+    resumen: "Regional, centro y estrategia: entran solos en el GFPI-F-023.",
   },
   "/formulario/coordinador/planes": {
     icono: "📝",

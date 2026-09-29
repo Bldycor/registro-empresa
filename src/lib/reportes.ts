@@ -187,6 +187,45 @@ export async function construirReporte(f: FiltrosReporte) {
     causaDesercion: string | null;
   }[] = [];
 
+  // Consolidado por ficha y por programa de formación: las mismas cifras del reporte, cortadas
+  // por grupo, para ver dónde está el problema sin leer aprendiz por aprendiz.
+  type Grupo = {
+    clave: string;
+    etiqueta: string;
+    aprendices: number;
+    conAtrasos: number;
+    porCertificar: number;
+    certificados: number;
+    bitacorasAprobadas: number;
+    bitacorasPrevistas: number;
+    rubricaSatisfactorio: number;
+    rubricaValoradas: number;
+    momento3Aprobados: number;
+    momento3NoAprobados: number;
+    novedades: number;
+    novedadesFueraDePlazo: number;
+    planesAbiertos: number;
+  };
+  const grupoVacio = (clave: string, etiqueta: string): Grupo => ({
+    clave,
+    etiqueta,
+    aprendices: 0,
+    conAtrasos: 0,
+    porCertificar: 0,
+    certificados: 0,
+    bitacorasAprobadas: 0,
+    bitacorasPrevistas: 0,
+    rubricaSatisfactorio: 0,
+    rubricaValoradas: 0,
+    momento3Aprobados: 0,
+    momento3NoAprobados: 0,
+    novedades: 0,
+    novedadesFueraDePlazo: 0,
+    planesAbiertos: 0,
+  });
+  const porFicha = new Map<string, Grupo>();
+  const porPrograma = new Map<string, Grupo>();
+
   const listado = aprendices.map((a) => {
     const nombre = `${a.nombres} ${a.apellidos}`;
     const instructor = a.ficha?.instructor ? `${a.ficha.instructor.nombres} ${a.ficha.instructor.apellidos}` : null;
@@ -290,6 +329,30 @@ export async function construirReporte(f: FiltrosReporte) {
       enRiesgo.push({ id: a.id, nombre, ficha: a.ficha?.codigo ?? null, instructor, atrasadas, causaDesercion: riesgo.causa });
     }
 
+    // Consolidado por ficha y por programa.
+    const atrasosAprendiz = checklist.filter((c) => c.estado === "atrasada").length;
+    const rubricaAprendiz = a.evaluaciones.flatMap((e) => e.variables);
+    for (const [mapa, clave, etiqueta] of [
+      [porFicha, a.ficha?.codigo ?? "sin-ficha", a.ficha?.codigo ?? "Sin ficha asignada"],
+      [porPrograma, a.ficha?.programa ?? "sin-programa", a.ficha?.programa ?? "Sin programa"],
+    ] as [Map<string, Grupo>, string, string][]) {
+      const g = mapa.get(clave) ?? grupoVacio(clave, etiqueta);
+      g.aprendices++;
+      if (atrasosAprendiz > 0) g.conAtrasos++;
+      if (a.estado === "POR_CERTIFICAR") g.porCertificar++;
+      if (a.estado === "CERTIFICADO") g.certificados++;
+      g.bitacorasAprobadas += a.bitacoras.filter((b) => b.estado === "APROBADA").length;
+      g.bitacorasPrevistas += a.totalBitacoras;
+      g.rubricaValoradas += rubricaAprendiz.filter((v) => v.valoracion !== null).length;
+      g.rubricaSatisfactorio += rubricaAprendiz.filter((v) => v.valoracion === "SATISFACTORIO").length;
+      if (m3?.juicioFinal === "APROBADO") g.momento3Aprobados++;
+      if (m3?.juicioFinal === "NO_APROBADO") g.momento3NoAprobados++;
+      g.novedades += novedadesAprendiz.length;
+      g.novedadesFueraDePlazo += novedadesFueraDePlazo;
+      g.planesAbiertos += planesAbiertos;
+      mapa.set(clave, g);
+    }
+
     // Listado.
     return {
       id: a.id,
@@ -350,6 +413,10 @@ export async function construirReporte(f: FiltrosReporte) {
       alertas: { plazo24Meses: conAdvertenciaPlazo, instructoresSobreTope },
     },
     cumplimiento: { porEvidencia: Object.values(matriz), enRiesgo },
+    consolidado: {
+      porFicha: [...porFicha.values()].sort((x, y) => x.etiqueta.localeCompare(y.etiqueta)),
+      porPrograma: [...porPrograma.values()].sort((x, y) => x.etiqueta.localeCompare(y.etiqueta)),
+    },
     listado,
   };
 }

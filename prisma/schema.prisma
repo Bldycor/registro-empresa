@@ -440,6 +440,7 @@ model User {
   planesMejoramientoAutorizados PlanMejoramiento[]          @relation("PlanMejoramientoAutorizadoPor")
   planesMejoramientoCerrados  PlanMejoramiento[]            @relation("PlanMejoramientoCerradoPor")
   datosFormatoEP              DatosFormatoEP?               @relation("AprendizDatosFormato")
+  configuracionesCentro       ConfiguracionCentro[]         @relation("ConfiguracionCentroActualizadaPor")
   avisosPlazo                 AvisoPlazo[]                  @relation("AvisosPlazo")
 }
 
@@ -1131,6 +1132,24 @@ model DatosFormatoEP {
   asistenciaNombre   String?
   asistenciaTipo     String?
   asistenciaContacto String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Parámetros del centro que el formato GFPI-F-023 pide igual para todos los aprendices. Los fija
+// Coordinación una sola vez y entran solos en los tres momentos, para que el aprendiz no los
+// escriba —ni se equivoque— cada vez (decisión de Coordinación, 28 sep 2026).
+//
+// Es una fila única: `id` siempre vale "centro".
+model ConfiguracionCentro {
+  id                  String  @id @default("centro")
+  regional            String?
+  centroFormacion     String?
+  estrategiaFormativa String?
+
+  actualizadoPorId String?
+  actualizadoPor   User?   @relation("ConfiguracionCentroActualizadaPor", fields: [actualizadoPorId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
