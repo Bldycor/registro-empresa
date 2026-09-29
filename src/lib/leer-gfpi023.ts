@@ -111,7 +111,7 @@ const SECUENCIA: [keyof DatosDocumento | null, string[]][] = [
   [null, ["Concertación plan de trabajo", "Concertacion plan de trabajo"]],
   ["competenciasDesarrollar", ["Competencias a desarrollar"]],
   ["resultadosAprendizaje", ["Resultados de aprendizaje"]],
-  ["actividadesDesarrollar", ["Actividades a desarrollar"]],
+  ["actividadesDesarrollar", ["Actividades para desarrollar", "Actividades a desarrollar"]],
   ["evidenciasAprendizaje", ["Evidencias de aprendizaje"]],
   ["observacionesAdicionales", ["Observaciones adicionales"]],
   [null, ["Firma del aprendiz"]],
@@ -289,14 +289,11 @@ function recorrer(
     if (actual.indice === -1) continue;
 
     const inicioValor = actual.indice + actual.etiqueta.length;
-    // El valor termina donde empieza la etiqueta siguiente que sí exista en el documento.
+    // El valor termina en la más cercana de las etiquetas que vienen después.
     let fin = texto.length;
     for (let siguiente = paso + 1; siguiente < secuencia.length; siguiente++) {
       const proxima = posicion(secuencia[siguiente][1], inicioValor);
-      if (proxima.indice !== -1) {
-        fin = proxima.indice;
-        break;
-      }
+      if (proxima.indice !== -1 && proxima.indice < fin) fin = proxima.indice;
     }
 
     if (clave) {

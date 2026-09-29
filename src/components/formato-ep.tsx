@@ -88,6 +88,21 @@ const DETALLE_DEL_DOCUMENTO: Record<string, string> = {
   "Número de visitas realizadas en toda la etapa productiva": "numeroVisitas",
 };
 
+// Lo que el documento trae y no tiene casilla para escribir: son datos institucionales, no del
+// aprendiz. Se muestran igual en el formulario, para que vea todo lo que se tomó del PDF.
+const SOLO_LECTURA: [string, string][] = [
+  ["regional", "Regional"],
+  ["centroFormacion", "Centro de formación"],
+  ["estrategiaFormativa", "Estrategia formativa"],
+  ["modalidadFormacion", "Modalidad de formación"],
+  ["tipoDocumento", "Tipo de documento"],
+  ["registroSofiaPlus", "Fecha de registro en SofiaPlus"],
+  ["enlaceGrabacion", "Enlace de grabación"],
+  ["fechaMomento", "Fecha del momento"],
+  ["modalidadMomento", "Modalidad del momento"],
+  ["numeroVisitas", "Visitas realizadas"],
+];
+
 const inputClass =
   "rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950";
 
@@ -384,30 +399,34 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
         return;
       }
 
-      setDatos((prev) => ({
-        ...prev,
-        correoInstitucional: prev.correoInstitucional.trim() || (leido.correoInstitucional ?? ""),
-        nitEmpresa: prev.nitEmpresa.trim() || (leido.nitEmpresa ?? ""),
-      }));
+      // Se arma el resultado aquí mismo (no desde el estado, que todavía no se actualizó) para
+      // poder guardarlo de una vez.
+      const datosFusionados: Datos = {
+        ...datos,
+        correoInstitucional: datos.correoInstitucional.trim() || (leido.correoInstitucional ?? ""),
+        nitEmpresa: datos.nitEmpresa.trim() || (leido.nitEmpresa ?? ""),
+      };
+      const planFusionado = {
+        ...plan,
+        competenciasDesarrollar: plan.competenciasDesarrollar.trim() || (leido.competenciasDesarrollar ?? ""),
+        resultadosAprendizaje: plan.resultadosAprendizaje.trim() || (leido.resultadosAprendizaje ?? ""),
+        actividadesDesarrollar: plan.actividadesDesarrollar.trim() || (leido.actividadesDesarrollar ?? ""),
+        evidenciasAprendizaje: plan.evidenciasAprendizaje.trim() || (leido.evidenciasAprendizaje ?? ""),
+        observacionesAdicionales: plan.observacionesAdicionales.trim() || (leido.observacionesAdicionales ?? ""),
+        arlNumeroPoliza: plan.arlNumeroPoliza.trim() || (leido.arlNumeroPoliza ?? ""),
+        horario: plan.horario.trim() || (leido.horario ?? ""),
+        arlFechaAfiliacion:
+          plan.arlFechaAfiliacion || (leido.arlFechaAfiliacion ? aFechaCampo(leido.arlFechaAfiliacion) : ""),
+      };
 
-      if (momento === 1) {
-        setPlan((prev) => ({
-          ...prev,
-          competenciasDesarrollar: prev.competenciasDesarrollar.trim() || (leido.competenciasDesarrollar ?? ""),
-          resultadosAprendizaje: prev.resultadosAprendizaje.trim() || (leido.resultadosAprendizaje ?? ""),
-          actividadesDesarrollar: prev.actividadesDesarrollar.trim() || (leido.actividadesDesarrollar ?? ""),
-          evidenciasAprendizaje: prev.evidenciasAprendizaje.trim() || (leido.evidenciasAprendizaje ?? ""),
-          observacionesAdicionales: prev.observacionesAdicionales.trim() || (leido.observacionesAdicionales ?? ""),
-          arlNumeroPoliza: prev.arlNumeroPoliza.trim() || (leido.arlNumeroPoliza ?? ""),
-          horario: prev.horario.trim() || (leido.horario ?? ""),
-          arlFechaAfiliacion:
-            prev.arlFechaAfiliacion || (leido.arlFechaAfiliacion ? aFechaCampo(leido.arlFechaAfiliacion) : ""),
-        }));
-      }
-
+      setDatos(datosFusionados);
+      if (momento === 1) setPlan(planFusionado);
       setDelDocumento(leido);
+
+      // Leer solo diligencia el formulario. Nada queda guardado hasta que el aprendiz revisa y
+      // pulsa «Enviar a mi instructor» (así lo pidió Coordinación, 29 sep 2026).
       setLectura(
-        `Del PDF se tomaron ${d.leidos} ${d.leidos === 1 ? "dato" : "datos"}. Quedan marcados como «leído del PDF»: revísalos y corrige lo que haga falta antes de enviar.`,
+        `Del PDF se tomaron ${d.leidos} ${d.leidos === 1 ? "dato" : "datos"} y quedaron puestos en el formulario. Revísalos, corrige lo que haga falta y pulsa «Enviar a mi instructor» para guardarlos.`,
       );
     } catch {
       setLectura("No se pudo leer el documento. Puedes diligenciar los campos a mano y enviarlo igual.");
@@ -416,25 +435,41 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
     }
   }
 
-  async function enviar() {
-    setEnviando(true);
-    setError(null);
+  // Guarda el formato. Lo usan el guardado automático al adjuntar y el botón de enviar.
+  async function guardar(valores?: { datos: Datos; plan: typeof plan; archivoUrl: string | null }) {
+    const datosAGuardar = valores?.datos ?? datos;
+    const planAGuardar = valores?.plan ?? plan;
+    const archivoAGuardar = valores ? valores.archivoUrl : archivoUrl;
+
     const cuandoSeHizo = formato?.existe
       ? {}
       : { fechaRealizado: realizado.fecha, horaInicio: realizado.horaInicio, horaFin: realizado.horaFin };
     const cuerpo =
       momento === 1
-        ? { momento: 1 as const, ...plan, ...cuandoSeHizo, archivoUrl }
-        : { momento, retroalimentacionAprendiz: retroalimentacion, ...cuandoSeHizo, archivoUrl };
+        ? { momento: 1 as const, ...planAGuardar, ...cuandoSeHizo, archivoUrl: archivoAGuardar }
+        : { momento, retroalimentacionAprendiz: retroalimentacion, ...cuandoSeHizo, archivoUrl: archivoAGuardar };
 
     const res = await fetch("/api/etapa-productiva/formato", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ datos, momento: cuerpo }),
+      body: JSON.stringify({ datos: datosAGuardar, momento: cuerpo }),
     });
     const data = await res.json().catch(() => ({}));
-    setEnviando(false);
     if (!res.ok) {
+      return { ok: false as const, data };
+    }
+    if (data.formato) setFormato(data.formato);
+    return { ok: true as const, data };
+  }
+
+  async function enviar() {
+    setEnviando(true);
+    setError(null);
+
+    const resultado = await guardar();
+    setEnviando(false);
+    if (!resultado.ok) {
+      const data = resultado.data;
       setError(
         typeof data.error === "string"
           ? data.error
@@ -442,7 +477,7 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
       );
       return;
     }
-    setFormato(data.formato);
+    const data = resultado.data;
     setEnviado(true);
     setVista("cerrado");
     if (data.lectura?.sinTexto) {
@@ -677,6 +712,30 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
             <p className="rounded-md bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-950 dark:text-zinc-400">
               {lectura}
             </p>
+          )}
+
+          {SOLO_LECTURA.some(([clave]) => delDocumento[clave]) && (
+            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+              <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                Tomado del documento
+              </p>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                Son datos de tu ficha y de tu proceso, no se escriben aquí. Si alguno está mal,
+                avísale a tu instructor.
+              </p>
+              <dl className="mt-2 grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-x-4 gap-y-2">
+                {SOLO_LECTURA.filter(([clave]) => delDocumento[clave]).map(([clave, etiqueta]) => (
+                  <div key={clave}>
+                    <dt className="text-[11px] uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                      {etiqueta}
+                    </dt>
+                    <dd className="break-words text-sm text-zinc-800 dark:text-zinc-200">
+                      {delDocumento[clave]}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
           )}
 
           {error && <p className="text-sm text-red-600">{error}</p>}
