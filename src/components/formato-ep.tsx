@@ -67,6 +67,27 @@ const CAMPO_DE_DATO: Record<string, keyof Datos> = {
 
 const hoyEnColombia = fechaEnColombia(new Date());
 
+// Qué casilla de la previa llena cada dato leído del PDF, cuando el sistema no lo sabe y el
+// aprendiz no lo escribió.
+const CAMPO_DEL_DOCUMENTO: Record<string, string> = {
+  "Información general::Regional": "regional",
+  "Información general::Centro de formación": "centroFormacion",
+  "Información general::Estrategia formativa": "estrategiaFormativa",
+  "Información general::Modalidad de formación": "modalidadFormacion",
+  "Datos del aprendiz::Tipo de documento": "tipoDocumento",
+  "Datos del aprendiz::Correo electrónico institucional": "correoInstitucional",
+  "Datos del aprendiz::Fecha de registro en SofiaPlus": "registroSofiaPlus",
+  "Ente co-formador::NIT": "nitEmpresa",
+};
+
+const DETALLE_DEL_DOCUMENTO: Record<string, string> = {
+  "Enlace de grabación": "enlaceGrabacion",
+  "Modalidad del seguimiento": "modalidadMomento",
+  "La evaluación se realizó en forma": "modalidadMomento",
+  "Fecha del momento de seguimiento": "fechaMomento",
+  "Número de visitas realizadas en toda la etapa productiva": "numeroVisitas",
+};
+
 const inputClass =
   "rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950";
 
@@ -162,6 +183,10 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [lectura, setLectura] = useState<string | null>(null);
+  // Lo leído del PDF que no se edita en el formulario (modalidad, tipo de documento, SofiaPlus…):
+  // se muestra en la vista previa, marcado, para que el aprendiz lo verifique.
+  const [delDocumento, setDelDocumento] = useState<Record<string, string>>({});
+  const [leyendo, setLeyendo] = useState(false);
 
   // Campos propios del momento.
   const [plan, setPlan] = useState({
@@ -243,10 +268,17 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
     ...b,
     campos: b.campos.map((c) => {
       const clave = CAMPO_DE_DATO[`${b.titulo}::${c.etiqueta}`];
-      if (!clave) return c;
-      const escrito = datos[clave].trim();
-      // Lo que el aprendiz escribe manda sobre lo que se leyó del PDF.
-      return escrito ? { ...c, valor: escrito, delDocumento: false } : c;
+      // Lo que el aprendiz escribe manda sobre todo lo demás.
+      if (clave && datos[clave].trim()) {
+        return { ...c, valor: datos[clave].trim(), delDocumento: false };
+      }
+      // Si sigue vacío y el PDF lo traía, se muestra marcado.
+      if (!c.valor) {
+        const claveDoc = CAMPO_DEL_DOCUMENTO[`${b.titulo}::${c.etiqueta}`];
+        const leido = claveDoc ? delDocumento[claveDoc] : undefined;
+        if (leido) return { ...c, valor: leido, delDocumento: true };
+      }
+      return c;
     }),
   });
 
@@ -270,7 +302,14 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
       : []),
   ];
 
-  const detallePrevia: Campo[] =
+  const conLeido = (c: Campo): Campo => {
+    if (c.valor) return c;
+    const claveDoc = DETALLE_DEL_DOCUMENTO[c.etiqueta];
+    const leido = claveDoc ? delDocumento[claveDoc] : undefined;
+    return leido ? { ...c, valor: leido, delDocumento: true } : c;
+  };
+
+  const detallePrevia: Campo[] = (
     momento === 1
       ? formato.detalle.map((c) => {
           if (c.etiqueta === "Fecha de afiliación a la ARL" && plan.arlFechaAfiliacion) {
@@ -283,7 +322,8 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
           if (c.etiqueta === "Horario") return { ...c, valor: plan.horario.trim() || null };
           return c;
         })
-      : formato.detalle;
+      : formato.detalle
+  ).map(conLeido);
 
   const textosPrevia = formato.textos.map((t) => {
     if (momento === 1) {
@@ -307,6 +347,74 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
     ...encabezadoPrevia.flatMap((b) => b.campos.filter((c) => !c.valor).map((c) => c.etiqueta)),
     ...detallePrevia.filter((c) => !c.valor).map((c) => c.etiqueta),
   ];
+
+  // Del D/M/AAAA del documento al AAAA-MM-DD que usan los campos de fecha.
+  function aFechaCampo(valor: string): string {
+    const m = valor.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if (!m) return "";
+    const [, d, mes, anio] = m;
+    const año = anio.length === 2 ? `20${anio}` : anio;
+    return `${año}-${mes.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+
+  // Se llama apenas el aprendiz adjunta el PDF: lo leído entra en los campos que estén vacíos —lo
+  // que él ya escribió no se toca— y el resto se guarda para mostrarlo en la vista previa.
+  async function leerDelDocumento(url: string) {
+    setLeyendo(true);
+    setLectura(null);
+    try {
+      const res = await fetch("/api/etapa-productiva/formato/leer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archivoUrl: url, momento }),
+      });
+      const d = await res.json();
+      const leido: Record<string, string> = d.datos ?? {};
+
+      if (d.sinTexto) {
+        setLectura(
+          "Ese PDF no tiene texto (parece una foto o un escaneo), así que no se pudo leer nada de él. Diligencia los campos a mano.",
+        );
+        return;
+      }
+      if (!d.leidos) {
+        setLectura(
+          "No se reconoció ningún campo del formato en ese PDF. Diligencia los campos a mano; el documento se envía igual.",
+        );
+        return;
+      }
+
+      setDatos((prev) => ({
+        ...prev,
+        correoInstitucional: prev.correoInstitucional.trim() || (leido.correoInstitucional ?? ""),
+        nitEmpresa: prev.nitEmpresa.trim() || (leido.nitEmpresa ?? ""),
+      }));
+
+      if (momento === 1) {
+        setPlan((prev) => ({
+          ...prev,
+          competenciasDesarrollar: prev.competenciasDesarrollar.trim() || (leido.competenciasDesarrollar ?? ""),
+          resultadosAprendizaje: prev.resultadosAprendizaje.trim() || (leido.resultadosAprendizaje ?? ""),
+          actividadesDesarrollar: prev.actividadesDesarrollar.trim() || (leido.actividadesDesarrollar ?? ""),
+          evidenciasAprendizaje: prev.evidenciasAprendizaje.trim() || (leido.evidenciasAprendizaje ?? ""),
+          observacionesAdicionales: prev.observacionesAdicionales.trim() || (leido.observacionesAdicionales ?? ""),
+          arlNumeroPoliza: prev.arlNumeroPoliza.trim() || (leido.arlNumeroPoliza ?? ""),
+          horario: prev.horario.trim() || (leido.horario ?? ""),
+          arlFechaAfiliacion:
+            prev.arlFechaAfiliacion || (leido.arlFechaAfiliacion ? aFechaCampo(leido.arlFechaAfiliacion) : ""),
+        }));
+      }
+
+      setDelDocumento(leido);
+      setLectura(
+        `Del PDF se tomaron ${d.leidos} ${d.leidos === 1 ? "dato" : "datos"}. Quedan marcados como «leído del PDF»: revísalos y corrige lo que haga falta antes de enviar.`,
+      );
+    } catch {
+      setLectura("No se pudo leer el documento. Puedes diligenciar los campos a mano y enviarlo igual.");
+    } finally {
+      setLeyendo(false);
+    }
+  }
 
   async function enviar() {
     setEnviando(true);
@@ -555,9 +663,21 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
             label="Formato GFPI-F-023 firmado (PDF)"
             pathPrefix={`gfpi023-momento-${momento}`}
             value={archivoUrl}
-            onChange={setArchivoUrl}
+            onChange={(url) => {
+              setArchivoUrl(url);
+              if (url) leerDelDocumento(url);
+            }}
             onUploadingChange={setSubiendo}
           />
+
+          {leyendo && (
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">Leyendo el documento…</p>
+          )}
+          {lectura && !enviado && (
+            <p className="rounded-md bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-950 dark:text-zinc-400">
+              {lectura}
+            </p>
+          )}
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
