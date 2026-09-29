@@ -515,7 +515,7 @@ export function CoordinadorFichasPanel({
         </button>
       </form>
 
-      <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-sena">
+      <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div className="space-y-3 border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
@@ -672,7 +672,7 @@ export function CoordinadorFichasPanel({
                           />
                         </svg>
                         <span>
-                          <p className="font-medium text-zinc-900 dark:text-zinc-50">
+                          <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
                             {ficha.codigo}
                           </p>
                           <p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -682,14 +682,11 @@ export function CoordinadorFichasPanel({
                         </span>
                       </button>
 
-                      <p className="mt-1 pl-6 text-xs text-zinc-500 dark:text-zinc-400">
-                        <strong className="uppercase text-zinc-600 dark:text-zinc-300">
-                          Programa
-                        </strong>
-                        : {ficha.programa || "sin especificar"}
+                      <p className="mt-1 pl-6 text-sm text-zinc-700 dark:text-zinc-300">
+                        {ficha.programa || "Programa sin especificar"}
                       </p>
 
-                      {(resumen.length > 0 || fechas.length > 0) && (
+                      {resumen.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1 pl-6">
                           {resumen.map((valor) => (
                             <span
@@ -699,15 +696,22 @@ export function CoordinadorFichasPanel({
                               {valor}
                             </span>
                           ))}
-                          {fechas.map(([label, valor]) => (
-                            <span
-                              key={label}
-                              className="rounded-full border border-zinc-200 px-2 py-0.5 text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400"
-                            >
-                              {label}: {valor}
-                            </span>
-                          ))}
                         </div>
+                      )}
+
+                      {fechas.length > 0 && (
+                        <dl className="mt-2 grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-x-4 gap-y-2 pl-6">
+                          {fechas.map(([label, valor]) => (
+                            <div key={label}>
+                              <dt className="text-[11px] uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                                {label}
+                              </dt>
+                              <dd className="whitespace-nowrap text-sm tabular-nums text-zinc-800 dark:text-zinc-200">
+                                {valor}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
                       )}
 
                       <div className="ml-6 mt-2 flex gap-3">

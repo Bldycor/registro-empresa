@@ -232,7 +232,7 @@ export function CompetenciasPanel() {
         </button>
       </form>
 
-      <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-sena">
+      <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">

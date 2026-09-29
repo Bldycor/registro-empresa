@@ -182,7 +182,7 @@ export function NovedadesEP({ totalBitacoras }: { totalBitacoras: number }) {
       ) : (
         <form
           onSubmit={registrar}
-          className="flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-sena"
+          className="flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900"
         >
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">

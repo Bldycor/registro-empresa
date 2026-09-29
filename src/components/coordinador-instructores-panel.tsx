@@ -503,7 +503,7 @@ export function CoordinadorInstructoresPanel({
         </button>
       </form>
 
-      <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-sena">
+      <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div className="space-y-3 border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
