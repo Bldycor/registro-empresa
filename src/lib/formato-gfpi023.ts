@@ -82,6 +82,8 @@ export const SELECT_FORMATO = {
     select: {
       empresaPatrocinadora: true,
       direccionEmpresa: true,
+      nitEmpresa: true,
+      empresa: { select: { municipio: true, departamento: true } },
       nombreCoformador: true,
       cargoCoformador: true,
       correoCoformador: true,
@@ -200,8 +202,13 @@ export function encabezadoFormato(
       titulo: "Ente co-formador",
       campos: [
         { etiqueta: "Nombre de la empresa o entidad", valor: limpio(e?.empresaPatrocinadora) },
-        { etiqueta: "Dirección", valor: limpio(e?.direccionEmpresa) },
-        conDocumento("NIT", limpio(d?.nitEmpresa), "nitEmpresa"),
+        {
+          etiqueta: "Dirección",
+          valor: limpio(
+            [e?.direccionEmpresa, e?.empresa?.municipio, e?.empresa?.departamento].filter(Boolean).join(", "),
+          ),
+        },
+        conDocumento("NIT", limpio(e?.nitEmpresa) ?? limpio(d?.nitEmpresa), "nitEmpresa"),
         { etiqueta: "Correo electrónico", valor: limpio(e?.correoCoformador) },
         { etiqueta: "Jefe inmediato / co-formador / tutor", valor: limpio(e?.nombreCoformador) },
         { etiqueta: "Cargo", valor: limpio(e?.cargoCoformador) },

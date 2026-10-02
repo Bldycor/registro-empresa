@@ -442,6 +442,8 @@ model User {
   planesMejoramientoCerrados  PlanMejoramiento[]            @relation("PlanMejoramientoCerradoPor")
   datosFormatoEP              DatosFormatoEP?               @relation("AprendizDatosFormato")
   configuracionesCentro       ConfiguracionCentro[]         @relation("ConfiguracionCentroActualizadaPor")
+  empresasCreadas             Empresa[]                     @relation("EmpresaCreadaPor")
+  empresasActualizadas        Empresa[]                     @relation("EmpresaActualizadaPor")
   avisosPlazo                 AvisoPlazo[]                  @relation("AvisosPlazo")
 }
 
@@ -524,6 +526,17 @@ model CompanyProfile {
 
   empresaPatrocinadora String // Empresa patrocinadora
   direccionEmpresa     String // Dirección de la empresa
+  // NIT de la empresa co-formadora. Lo piden el GFPI-F-023 y la bitácora GFPI-F-147; es opcional
+  // porque hay perfiles creados antes de este campo y porque no todo aprendiz lo tiene a mano.
+  nitEmpresa           String?
+
+  // Empresa del catálogo que administra el ADMIN (decisión de Coordinación, 2 oct 2026). Cuando
+  // está enlazada, nombre, dirección y NIT de arriba son una copia de la empresa: se mantienen
+  // sincronizados para que todo lo que ya los leía (reportes, formato, citaciones) siga igual.
+  empresaId String?
+  empresa   Empresa? @relation(fields: [empresaId], references: [id], onDelete: SetNull)
+
+  @@index([empresaId])
 
   nombreCoformador     String // Nombre del coformador
   cargoCoformador      String // Cargo del coformador
@@ -1157,6 +1170,32 @@ model ConfiguracionCentro {
 
   actualizadoPorId String?
   actualizadoPor   User?   @relation("ConfiguracionCentroActualizadaPor", fields: [actualizadoPorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Catálogo de empresas co-formadoras. Una empresa = un NIT: varios aprendices pueden hacer la
+// práctica en la misma empresa y todos quedan enlazados al mismo registro. Solo el administrador
+// la crea y edita; el aprendiz la elige por su NIT y no puede cambiar sus datos (decisión de
+// Coordinación, 2 oct 2026). El NIT se guarda normalizado —«811045607-6»— con el dígito de
+// verificación comprobado (src/lib/nit.ts).
+model Empresa {
+  id        String @id @default(cuid())
+  nit       String @unique
+  nombre    String
+  direccion String
+  // Departamento con su nombre oficial (lista cerrada en src/lib/colombia.ts) y municipio como
+  // texto. Opcionales en la base solo por las migraciones aditivas; la aplicación los exige.
+  departamento String?
+  municipio    String?
+
+  creadoPorId      String?
+  creadoPor        User?   @relation("EmpresaCreadaPor", fields: [creadoPorId], references: [id], onDelete: SetNull)
+  actualizadoPorId String?
+  actualizadoPor   User?   @relation("EmpresaActualizadaPor", fields: [actualizadoPorId], references: [id], onDelete: SetNull)
+
+  perfiles CompanyProfile[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

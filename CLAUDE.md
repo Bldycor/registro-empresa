@@ -21,7 +21,7 @@ Fuentes de verdad funcional:
   - Correo con `nodemailer` (`src/lib/mailer.ts`) e invitaciones `.ics` con la librería `ics`.
   - Archivos adjuntos en **Vercel Blob** (`src/app/api/upload`, `src/components/file-upload-field.tsx`).
   - Excel con `write-excel-file`, solo en el servidor (`src/app/api/reportes/excel`). Los PDF (expediente, reportes) salen de la impresión del navegador, sin librería.
-- **Lint:** ESLint (`npm run lint`). Hay un warning preexistente en `concertacion-form.tsx`; se tolera.
+- **Lint:** ESLint (`npm run lint`), sin errores. Quedan dos avisos tolerados del React Compiler por usar `watch()` de react-hook-form (`concertacion-form.tsx` y `company-profile-form.tsx`).
 
 ## Entorno — leer antes de probar cualquier cosa
 
@@ -77,7 +77,8 @@ docs/                             # requisitos y plan
 
 - **`User`** — todos los roles (`Role`: `APRENDIZ`, `INSTRUCTOR`, `COORDINADOR`, `ADMIN`). En el aprendiz: ficha, estado, fechas de EP propias (`fechaInicio/FinEtapaProductiva`, se sincronizan al avalar la alternativa), `totalBitacoras` (6 o 12), `diasEjecutadosPrevios` y `bitacoraInicioTramo` (retoma tras interrumpir), requisitos de aval y constancia de deserción.
 - **`Ficha`** — como máximo un instructor. De ahí sale quién evalúa a cada aprendiz.
-- **`CompanyProfile`** — empresa y coformador. El coformador **no tiene cuenta**: su firma consta en los documentos adjuntos.
+- **`Empresa`** — catálogo de empresas co-formadoras: **una empresa = un NIT** (`nit` único, normalizado «811045607-6»), con nombre, dirección, departamento y municipio. Solo la crea y edita el **ADMIN**.
+- **`CompanyProfile`** — la empresa de cada aprendiz (enlazada al catálogo con `empresaId`) y su coformador. Nombre, dirección y NIT son una **copia** de la empresa del catálogo, sincronizada cada vez que el administrador la edita (`sincronizarPerfiles`), para que todo lo que ya los leía siga igual. El coformador **no tiene cuenta**: su firma consta en los documentos adjuntos, y sus datos los sigue escribiendo cada aprendiz (en una misma empresa puede tener un jefe distinto).
 - **Las seis evidencias**, todas con `EstadoEvidencia` (`PENDIENTE` / `APROBADA` / `RECHAZADA`) y `avaladoPor` + `fechaAval`:
   `SeleccionAlternativaEP` (GFPI-F-165, la avala Coordinación) · `FormalizacionEtapaProductiva` · `ConcertacionFuncion` (Momento 1, con valoración `ConcertacionVariable`) · `Bitacora` (+ `BitacoraActividad`, GFPI-F-147) · `Evaluacion` (Momentos 2 y 3, rúbrica `EvaluacionVariable`, GFPI-F-023) · `CertificacionEmpresario`.
 - **Novedades:** `InterrupcionEtapaProductiva` (se cambia de alternativa) y `AplazamientoEtapaProductiva` (se vuelve con la misma).
@@ -134,6 +135,15 @@ docs/                             # requisitos y plan
 - Enviar **no dispara correos**: el formato y su adjunto quedan como evidencia del momento para que el instructor los revise (decisión de Coordinación, 28 sep 2026). Una vez avalado el momento, el formato ya no se reescribe.
 
 **Bitácora GFPI-F-147 leída del adjunto** (`src/lib/leer-gfpi147.ts`, `POST /api/etapa-productiva/bitacoras/leer`): al adjuntar la bitácora firmada, SEPA la lee y diligencia lo que esté vacío —número, período a reportar, correo institucional, modalidad de ejecución, la afiliación a la ARL con su nivel, y la tabla de actividades—. No guarda nada: eso pasa al enviar. **Ojo con el formato:** la bitácora es una hoja de cálculo, y al exportarla a PDF las etiquetas salen en bloque y los valores después, así que no se puede recorrer «etiqueta → valor» como en el GFPI-F-023; se acota cada sección y se reconoce el dato por su forma. Lo que venga partido en el archivo (se han visto fechas como «26/72026») se deja vacío en vez de guardarse a medias. Las utilidades comunes a los dos lectores están en `src/lib/leer-pdf.ts`.
+
+**Empresas co-formadoras** (decisiones de Coordinación, 2 oct 2026; `src/lib/empresas.ts`, `src/lib/nit.ts`, `src/lib/rues.ts`, `src/lib/colombia.ts`, `/formulario/admin/empresas`):
+- **Catálogo único, solo del administrador.** Una empresa = un NIT; varios aprendices pueden estar en la misma. El aprendiz elige la suya **por NIT** en «Mi perfil» y ve nombre, dirección y ubicación del catálogo, sin poder cambiarlos. **Si el NIT no está registrado, no puede guardar su perfil de empresa** hasta que el administrador la registre (los perfiles ya guardados siguen funcionando; el bloqueo es al guardar).
+- **NIT con dígito de verificación comprobado** (algoritmo de la DIAN): se acepta «811045607-6», «811.045.607-6» o «8110456076», y se guarda siempre «811045607-6». Si falta el DV, el mensaje muestra cómo quedaría completo.
+- **RUES** (Registro Único Empresarial y Social, Confecámaras, en Datos Abiertos: conjunto `c82u-588k`): al registrar, el NIT se consulta para tomar la **razón social oficial** y ver el estado de la matrícula. Se piden solo campos de la empresa (`$select`): el registro trae también al representante legal, y esos datos personales **nunca se consultan ni se guardan**. El RUES **no bloquea**: si no responde o el NIT no figura (entidades públicas como EPM no están), se avisa y se registra a mano.
+- **Departamento y municipio solo desde listas desplegables**, con la división oficial del DANE: los 33 departamentos y 1.122 municipios con su código DIVIPOLA (`src/lib/colombia-municipios.ts`, **generado** desde el conjunto `pqwj-3fi4` de datos.gov.co —no se edita a mano—). El municipio debe ser del departamento elegido.
+- **Importación desde hoja de cálculo**: el administrador pega las filas NIT · NOMBRE · DIRECCIÓN · DEPARTAMENTO · MUNICIPIO (encabezado opcional; separadas por tabulador, punto y coma o coma). Primero se **revisan** todas —misma validación que el alta, más el RUES en una sola consulta— y se ve fila por fila qué pasaría (nueva, ya estaba, repetida, con error, y avisos del RUES); después se confirma y solo se crean las nuevas y válidas.
+- **Enlazar lo que había**: los perfiles escritos a mano antes del catálogo aparecen agrupados por nombre (sin mayúsculas ni tildes); el administrador registra la empresa y los enlaza todos de una vez, sin pedirle el NIT a cada aprendiz.
+- **El NIT va en los informes** de instructor, Coordinación y Admin (listado de Reportes, en pantalla y Excel) y en el expediente que ven ellos; **no** en la vista del propio aprendiz.
 
 **Plantillas oficiales:** GFPI-F-147 (bitácora, Excel) y GFPI-F-023 (planeación, seguimiento y evaluación, Word) están en `public/documentos` y se enlazan en Bitácoras y Evaluaciones, del aprendiz y del instructor (`src/components/plantilla-enlace.tsx`). Si SENA publica una versión nueva, se reemplaza el archivo y se actualiza el nombre ahí.
 

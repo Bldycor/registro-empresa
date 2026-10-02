@@ -353,6 +353,7 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
               "Documento",
               "Ficha",
               "Empresa",
+              "NIT",
               "Instructor",
               "Estado",
               "Inicio EP",
@@ -377,6 +378,7 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
                 <td className={td}>{a.documento}</td>
                 <td className={td}>{a.ficha ?? "—"}</td>
                 <td className={td}>{a.empresa ?? "—"}</td>
+                <td className={`${td} whitespace-nowrap tabular-nums`}>{a.nit ?? "—"}</td>
                 <td className={td}>{a.instructor ?? "—"}</td>
                 <td className={td}>{a.estado}</td>
                 <td className={td}>{dia(a.inicioEP)}</td>

@@ -101,6 +101,7 @@ const roleNav: Record<string, Grupo[]> = {
       icono: "🗃️",
       items: [
         { href: "/formulario/admin/coordinadores", label: "Coordinadores" },
+        { href: "/formulario/admin/empresas", label: "Empresas" },
         { href: "/formulario/coordinador/fichas", label: "Fichas" },
         { href: "/formulario/coordinador/instructores", label: "Instructores" },
         { href: "/formulario/coordinador/competencias", label: "Competencias" },

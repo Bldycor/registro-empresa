@@ -126,7 +126,7 @@ export async function construirReporte(f: FiltrosReporte) {
             instructor: { select: { nombres: true, apellidos: true } },
           },
         },
-        companyProfile: { select: { empresaPatrocinadora: true } },
+        companyProfile: { select: { empresaPatrocinadora: true, nitEmpresa: true } },
         seleccionesAlternativa: { select: { estado: true }, orderBy: { createdAt: "desc" }, take: 1 },
         formalizacionEtapaProductiva: { select: { estado: true } },
         concertacionFuncion: { select: { estado: true, fecha: true } },
@@ -361,6 +361,8 @@ export async function construirReporte(f: FiltrosReporte) {
       ficha: a.ficha?.codigo ?? null,
       programa: a.ficha?.programa ?? null,
       empresa: a.companyProfile?.empresaPatrocinadora ?? null,
+      // NIT de la empresa co-formadora (lo registra el aprendiz en «Mi perfil»).
+      nit: a.companyProfile?.nitEmpresa ?? null,
       instructor,
       estado: estadoAprendizLabel[a.estado],
       inicioEP: a.fechaInicioEtapaProductiva,

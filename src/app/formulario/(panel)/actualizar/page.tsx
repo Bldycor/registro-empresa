@@ -52,6 +52,7 @@ export default async function ActualizarPage() {
         defaultValues={{
           empresaPatrocinadora: profile.empresaPatrocinadora,
           direccionEmpresa: profile.direccionEmpresa,
+          nitEmpresa: profile.nitEmpresa ?? "",
           nombreCoformador: profile.nombreCoformador,
           cargoCoformador: profile.cargoCoformador,
           correoCoformador: profile.correoCoformador,

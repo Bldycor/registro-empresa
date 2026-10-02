@@ -657,8 +657,12 @@ export const CreateCoordinadorSchema = CreateInstructorSchema;
 export type CreateCoordinadorInput = CreateInstructorInput;
 
 export const ProfileSchema = z.object({
-  empresaPatrocinadora: z.string().trim().min(2, "Ingresa el nombre de la empresa patrocinadora."),
-  direccionEmpresa: z.string().trim().min(5, "Ingresa la dirección de la empresa."),
+  // La empresa se elige por NIT del catálogo que administra el ADMIN (decisión de Coordinación,
+  // 2 oct 2026): nombre y dirección salen de ahí, el aprendiz no los escribe. El NIT se valida con
+  // su dígito de verificación en el servidor (src/lib/nit.ts).
+  nitEmpresa: z.string().trim().min(1, "Escribe el NIT de la empresa."),
+  empresaPatrocinadora: z.string().trim().optional(),
+  direccionEmpresa: z.string().trim().optional(),
   nombreCoformador: z.string().trim().min(2, "Ingresa el nombre del coformador."),
   cargoCoformador: z.string().trim().min(2, "Ingresa el cargo del coformador."),
   correoCoformador: z.string().trim().email("Ingresa un correo válido del coformador."),
@@ -1235,4 +1239,22 @@ export const ConfiguracionCentroSchema = z.object({
   regional: z.string().trim().max(200).nullable().optional(),
   centroFormacion: z.string().trim().max(200).nullable().optional(),
   estrategiaFormativa: z.string().trim().max(200).nullable().optional(),
+});
+
+// --- Catálogo de empresas (solo el administrador; decisión de Coordinación, 2 oct 2026) ---
+// El NIT se valida aparte con su dígito de verificación (src/lib/nit.ts).
+export const EmpresaSchema = z.object({
+  nit: z.string().trim().min(1, "Escribe el NIT de la empresa."),
+  nombre: z.string().trim().min(2, "Escribe el nombre de la empresa.").max(200),
+  direccion: z.string().trim().min(5, "Escribe la dirección de la empresa.").max(300),
+  // Se valida contra la lista oficial en el servidor (departamentoOficial, src/lib/colombia.ts).
+  departamento: z.string().trim().min(1, "Elige el departamento."),
+  municipio: z.string().trim().min(2, "Escribe el municipio.").max(120),
+});
+
+// Enlazar a una empresa del catálogo los perfiles que los aprendices escribieron a mano con un
+// nombre dado (para registrar las empresas que ya existían antes del catálogo).
+export const EnlazarEmpresaSchema = z.object({
+  empresaId: z.string().min(1),
+  nombreEscrito: z.string().trim().min(1),
 });

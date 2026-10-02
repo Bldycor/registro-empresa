@@ -54,7 +54,7 @@ const APRENDIZ: GuiaRol = {
         },
         {
           opcion: "Mi perfil",
-          que: "Actualizas tus datos personales y los de la empresa donde haces la práctica, incluido el contacto de tu coformador.",
+          que: "Actualizas tus datos personales, eliges tu empresa por su NIT —el nombre y la dirección salen del registro oficial de SEPA— y registras el contacto de tu coformador. Si tu empresa todavía no está registrada, pídele al administrador que la registre.",
         },
       ],
     },
@@ -215,7 +215,12 @@ const COORDINADOR: GuiaRol = {
 // El administrador ve lo mismo que Coordinación, más la gestión de cuentas de coordinación.
 const OPCION_COORDINADORES: OpcionAyuda = {
   opcion: "Coordinadores",
-  que: "Creas y administras las cuentas de coordinación. Es la única opción exclusiva del administrador; el resto del menú es igual al de Coordinación.",
+  que: "Creas y administras las cuentas de coordinación. Junto con «Empresas», son las opciones exclusivas del administrador; el resto del menú es igual al de Coordinación.",
+};
+
+const OPCION_EMPRESAS: OpcionAyuda = {
+  opcion: "Empresas",
+  que: "El registro oficial de las empresas donde los aprendices hacen la práctica. Solo tú lo creas y lo corriges. Cada empresa se identifica por su NIT —con el dígito de verificación comprobado—, toma la razón social del RUES de las Cámaras de Comercio, y su departamento y municipio se eligen de la lista oficial del DANE. Puedes registrarlas una por una o importarlas en bloque desde una hoja de cálculo, revisando antes fila por fila, y enlazar las que los aprendices habían escrito a mano. El aprendiz elige su empresa por el NIT; si no está registrada, no puede completar su perfil hasta que la registres.",
 };
 
 export function guiaDelRol(role: string): GuiaRol {
@@ -227,7 +232,7 @@ export function guiaDelRol(role: string): GuiaRol {
       rol: "Administrador",
       resumen: `${COORDINADOR.resumen} Además administras las cuentas de coordinación.`,
       secciones: COORDINADOR.secciones.map((s) =>
-        s.titulo === "Estructura" ? { ...s, opciones: [OPCION_COORDINADORES, ...s.opciones] } : s,
+        s.titulo === "Estructura" ? { ...s, opciones: [OPCION_COORDINADORES, OPCION_EMPRESAS, ...s.opciones] } : s,
       ),
     };
   }
@@ -338,6 +343,10 @@ export const ayudaMenu: Record<string, { icono: string; resumen: string }> = {
   "/formulario/coordinador/aplazamientos": {
     icono: "⏳",
     resumen: "Registra la decisión del Comité, con su acta.",
+  },
+  "/formulario/admin/empresas": {
+    icono: "🏢",
+    resumen: "Registra, importa y corrige las empresas por NIT, con el RUES.",
   },
   "/formulario/coordinador/configuracion": {
     icono: "🏛️",

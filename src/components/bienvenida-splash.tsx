@@ -16,11 +16,22 @@ export function BienvenidaSplash({ nombre, mensaje }: { nombre: string; mensaje:
     let yaVisto = false;
     try {
       yaVisto = sessionStorage.getItem(CLAVE) === "1";
-      sessionStorage.setItem(CLAVE, "1");
     } catch {
       // Sin almacenamiento disponible: se muestra igual.
     }
-    if (!yaVisto) setVisible(true);
+    // Se muestra en el siguiente ciclo, no dentro del propio efecto: así React no encadena dos
+    // renderizados seguidos al montar (regla react-hooks/set-state-in-effect). La marca de «ya
+    // visto» se pone recién al mostrarlo: en desarrollo React monta el efecto dos veces, y si se
+    // marcara antes, la primera vuelta —que se cancela— dejaría el saludo sin salir nunca.
+    const mostrar = setTimeout(() => {
+      if (yaVisto) return;
+      setVisible(true);
+      try {
+        sessionStorage.setItem(CLAVE, "1");
+      } catch {
+        // Si no se puede guardar, en el peor caso se vuelve a ver.
+      }
+    }, 0);
     // El cierre se programa siempre, incluso si la marca ya estaba puesta: en desarrollo React
     // monta el efecto dos veces y, si en la segunda no se programara, el saludo se quedaría
     // abierto sin temporizador.
@@ -30,6 +41,7 @@ export function BienvenidaSplash({ nombre, mensaje }: { nombre: string; mensaje:
     };
     window.addEventListener("keydown", escape);
     return () => {
+      clearTimeout(mostrar);
       clearTimeout(cierre);
       window.removeEventListener("keydown", escape);
     };

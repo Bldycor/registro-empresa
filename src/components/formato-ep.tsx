@@ -546,7 +546,8 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
               Datos que el formato pide y el sistema no tiene
             </summary>
             <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-              Los escribes una sola vez y sirven para los tres momentos. Lo que no sepas, déjalo
+              Los escribes una sola vez y sirven para los tres momentos. El NIT se toma de los datos
+              de tu empresa, en «Mi perfil». Lo que no sepas, déjalo
               vacío: el formato saldrá con ese campo en blanco. La regional, el centro de formación
               y la estrategia formativa no se escriben acá: los configura la coordinación y entran
               solos en los tres momentos.
@@ -555,7 +556,6 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
               {(
                 [
                   ["correoInstitucional", "Correo electrónico institucional"],
-                  ["nitEmpresa", "NIT de la empresa"],
                   ["asistenciaNombre", "Discapacidad: nombre de quien te asiste"],
                   ["asistenciaTipo", "Discapacidad: tipo de asistencia"],
                   ["asistenciaContacto", "Discapacidad: contacto telefónico"],

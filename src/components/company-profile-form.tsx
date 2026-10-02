@@ -22,11 +22,52 @@ export function CompanyProfileForm({
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<ProfileInput>({
     resolver: zodResolver(ProfileSchema),
     defaultValues,
   });
+
+  // La empresa se elige por NIT del catálogo que administra el ADMIN: nombre y dirección salen de
+  // ahí. Si el NIT no está registrado, no se puede guardar hasta que lo registren (decisión de
+  // Coordinación, 2 oct 2026).
+  type Busqueda =
+    | { estado: "vacio" }
+    | { estado: "buscando" }
+    | { estado: "invalido"; error: string }
+    | { estado: "no-registrada"; nit: string }
+    | {
+        estado: "encontrada";
+        nit: string;
+        nombre: string;
+        direccion: string;
+        departamento: string | null;
+        municipio: string | null;
+      };
+  const [busqueda, setBusqueda] = useState<Busqueda>({ estado: "vacio" });
+  const nitEscrito = watch("nitEmpresa") ?? "";
+
+  useEffect(() => {
+    const nit = nitEscrito.trim();
+    if (!nit) {
+      setBusqueda({ estado: "vacio" });
+      return;
+    }
+    setBusqueda({ estado: "buscando" });
+    // Se espera a que deje de escribir para no consultar letra por letra.
+    const espera = setTimeout(() => {
+      fetch(`/api/empresas/buscar?nit=${encodeURIComponent(nit)}`)
+        .then((res) => res.json())
+        .then((d) => {
+          if (!d.valido) setBusqueda({ estado: "invalido", error: d.error });
+          else if (!d.empresa) setBusqueda({ estado: "no-registrada", nit: d.nit });
+          else setBusqueda({ estado: "encontrada", ...d.empresa });
+        })
+        .catch(() => setBusqueda({ estado: "invalido", error: "No se pudo consultar el NIT. Inténtalo de nuevo." }));
+    }, 500);
+    return () => clearTimeout(espera);
+  }, [nitEscrito]);
 
   useEffect(() => {
     if (defaultValues) reset(defaultValues);
@@ -145,19 +186,57 @@ export function CompanyProfileForm({
               Empresa patrocinadora
             </legend>
 
-            <Field
-              label="Empresa patrocinadora"
-              error={errors.empresaPatrocinadora?.message}
-            >
-              <input {...register("empresaPatrocinadora")} className={inputClass} />
+            <Field label="NIT de la empresa" error={errors.nitEmpresa?.message}>
+              <input
+                {...register("nitEmpresa")}
+                className={inputClass}
+                placeholder="Ejemplo: 811045607-6"
+                inputMode="numeric"
+                autoComplete="off"
+              />
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                Con el dígito de verificación al final. El nombre y la dirección de la empresa se
+                toman del registro oficial de SEPA.
+              </p>
             </Field>
 
-            <Field
-              label="Dirección de la empresa"
-              error={errors.direccionEmpresa?.message}
-            >
-              <input {...register("direccionEmpresa")} className={inputClass} />
-            </Field>
+            {busqueda.estado === "buscando" && (
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Buscando la empresa…</p>
+            )}
+            {busqueda.estado === "invalido" && (
+              <p className="text-sm text-red-600">{busqueda.error}</p>
+            )}
+            {busqueda.estado === "no-registrada" && (
+              <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
+                La empresa con NIT <strong>{busqueda.nit}</strong> todavía no está registrada en
+                SEPA. Pídele al administrador que la registre; cuando lo haga, podrás guardar.
+              </p>
+            )}
+            {busqueda.estado === "encontrada" && (
+              <dl className="grid grid-cols-1 gap-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-800 sm:grid-cols-2">
+                <div>
+                  <dt className="text-[11px] uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                    Empresa
+                  </dt>
+                  <dd className="text-sm text-zinc-800 dark:text-zinc-200">{busqueda.nombre}</dd>
+                </div>
+                <div>
+                  <dt className="text-[11px] uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+                    Dirección
+                  </dt>
+                  <dd className="text-sm text-zinc-800 dark:text-zinc-200">
+                    {busqueda.direccion}
+                    {busqueda.municipio ? `, ${busqueda.municipio} (${busqueda.departamento})` : ""}
+                  </dd>
+                </div>
+              </dl>
+            )}
+            {busqueda.estado === "vacio" && defaultValues?.empresaPatrocinadora && (
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Empresa que tenías registrada: <strong>{defaultValues.empresaPatrocinadora}</strong>.
+                Escribe su NIT para enlazarla al registro oficial.
+              </p>
+            )}
           </fieldset>
 
           <fieldset className="flex flex-col gap-4">
@@ -194,7 +273,7 @@ export function CompanyProfileForm({
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || busqueda.estado !== "encontrada"}
             className="mt-2 rounded-md bg-sena px-4 py-2 text-sm font-medium text-white hover:bg-sena-oscuro disabled:opacity-50 dark:bg-sena dark:text-white dark:hover:bg-sena-oscuro"
           >
             {isSubmitting

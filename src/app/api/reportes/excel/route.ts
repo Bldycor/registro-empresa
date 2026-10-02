@@ -99,6 +99,7 @@ export async function GET(request: Request) {
       "Ficha",
       "Programa",
       "Empresa",
+      "NIT",
       "Instructor",
       "Estado",
       "Inicio EP",
@@ -123,6 +124,7 @@ export async function GET(request: Request) {
       texto(a.ficha),
       texto(a.programa),
       texto(a.empresa),
+      texto(a.nit),
       texto(a.instructor),
       texto(a.estado),
       fecha(a.inicioEP),
@@ -200,7 +202,7 @@ export async function GET(request: Request) {
     {
       data: aprendices,
       sheet: "Aprendices",
-      columns: ancho(32, 16, 14, 30, 28, 28, 20, 12, 12, 12, 12, 12, 16, 16, 20, 16, 18, 40, 14, 24, 24, 16),
+      columns: ancho(32, 16, 14, 30, 28, 16, 28, 20, 12, 12, 12, 12, 12, 16, 16, 20, 16, 18, 40, 14, 24, 24, 16),
     },
   ]).toBuffer();
 

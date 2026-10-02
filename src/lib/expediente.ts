@@ -45,6 +45,7 @@ export async function cargarExpediente(userId: string) {
         select: {
           empresaPatrocinadora: true,
           direccionEmpresa: true,
+          nitEmpresa: true,
           nombreCoformador: true,
           cargoCoformador: true,
           correoCoformador: true,
