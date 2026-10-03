@@ -160,7 +160,7 @@ const COORDINADOR: GuiaRol = {
         },
         {
           opcion: "Competencias",
-          que: "El catálogo de competencias y resultados de aprendizaje por programa, que el instructor usa al concertar el plan de trabajo del Momento 1. Es la única fuente: aprendices e instructores solo eligen de esta lista, nadie escribe competencias a mano, así que cada programa necesita su catálogo cargado.",
+          que: "El catálogo de competencias y resultados de aprendizaje por programa, que el instructor usa al concertar el plan de trabajo del Momento 1. Es la única fuente: aprendices e instructores solo eligen de esta lista, nadie escribe competencias a mano, así que cada programa necesita su catálogo cargado. No admite duplicados: un resultado o una competencia que ya está en el programa, aunque venga con otra numeración, se rechaza al cargarlo.",
         },
       ],
     },

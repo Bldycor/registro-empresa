@@ -54,6 +54,7 @@ export function CompetenciasPanel() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState(formVacio);
   const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -130,6 +131,7 @@ export function CompetenciasPanel() {
 
   function startEdit(c: Competencia) {
     setEditingId(c.id);
+    setEditError(null);
     setEditForm({
       tipo: c.tipo,
       codigoCompetencia: c.codigoCompetencia,
@@ -159,7 +161,11 @@ export function CompetenciasPanel() {
     });
 
     setEditLoading(false);
-    if (!res.ok) return;
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setEditError(typeof data.error === "string" ? data.error : "No se pudo guardar el cambio.");
+      return;
+    }
 
     setEditingId(null);
     load(programaFiltro);
@@ -188,8 +194,10 @@ export function CompetenciasPanel() {
           aprendizaje</strong>, <strong>Horas de competencia</strong> y <strong>Red de
           conocimiento</strong> (incluir el encabezado ayuda, pero no es obligatorio), copia y pega
           aquí. El <strong>programa</strong> debe coincidir con el catálogo oficial (no distingue
-          tildes/mayúsculas). Reimportar el mismo consolidado actualiza las filas existentes en vez
-          de duplicarlas.
+          tildes/mayúsculas). Reimportar el mismo consolidado actualiza las filas existentes. <strong>No se admiten
+          duplicados:</strong> un resultado de aprendizaje que ya está en el programa —aunque venga con
+          otra numeración, como «1.», «RA1» o «RAP 1.»— o una competencia repetida con otro código se
+          rechaza y aparece en la lista de errores con su línea.
         </p>
         <textarea
           value={importText}
@@ -415,6 +423,7 @@ export function CompetenciasPanel() {
                             className={inputClass}
                           />
                         </div>
+                        {editError && <p className="text-sm text-red-600">{editError}</p>}
                         <div className="flex gap-2">
                           <button
                             type="button"

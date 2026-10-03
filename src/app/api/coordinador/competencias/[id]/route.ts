@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { CompetenciaFormacionSchema } from "@/lib/validations";
+import { duplicadoEn } from "@/lib/competencias-duplicados";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { user, response } = await requireApiUser(["COORDINADOR", "ADMIN"]);
@@ -15,6 +16,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
   const d = parsed.data;
+
+  // No se admiten duplicados en el catálogo del programa (3 oct 2026).
+  const duplicado = duplicadoEn(
+    { ...d, id },
+    await prisma.competenciaFormacion.findMany({ where: { programa: d.programa } }),
+  );
+  if (duplicado) {
+    return NextResponse.json({ error: `${duplicado} No se admiten duplicados.` }, { status: 409 });
+  }
 
   try {
     const competencia = await prisma.competenciaFormacion.update({

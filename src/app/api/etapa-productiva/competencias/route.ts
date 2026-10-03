@@ -5,7 +5,7 @@ import { requireApiUser } from "@/lib/auth-guards";
 // Competencias/resultados de aprendizaje del programa de formación del aprendiz autenticado —
 // alimenta el selector de "Competencias / resultados de aprendizaje" en las actividades de
 // Bitácora. Si el programa de su ficha todavía no tiene catálogo importado, devuelve una lista
-// vacía (el formulario cae de vuelta a texto libre en ese caso).
+// vacía y el formulario muestra un aviso: nunca se escribe a mano (decisión de Coordinación, 2 oct 2026).
 export async function GET() {
   const { user, response } = await requireApiUser(["APRENDIZ"]);
   if (!user) return response;
