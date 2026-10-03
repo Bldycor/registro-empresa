@@ -33,7 +33,7 @@ const APRENDIZ: GuiaRol = {
         },
         {
           opcion: "Evaluaciones",
-          que: "Agendas los tres Momentos con tu instructor: concertación (Momento 1), seguimiento (Momento 2) y cierre (Momento 3). En cada uno diligencias el formato GFPI-F-023 —llega con tus datos, los de tu ficha, tu instructor y tu empresa ya puestos; tú completas lo que falta—, lo revisas en la vista previa y lo envías junto con el formato firmado en PDF. En el Momento 1 propones el plan de trabajo (competencias, resultados, actividades y evidencias) y tu instructor lo ajusta contigo. Si surge un problema, desde aquí pides una reunión extraordinaria, a nombre tuyo o de tu coformador. Si en algún Momento quedan resultados de aprendizaje sin superar, en esta misma pantalla aparece tu plan de mejoramiento: qué debes presentar y hasta cuándo.",
+          que: "Agendas los tres Momentos con tu instructor: concertación (Momento 1), seguimiento (Momento 2) y cierre (Momento 3). En cada uno diligencias el formato GFPI-F-023 —llega con tus datos, los de tu ficha, tu instructor y tu empresa ya puestos; tú completas lo que falta—, lo revisas en la vista previa y lo envías junto con el formato firmado en PDF. En el Momento 1 propones el plan de trabajo (competencias y resultados, que eliges de la lista de tu programa; actividades y evidencias) y tu instructor lo ajusta contigo. Si surge un problema, desde aquí pides una reunión extraordinaria, a nombre tuyo o de tu coformador. Si en algún Momento quedan resultados de aprendizaje sin superar, en esta misma pantalla aparece tu plan de mejoramiento: qué debes presentar y hasta cuándo.",
         },
         {
           opcion: "Certificación",
@@ -160,7 +160,7 @@ const COORDINADOR: GuiaRol = {
         },
         {
           opcion: "Competencias",
-          que: "El catálogo de competencias y resultados de aprendizaje por programa, que el instructor usa al concertar el plan de trabajo del Momento 1.",
+          que: "El catálogo de competencias y resultados de aprendizaje por programa, que el instructor usa al concertar el plan de trabajo del Momento 1. Es la única fuente: aprendices e instructores solo eligen de esta lista, nadie escribe competencias a mano, así que cada programa necesita su catálogo cargado.",
         },
       ],
     },
