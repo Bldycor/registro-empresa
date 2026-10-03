@@ -3,6 +3,14 @@
 import { useEffect, useState } from "react";
 import { DatePickerField } from "@/components/date-picker-field";
 import { FileUploadField } from "@/components/file-upload-field";
+import {
+  agruparCompetencias,
+  filasDesdeDocumento,
+  filasDesdeTexto,
+  textoDesdeFilas,
+  type CompetenciaCatalogo,
+  type FilaPlan,
+} from "@/lib/competencia-catalogo";
 import { fechaEnColombia } from "@/lib/plazos-institucionales";
 
 // Formato GFPI-F-023 del aprendiz, momento por momento (requisito del 28 sep 2026).
@@ -201,6 +209,11 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
   // Lo leído del PDF que no se edita en el formulario (modalidad, tipo de documento, SofiaPlus…):
   // se muestra en la vista previa, marcado, para que el aprendiz lo verifique.
   const [delDocumento, setDelDocumento] = useState<Record<string, string>>({});
+  // Catálogo de competencias y resultados del programa de la ficha (solo Momento 1). `null`
+  // mientras carga; vacío si el programa todavía no tiene catálogo, y ahí se escribe a mano.
+  const [catalogo, setCatalogo] = useState<CompetenciaCatalogo[] | null>(null);
+  // Filas recién agregadas que todavía no tienen competencia elegida (no caben en el texto).
+  const [filasVacias, setFilasVacias] = useState(0);
   const [leyendo, setLeyendo] = useState(false);
 
   // Campos propios del momento.
@@ -269,6 +282,14 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
   }
 
   useEffect(cargar, [momento]);
+
+  useEffect(() => {
+    if (momento !== 1) return;
+    fetch("/api/etapa-productiva/competencias")
+      .then((res) => res.json())
+      .then((d) => setCatalogo(d.competencias ?? []))
+      .catch(() => setCatalogo([]));
+  }, [momento]);
 
   function abrir() {
     cargar();
@@ -342,9 +363,10 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
 
   const textosPrevia = formato.textos.map((t) => {
     if (momento === 1) {
+      const planPrevia = conPlanDelCatalogo(plan);
       const mapa: Record<string, string> = {
-        "Competencias a desarrollar": plan.competenciasDesarrollar,
-        "Resultados de aprendizaje": plan.resultadosAprendizaje,
+        "Competencias a desarrollar": planPrevia.competenciasDesarrollar,
+        "Resultados de aprendizaje": planPrevia.resultadosAprendizaje,
         "Actividades a desarrollar": plan.actividadesDesarrollar,
         "Evidencias de aprendizaje": plan.evidenciasAprendizaje,
         "Observaciones adicionales": plan.observacionesAdicionales,
@@ -419,6 +441,19 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
           plan.arlFechaAfiliacion || (leido.arlFechaAfiliacion ? aFechaCampo(leido.arlFechaAfiliacion) : ""),
       };
 
+      // Con catálogo, competencias y resultados se eligen de la lista: lo leído se casa con ella
+      // y solo entra lo que coincide. Lo demás se ve como texto del documento, sin guardarse.
+      if (momento === 1 && catalogo && catalogo.length > 0 && !plan.resultadosAprendizaje.trim()) {
+        const filas = filasDesdeDocumento(
+          leido.competenciasDesarrollar ?? "",
+          leido.resultadosAprendizaje ?? "",
+          catalogo,
+        );
+        const texto = textoDesdeFilas(filas);
+        planFusionado.competenciasDesarrollar = texto.competencias;
+        planFusionado.resultadosAprendizaje = texto.resultados;
+      }
+
       setDatos(datosFusionados);
       if (momento === 1) setPlan(planFusionado);
       setDelDocumento(leido);
@@ -435,10 +470,19 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
     }
   }
 
+  // Con catálogo, solo se guarda lo que coincide con él: el texto suelto se mostró como aviso y
+  // no entra al formato (competencias y resultados se eligen de la lista).
+  function conPlanDelCatalogo<T extends { competenciasDesarrollar: string; resultadosAprendizaje: string }>(p: T): T {
+    if (momento !== 1 || !catalogo || catalogo.length === 0) return p;
+    const { filas } = filasDesdeTexto(p.competenciasDesarrollar, p.resultadosAprendizaje, catalogo);
+    const texto = textoDesdeFilas(filas);
+    return { ...p, competenciasDesarrollar: texto.competencias, resultadosAprendizaje: texto.resultados };
+  }
+
   // Guarda el formato. Lo usan el guardado automático al adjuntar y el botón de enviar.
   async function guardar(valores?: { datos: Datos; plan: typeof plan; archivoUrl: string | null }) {
     const datosAGuardar = valores?.datos ?? datos;
-    const planAGuardar = valores?.plan ?? plan;
+    const planAGuardar = conPlanDelCatalogo(valores?.plan ?? plan);
     const archivoAGuardar = valores ? valores.archivoUrl : archivoUrl;
 
     const cuandoSeHizo = formato?.existe
@@ -649,10 +693,30 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
                 Plan de trabajo concertado. Escribe tu propuesta: tu instructor la revisa y la
                 ajusta contigo en la reunión del Momento 1.
               </p>
+              {catalogo && catalogo.length > 0 && (
+                <SelectorPlan
+                  catalogo={catalogo}
+                  competencias={plan.competenciasDesarrollar}
+                  resultados={plan.resultadosAprendizaje}
+                  filasVacias={filasVacias}
+                  onFilasVacias={setFilasVacias}
+                  onCambio={(texto) =>
+                    setPlan((prev) => ({
+                      ...prev,
+                      competenciasDesarrollar: texto.competencias,
+                      resultadosAprendizaje: texto.resultados,
+                    }))
+                  }
+                />
+              )}
               {(
                 [
-                  ["competenciasDesarrollar", "Competencias a desarrollar"],
-                  ["resultadosAprendizaje", "Resultados de aprendizaje"],
+                  ...(catalogo && catalogo.length > 0
+                    ? []
+                    : ([
+                        ["competenciasDesarrollar", "Competencias a desarrollar"],
+                        ["resultadosAprendizaje", "Resultados de aprendizaje"],
+                      ] as [keyof typeof plan, string][])),
                   ["actividadesDesarrollar", "Actividades a desarrollar"],
                   ["evidenciasAprendizaje", "Evidencias de aprendizaje"],
                   ["observacionesAdicionales", "Observaciones adicionales"],
@@ -839,5 +903,131 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
         </div>
       )}
     </section>
+  );
+}
+
+// Competencias y resultados de aprendizaje del plan de trabajo, elegidos del catálogo del programa
+// de la ficha: cada fila es una competencia y, debajo, uno de sus resultados. Se guarda como texto
+// —uno por línea—, el mismo formato que usa el instructor, así que al revisarlo le aparecen
+// marcados.
+function SelectorPlan({
+  catalogo,
+  competencias,
+  resultados,
+  filasVacias,
+  onFilasVacias,
+  onCambio,
+}: {
+  catalogo: CompetenciaCatalogo[];
+  competencias: string;
+  resultados: string;
+  filasVacias: number;
+  onFilasVacias: (n: number) => void;
+  onCambio: (texto: { competencias: string; resultados: string }) => void;
+}) {
+  const { filas, sinCoincidencia } = filasDesdeTexto(competencias, resultados, catalogo);
+  const grupos = agruparCompetencias(catalogo);
+  const todas: (FilaPlan & { vacia?: boolean })[] = [
+    ...filas,
+    ...Array.from({ length: filasVacias }, () => ({ competencia: "", resultado: "", vacia: true })),
+  ];
+
+  function guardar(nuevas: FilaPlan[]) {
+    onCambio(textoDesdeFilas(nuevas.filter((f) => f.competencia)));
+  }
+
+  function cambiar(i: number, fila: FilaPlan) {
+    const esVacia = i >= filas.length;
+    if (esVacia && fila.competencia) onFilasVacias(filasVacias - 1);
+    const reales = filas.slice();
+    if (esVacia) reales.push(fila);
+    else reales[i] = fila;
+    guardar(reales);
+  }
+
+  function quitar(i: number) {
+    if (i >= filas.length) {
+      onFilasVacias(filasVacias - 1);
+      return;
+    }
+    guardar(filas.filter((_, j) => j !== i));
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+        Competencias y resultados de aprendizaje
+      </p>
+      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+        Elige del catálogo del programa de tu ficha la competencia y, debajo, el resultado de
+        aprendizaje. Agrega una fila por cada resultado que vayas a desarrollar.
+      </p>
+
+      {todas.length === 0 && (
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">Todavía no has elegido ninguna.</p>
+      )}
+
+      {todas.map((fila, i) => {
+        const resultadosDeLaCompetencia = grupos.find(([nombre]) => nombre === fila.competencia)?.[1] ?? [];
+        return (
+          <div
+            key={`${fila.competencia}-${fila.resultado}-${i}`}
+            className="flex flex-col gap-2 rounded-md border border-zinc-200 p-3 dark:border-zinc-800"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">Fila {i + 1}</span>
+              <button type="button" onClick={() => quitar(i)} className="text-xs text-red-600 underline">
+                Quitar
+              </button>
+            </div>
+            <select
+              value={fila.competencia}
+              onChange={(e) => cambiar(i, { competencia: e.target.value, resultado: "" })}
+              className={inputClass}
+            >
+              <option value="">Elige la competencia</option>
+              {grupos.map(([nombre]) => (
+                <option key={nombre} value={nombre}>
+                  {nombre}
+                </option>
+              ))}
+            </select>
+            <select
+              value={fila.resultado}
+              onChange={(e) => cambiar(i, { competencia: fila.competencia, resultado: e.target.value })}
+              disabled={!fila.competencia}
+              className={inputClass}
+            >
+              <option value="">{fila.competencia ? "Elige el resultado de aprendizaje" : "Primero la competencia"}</option>
+              {resultadosDeLaCompetencia.map((c) => (
+                <option key={c.id} value={c.resultadoAprendizaje}>
+                  {c.resultadoAprendizaje}
+                </option>
+              ))}
+            </select>
+          </div>
+        );
+      })}
+
+      <button
+        type="button"
+        onClick={() => onFilasVacias(filasVacias + 1)}
+        className="w-fit text-sm text-emerald-700 underline dark:text-emerald-500"
+      >
+        + Agregar competencia y resultado
+      </button>
+
+      {sinCoincidencia.length > 0 && (
+        <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
+          <p className="font-medium">Texto que no coincide con el catálogo y no se guardará:</p>
+          <ul className="mt-1 list-disc pl-4">
+            {sinCoincidencia.map((s) => (
+              <li key={s}>{s}</li>
+            ))}
+          </ul>
+          <p className="mt-1">Elige arriba las competencias y resultados equivalentes.</p>
+        </div>
+      )}
+    </div>
   );
 }

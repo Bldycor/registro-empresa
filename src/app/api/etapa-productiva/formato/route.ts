@@ -5,6 +5,7 @@ import { FormatoEPSchema } from "@/lib/validations";
 import { construirFormato } from "@/lib/formato-gfpi023";
 import { fechaEnColombia } from "@/lib/plazos-institucionales";
 import { leerFormato, type DatosDocumento } from "@/lib/leer-gfpi023";
+import { filasDesdeDocumento, textoDesdeFilas } from "@/lib/competencia-catalogo";
 
 // Formato GFPI-F-023 del aprendiz, momento por momento: lo que el sistema ya sabe más lo que él
 // diligencia, para revisarlo antes de enviarlo y adjuntar el PDF firmado.
@@ -176,11 +177,32 @@ export async function PATCH(request: Request) {
       );
     }
 
+    // Si el programa de la ficha tiene catálogo, competencias y resultados salen de él: lo leído
+    // del PDF se casa con el catálogo y solo entra lo que coincide, nunca el texto crudo.
+    const programa = (
+      await prisma.user.findUnique({ where: { id: user.id }, select: { ficha: { select: { programa: true } } } })
+    )?.ficha?.programa;
+    const catalogo = programa
+      ? await prisma.competenciaFormacion.findMany({
+          where: { programa },
+          select: { id: true, tipo: true, nombreCompetencia: true, resultadoAprendizaje: true },
+        })
+      : [];
+    let competenciasLeidas = datosDocumento?.competenciasDesarrollar ?? null;
+    let resultadosLeidos = datosDocumento?.resultadosAprendizaje ?? null;
+    if (catalogo.length > 0) {
+      const texto = textoDesdeFilas(
+        filasDesdeDocumento(competenciasLeidas ?? "", resultadosLeidos ?? "", catalogo),
+      );
+      competenciasLeidas = texto.competencias || null;
+      resultadosLeidos = texto.resultados || null;
+    }
+
     await prisma.concertacionFuncion.update({
       where: { userId: user.id },
       data: {
-        competenciasDesarrollar: limpiar(m.competenciasDesarrollar) ?? datosDocumento?.competenciasDesarrollar ?? null,
-        resultadosAprendizaje: limpiar(m.resultadosAprendizaje) ?? datosDocumento?.resultadosAprendizaje ?? null,
+        competenciasDesarrollar: limpiar(m.competenciasDesarrollar) ?? competenciasLeidas,
+        resultadosAprendizaje: limpiar(m.resultadosAprendizaje) ?? resultadosLeidos,
         actividadesDesarrollar: limpiar(m.actividadesDesarrollar) ?? datosDocumento?.actividadesDesarrollar ?? null,
         evidenciasAprendizaje: limpiar(m.evidenciasAprendizaje) ?? datosDocumento?.evidenciasAprendizaje ?? null,
         observacionesAdicionales: limpiar(m.observacionesAdicionales) ?? datosDocumento?.observacionesAdicionales ?? null,
