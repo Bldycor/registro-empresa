@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { ConcertacionRubricaSchema } from "@/lib/validations";
+import { catalogoDelAprendiz, problemaEnPlan } from "@/lib/competencias-validas";
 
 // El instructor valora el Momento 1 (Concertación): 6 variables sobre la calidad de la
 // planeación acordada. Mismo patrón que la evaluación de Momentos 2/3 — "Guardar borrador" deja
@@ -16,7 +17,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const existing = await prisma.concertacionFuncion.findUnique({
     where: { id },
-    select: { id: true, user: { select: { ficha: { select: { instructorId: true } } } } },
+    select: {
+      id: true,
+      userId: true,
+      competenciasDesarrollar: true,
+      resultadosAprendizaje: true,
+      user: { select: { ficha: { select: { instructorId: true } } } } },
   });
   if (!existing) {
     return NextResponse.json({ error: "Concertación no encontrada." }, { status: 404 });
@@ -34,6 +40,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
   const d = parsed.data;
+
+  // Solo competencias y resultados del catálogo que cargó Coordinación (2 oct 2026).
+  const problema = problemaEnPlan(
+    await catalogoDelAprendiz(existing.userId),
+    d.competenciasDesarrollar,
+    d.resultadosAprendizaje,
+    { competencias: existing.competenciasDesarrollar, resultados: existing.resultadosAprendizaje },
+  );
+  if (problema) {
+    return NextResponse.json({ error: { _root: [problema] } }, { status: 400 });
+  }
 
   if (d.finalizar) {
     const faltantes = d.variables.filter((v) => !v.valoracion);

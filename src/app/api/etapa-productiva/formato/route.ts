@@ -6,6 +6,7 @@ import { construirFormato } from "@/lib/formato-gfpi023";
 import { fechaEnColombia } from "@/lib/plazos-institucionales";
 import { leerFormato, type DatosDocumento } from "@/lib/leer-gfpi023";
 import { filasDesdeDocumento, textoDesdeFilas } from "@/lib/competencia-catalogo";
+import { catalogoDelAprendiz, problemaEnPlan } from "@/lib/competencias-validas";
 
 // Formato GFPI-F-023 del aprendiz, momento por momento: lo que el sistema ya sabe más lo que él
 // diligencia, para revisarlo antes de enviarlo y adjuntar el PDF firmado.
@@ -154,7 +155,7 @@ export async function PATCH(request: Request) {
   if (m.momento === 1) {
     let concertacion = await prisma.concertacionFuncion.findUnique({
       where: { userId: user.id },
-      select: { id: true, estado: true },
+      select: { id: true, estado: true, competenciasDesarrollar: true, resultadosAprendizaje: true },
     });
     if (!concertacion) {
       const problema = faltaRegistro(1);
@@ -166,7 +167,7 @@ export async function PATCH(request: Request) {
           horaInicio,
           horaFin,
         },
-        select: { id: true, estado: true },
+        select: { id: true, estado: true, competenciasDesarrollar: true, resultadosAprendizaje: true },
       });
     }
     // Una vez avalado, el formato es el que revisó el instructor: no se reescribe.
@@ -188,14 +189,26 @@ export async function PATCH(request: Request) {
           select: { id: true, tipo: true, nombreCompetencia: true, resultadoAprendizaje: true },
         })
       : [];
-    let competenciasLeidas = datosDocumento?.competenciasDesarrollar ?? null;
-    let resultadosLeidos = datosDocumento?.resultadosAprendizaje ?? null;
+    let competenciasLeidas: string | null = null;
+    let resultadosLeidos: string | null = null;
     if (catalogo.length > 0) {
+      competenciasLeidas = datosDocumento?.competenciasDesarrollar ?? null;
+      resultadosLeidos = datosDocumento?.resultadosAprendizaje ?? null;
       const texto = textoDesdeFilas(
         filasDesdeDocumento(competenciasLeidas ?? "", resultadosLeidos ?? "", catalogo),
       );
       competenciasLeidas = texto.competencias || null;
       resultadosLeidos = texto.resultados || null;
+    }
+
+    const problema = problemaEnPlan(
+      await catalogoDelAprendiz(user.id),
+      limpiar(m.competenciasDesarrollar) ?? competenciasLeidas,
+      limpiar(m.resultadosAprendizaje) ?? resultadosLeidos,
+      { competencias: concertacion.competenciasDesarrollar, resultados: concertacion.resultadosAprendizaje },
+    );
+    if (problema) {
+      return NextResponse.json({ error: { _root: [problema] } }, { status: 400 });
     }
 
     await prisma.concertacionFuncion.update({

@@ -693,6 +693,15 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
                 Plan de trabajo concertado. Escribe tu propuesta: tu instructor la revisa y la
                 ajusta contigo en la reunión del Momento 1.
               </p>
+              {/* Competencias y resultados SOLO del catálogo que cargó Coordinación: aquí no se
+                  escriben a mano (decisión de Coordinación, 2 oct 2026). */}
+              {catalogo && catalogo.length === 0 && (
+                <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+                  El programa de tu ficha todavía no tiene competencias cargadas en SEPA. Pide a
+                  Coordinación de Etapa Productiva que las cargue; mientras tanto puedes guardar el
+                  resto del formato.
+                </p>
+              )}
               {catalogo && catalogo.length > 0 && (
                 <SelectorPlan
                   catalogo={catalogo}
@@ -711,12 +720,6 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
               )}
               {(
                 [
-                  ...(catalogo && catalogo.length > 0
-                    ? []
-                    : ([
-                        ["competenciasDesarrollar", "Competencias a desarrollar"],
-                        ["resultadosAprendizaje", "Resultados de aprendizaje"],
-                      ] as [keyof typeof plan, string][])),
                   ["actividadesDesarrollar", "Actividades a desarrollar"],
                   ["evidenciasAprendizaje", "Evidencias de aprendizaje"],
                   ["observacionesAdicionales", "Observaciones adicionales"],

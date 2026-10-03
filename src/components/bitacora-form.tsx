@@ -6,7 +6,7 @@ import { FileUploadField } from "@/components/file-upload-field";
 import { PlantillaEnlace, PLANTILLA_BITACORA } from "@/components/plantilla-enlace";
 import { DatePickerField } from "@/components/date-picker-field";
 import { NivelRiesgoARLValues, nivelRiesgoARLLabel } from "@/lib/validations";
-import { agruparCompetencias, type CompetenciaCatalogo } from "@/lib/competencia-catalogo";
+import { agruparCompetencias, type CompetenciaCatalogo, competenciaDelCatalogo } from "@/lib/competencia-catalogo";
 
 type Actividad = {
   descripcion: string;
@@ -183,7 +183,9 @@ export function BitacoraForm({
           actividades[0] = {
             ...actividades[0],
             descripcion: actividades[0].descripcion.trim() || (leido.descripcion ?? ""),
-            competencias: actividades[0].competencias.trim() || (leido.competencias ?? ""),
+            competencias:
+              actividades[0].competencias.trim() ||
+              competenciaDelCatalogo(leido.competencias, catalogoCompetencias ?? []),
             evidenciaCumplimiento:
               actividades[0].evidenciaCumplimiento.trim() || (leido.evidenciaCumplimiento ?? ""),
             observaciones: actividades[0].observaciones.trim() || (leido.observaciones ?? ""),
@@ -437,12 +439,16 @@ export function BitacoraForm({
                         className={inputClass}
                       >
                         <option value="">Selecciona</option>
-                        {/* Una bitácora vieja puede tener guardado un resultado de aprendizaje: se
-                            muestra tal cual para no perderlo, aunque ya no esté en la lista. */}
+                        {/* Una bitácora vieja puede tener guardado un texto que no está en el
+                            catálogo: se muestra para que se vea, pero hay que cambiarlo. */}
                         {actividad.competencias &&
                           !agruparCompetencias(catalogoCompetencias).some(
                             ([nombre]) => nombre === actividad.competencias,
-                          ) && <option value={actividad.competencias}>{actividad.competencias}</option>}
+                          ) && (
+                            <option value={actividad.competencias}>
+                              {actividad.competencias} — no está en el catálogo, elige otra
+                            </option>
+                          )}
                         {/* Solo las competencias del programa, sin sus resultados de aprendizaje
                             (decisión de Coordinación, 2 oct 2026). */}
                         {agruparCompetencias(catalogoCompetencias).map(([nombreCompetencia]) => (
@@ -452,14 +458,13 @@ export function BitacoraForm({
                         ))}
                       </select>
                     ) : (
-                      <input
-                        value={actividad.competencias}
-                        onChange={(e) => updateActividad(idx, "competencias", e.target.value)}
-                        className={inputClass}
-                        placeholder={
-                          catalogoCompetencias === null ? "Cargando catálogo…" : undefined
-                        }
-                      />
+                      // Sin catálogo no se escribe a mano: solo se elige lo que cargó
+                      // Coordinación (decisión de Coordinación, 2 oct 2026).
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                        {catalogoCompetencias === null
+                          ? "Cargando competencias…"
+                          : "Tu programa todavía no tiene competencias cargadas. Pide a Coordinación de Etapa Productiva que las cargue; puedes enviar la bitácora sin este dato."}
+                      </p>
                     )}
                   </Field>
                   <Field label="Evidencia de cumplimiento">

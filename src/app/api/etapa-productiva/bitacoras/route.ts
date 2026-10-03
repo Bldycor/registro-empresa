@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { catalogoDelAprendiz, problemaEnCompetencia } from "@/lib/competencias-validas";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { BitacoraSchema } from "@/lib/validations";
@@ -88,6 +89,20 @@ export async function POST(request: Request) {
       },
       { status: 400 },
     );
+  }
+
+  // La competencia de cada actividad sale del catálogo que cargó Coordinación (2 oct 2026).
+  const catalogo = await catalogoDelAprendiz(user.id);
+  const guardadas = await prisma.bitacoraActividad.findMany({
+    where: { bitacora: { userId: user.id, numero: d.numero } },
+    select: { competencias: true },
+  });
+  const yaGuardadas = new Set(guardadas.map((g) => g.competencias?.trim()).filter((c): c is string => !!c));
+  for (const a of d.actividades) {
+    const problema = problemaEnCompetencia(catalogo, a.competencias, yaGuardadas);
+    if (problema) {
+      return NextResponse.json({ error: { _root: [problema] } }, { status: 400 });
+    }
   }
 
   const fechaLimite = calcularFechaLimiteBitacora(

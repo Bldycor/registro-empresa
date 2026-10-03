@@ -117,3 +117,20 @@ export function filasDesdeDocumento(
   }
   return filas;
 }
+
+// Competencia de una bitácora leída del PDF → nombre exacto del catálogo, o "" si no coincide con
+// ninguna. Si el PDF trae un resultado de aprendizaje, se toma la competencia a la que pertenece.
+// Nunca se deja texto que no esté en el catálogo (decisión de Coordinación, 2 oct 2026).
+export function competenciaDelCatalogo(texto: string | null | undefined, catalogo: CompetenciaCatalogo[]): string {
+  const buscado = normalizar(texto ?? "");
+  if (!buscado) return "";
+  const porNombre = catalogo.find((c) => normalizar(c.nombreCompetencia) === buscado);
+  if (porNombre) return porNombre.nombreCompetencia;
+  const sinPrefijo = (ra: string) => normalizar(ra).replace(/^(RAP?\s*\d+\.?|\d+\.)\s*/, "");
+  const porResultado = catalogo.find((c) => sinPrefijo(c.resultadoAprendizaje) === sinPrefijo(buscado));
+  if (porResultado) return porResultado.nombreCompetencia;
+  const contenida = catalogo.find(
+    (c) => normalizar(c.nombreCompetencia).length >= 15 && buscado.includes(normalizar(c.nombreCompetencia)),
+  );
+  return contenida?.nombreCompetencia ?? "";
+}
