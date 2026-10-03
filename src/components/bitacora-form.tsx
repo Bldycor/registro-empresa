@@ -429,7 +429,7 @@ export function BitacoraForm({
                       className={inputClass}
                     />
                   </Field>
-                  <Field label="Competencias / resultados de aprendizaje">
+                  <Field label="Competencia aplicada">
                     {catalogoCompetencias && catalogoCompetencias.length > 0 ? (
                       <select
                         value={actividad.competencias}
@@ -437,18 +437,18 @@ export function BitacoraForm({
                         className={inputClass}
                       >
                         <option value="">Selecciona</option>
+                        {/* Una bitácora vieja puede tener guardado un resultado de aprendizaje: se
+                            muestra tal cual para no perderlo, aunque ya no esté en la lista. */}
                         {actividad.competencias &&
-                          !catalogoCompetencias.some(
-                            (c) => c.resultadoAprendizaje === actividad.competencias
+                          !agruparCompetencias(catalogoCompetencias).some(
+                            ([nombre]) => nombre === actividad.competencias,
                           ) && <option value={actividad.competencias}>{actividad.competencias}</option>}
-                        {agruparCompetencias(catalogoCompetencias).map(([nombreCompetencia, items]) => (
-                          <optgroup key={nombreCompetencia} label={nombreCompetencia}>
-                            {items.map((c) => (
-                              <option key={c.id} value={c.resultadoAprendizaje}>
-                                {c.resultadoAprendizaje}
-                              </option>
-                            ))}
-                          </optgroup>
+                        {/* Solo las competencias del programa, sin sus resultados de aprendizaje
+                            (decisión de Coordinación, 2 oct 2026). */}
+                        {agruparCompetencias(catalogoCompetencias).map(([nombreCompetencia]) => (
+                          <option key={nombreCompetencia} value={nombreCompetencia}>
+                            {nombreCompetencia}
+                          </option>
                         ))}
                       </select>
                     ) : (
