@@ -978,6 +978,10 @@ enum TipoAvisoPlazo {
   // "reunion:<id>@<horaInicio>" y `fechaLimite` es el día de la reunión: si se reprograma, la
   // nueva fecha u hora genera su propio recordatorio.
   RECORDATORIO_REUNION
+  // Resumen semanal de pendientes que recibe cada coordinador los lunes (decisión de Coordinación,
+  // 4 oct 2026). Aquí `userId` es el coordinador, `clave` es "resumen-semanal" y `fechaLimite` es el
+  // lunes: así sale una sola vez por semana aunque la tarea corra de nuevo.
+  RESUMEN_SEMANAL
 }
 
 // Registro histórico de los avisos de plazo enviados por correo: requisitos §3.3 ("llevar un

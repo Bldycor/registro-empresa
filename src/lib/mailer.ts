@@ -5,6 +5,7 @@ import path from "path";
 import { getVideoConferenceUrl } from "@/lib/video";
 import { componerAvisoPlazos, type AvisoPlazoCorreo } from "@/lib/aviso-plazos-correo";
 import { componerPlanMejoramiento } from "@/lib/plan-mejoramiento-correo";
+import { componerResumenSemanal, type DatosResumenSemanal } from "@/lib/resumen-semanal-correo";
 import {
   atributosInvitacion,
   componerCitacion,
@@ -368,6 +369,35 @@ export async function sendRecordatorioReunionEmail(params: {
     console.log(`[mailer] Vista previa (Ethereal) del recordatorio de reunión: ${nodemailer.getTestMessageUrl(info)}`);
   }
   return { info, destinatarios: params.destinatarios };
+}
+
+// Resumen semanal de pendientes para un coordinador (cada lunes). Redacción en
+// `componerResumenSemanal`.
+export async function sendResumenSemanalEmail(params: {
+  nombre: string;
+  email: string;
+  semana: string;
+  datos: DatosResumenSemanal;
+}) {
+  const from = process.env.EMAIL_FROM || "no-responder@registro-empresa.local";
+  const correo = componerResumenSemanal({
+    nombre: params.nombre,
+    semana: params.semana,
+    datos: params.datos,
+    enlaces: {
+      alternativas: urlApp("/formulario/coordinador/alternativas"),
+      interrupciones: urlApp("/formulario/coordinador/interrupciones"),
+      aplazamientos: urlApp("/formulario/coordinador/aplazamientos"),
+      planes: urlApp("/formulario/coordinador/planes"),
+      reportes: urlApp("/formulario/reportes"),
+    },
+  });
+  const transporter = await getTransporter();
+  const info = await transporter.sendMail({ from, to: params.email, ...correo });
+  if (usingTestAccount) {
+    console.log(`[mailer] Vista previa (Ethereal) del resumen semanal: ${nodemailer.getTestMessageUrl(info)}`);
+  }
+  return { info };
 }
 
 function urlApp(ruta: string): string {

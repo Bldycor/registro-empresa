@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { calcularVencimientos, type VencimientoEntrega } from "@/lib/seguimiento-evidencias";
-import { sendAvisoPlazosEmail, sendRecordatorioReunionEmail } from "@/lib/mailer";
+import crypto from "crypto";
+import { sendAvisoPlazosEmail, sendRecordatorioReunionEmail, sendResumenSemanalEmail } from "@/lib/mailer";
+import { datosResumenSemanal } from "@/lib/resumen-semanal";
 import { fechaEnColombia } from "@/lib/plazos-institucionales";
 import { recordatoriosPendientes } from "@/lib/recordatorio-reuniones";
 
@@ -64,6 +66,26 @@ function avisosNuevos(a: AprendizAvisos, hoy: Date): VencimientoEntrega[] {
   return vencimientos.filter((v) => !yaAvisados.has(claveAviso(v.clave, tipoAviso(v), v.fechaLimite)));
 }
 
+// Compara la clave de la tarea programada en tiempo constante (no revela cuántos caracteres
+// coinciden).
+function claveCorrecta(recibida: string | null, esperada: string): boolean {
+  if (!recibida) return false;
+  const a = Buffer.from(recibida);
+  const b = Buffer.from(esperada);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+// Lunes de la semana en Colombia, a medianoche UTC (así se guardan los días de calendario).
+function lunesColombia(hoy: Date): { esLunes: boolean; lunes: Date; texto: string } {
+  const [y, m, d] = fechaEnColombia(hoy).split("-").map(Number);
+  const dia = new Date(Date.UTC(y, m - 1, d));
+  const esLunes = dia.getUTCDay() === 1;
+  const lunes = new Date(dia);
+  lunes.setUTCDate(dia.getUTCDate() - ((dia.getUTCDay() + 6) % 7));
+  const texto = lunes.toLocaleDateString("es-CO", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  return { esLunes, lunes, texto };
+}
+
 // Avisos diarios de plazos por correo: bitácoras y Momentos de evaluación (requisito §3.3). En la
 // misma pasada salen los recordatorios de las reuniones de hoy y mañana (requisito §3.2, ver
 // `recordatoriosPendientes`).
@@ -80,8 +102,7 @@ function avisosNuevos(a: AprendizAvisos, hoy: Date): VencimientoEntrega[] {
 // producción que la clave y el interruptor están bien configurados, sin enviar nada.
 export async function GET(request: Request) {
   const secreto = process.env.CRON_SECRET;
-  const esTareaProgramada =
-    Boolean(secreto) && request.headers.get("authorization") === `Bearer ${secreto}`;
+  const esTareaProgramada = Boolean(secreto) && claveCorrecta(request.headers.get("authorization"), `Bearer ${secreto}`);
   if (!esTareaProgramada) {
     const { user, response } = await requireApiUser(["COORDINADOR", "ADMIN"]);
     if (!user) return response;
@@ -208,6 +229,41 @@ export async function GET(request: Request) {
     });
   }
 
+  // Resumen semanal para Coordinación (decisión del 4 oct 2026): solo los lunes, uno por
+  // coordinador y semana (queda en AvisoPlazo como RESUMEN_SEMANAL). `?resumen=1` lo muestra
+  // cualquier día, siempre como simulación, para revisar qué diría.
+  const semana = lunesColombia(hoy);
+  const verResumen = new URL(request.url).searchParams.get("resumen") === "1";
+  let resumenSemanal: { lunes: string; destinatarios: string[]; datos: unknown } | null = null;
+  if (semana.esLunes || verResumen) {
+    const coordinadores = await prisma.user.findMany({
+      where: {
+        role: "COORDINADOR",
+        avisosPlazo: { none: { tipo: "RESUMEN_SEMANAL", fechaLimite: semana.lunes } },
+      },
+      select: { id: true, nombres: true, email: true },
+    });
+    const datos = await datosResumenSemanal(hoy);
+    const enviados: string[] = [];
+    for (const c of coordinadores) {
+      if (enviar && semana.esLunes) {
+        try {
+          await sendResumenSemanalEmail({ nombre: c.nombres, email: c.email, semana: semana.texto, datos });
+          await prisma.avisoPlazo.createMany({
+            data: [{ userId: c.id, clave: "resumen-semanal", tipo: "RESUMEN_SEMANAL", fechaLimite: semana.lunes, destinatarios: c.email }],
+            skipDuplicates: true,
+          });
+        } catch (error) {
+          console.error(`[cron/avisos-plazo] No se pudo enviar el resumen semanal a ${c.nombres}:`, error);
+          errores.push({ aprendiz: `Resumen semanal · ${c.nombres}`, error: error instanceof Error ? error.message : String(error) });
+          continue;
+        }
+      }
+      enviados.push(c.email);
+    }
+    resumenSemanal = { lunes: semana.texto, destinatarios: enviados, datos };
+  }
+
   const todos = detalle.flatMap((d) => d.avisos);
   return NextResponse.json({
     modo: enviar ? "envio" : "simulacion",
@@ -222,6 +278,7 @@ export async function GET(request: Request) {
       proximos: todos.filter((x) => x.estado === "proxima").length,
     },
     recordatorios: { total: detalleRecordatorios.length, detalle: detalleRecordatorios },
+    resumenSemanal,
     errores,
     detalle,
   });
