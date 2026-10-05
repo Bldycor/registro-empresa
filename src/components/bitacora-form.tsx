@@ -166,6 +166,10 @@ export function BitacoraForm({
       const d = await res.json();
       const leido = d.datos ?? {};
 
+      if (d.esImagen) {
+        setLectura("Subiste una foto. SEPA lee la bitácora automáticamente solo cuando es un PDF: diligencia los campos a mano. La foto se envía igual como soporte.");
+        return;
+      }
       if (d.sinTexto) {
         setLectura("Ese PDF no tiene texto (parece una foto o un escaneo): diligencia los campos a mano.");
         return;

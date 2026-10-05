@@ -3,6 +3,12 @@
 // `pdfjs-dist` se importa dentro de la función para que su peso no entre en las rutas que no leen
 // documentos, y su worker se registra a mano porque en el servidor no hay Web Worker.
 
+// Un PDF empieza siempre con «%PDF». Una foto (JPG, PNG, WEBP) no: no se intenta abrirla como PDF.
+export function esPdf(archivo: ArrayBuffer): boolean {
+  const inicio = new Uint8Array(archivo.slice(0, 1024));
+  return new TextDecoder("latin1").decode(inicio).includes("%PDF");
+}
+
 export async function textoDelPdf(archivo: ArrayBuffer): Promise<string> {
   const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
   await import("pdfjs-dist/legacy/build/pdf.worker.mjs");

@@ -242,6 +242,9 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
   // Filas recién agregadas que todavía no tienen competencia elegida (no caben en el texto).
   const [filasVacias, setFilasVacias] = useState(0);
   const [leyendo, setLeyendo] = useState(false);
+  // El adjunto no se pudo leer (una foto, un escaneo, un archivo dañado): se abre y se resalta
+  // dónde escribir a mano lo que falte.
+  const [aMano, setAMano] = useState(false);
 
   // Campos propios del momento.
   const [plan, setPlan] = useState({
@@ -531,7 +534,14 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
       });
       const d = await res.json();
       const leido: Record<string, string> = d.datos ?? {};
+      setAMano(Boolean(d.esImagen || d.sinTexto || !d.leidos));
 
+      if (d.esImagen) {
+        setLectura(
+          "Subiste una foto. SEPA lee el formato automáticamente solo cuando es un PDF, así que escribe a mano lo que falte: en «Datos de la reunión» y en «Datos que el formato pide», aquí abajo, o directamente en las casillas resaltadas de la vista previa. La foto se envía igual como soporte.",
+        );
+        return;
+      }
       if (d.sinTexto) {
         setLectura(
           "Ese archivo es una foto o un escaneo: no tiene texto, así que SEPA no pudo leer nada de él. Escribe los datos que falten en las casillas de abajo o directamente en la vista previa del formato; el archivo se envía igual.",
@@ -597,7 +607,8 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
         `Del PDF se tomaron ${d.leidos} ${d.leidos === 1 ? "dato" : "datos"} y quedaron puestos en el formulario. Revísalos, corrige lo que haga falta y pulsa «Enviar a mi instructor» para guardarlos.`,
       );
     } catch {
-      setLectura("No se pudo leer el documento. Puedes diligenciar los campos a mano y enviarlo igual.");
+      setAMano(true);
+      setLectura("No se pudo leer el documento. Escribe a mano lo que falte —aquí abajo o en las casillas resaltadas de la vista previa— y envíalo igual.");
     } finally {
       setLeyendo(false);
     }
@@ -734,7 +745,10 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
 
       {vista === "editar" && (
         <div className="mt-4 flex flex-col gap-4">
-          <details className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+          <details
+            open={aMano || undefined}
+            className={`rounded-lg border p-3 ${aMano ? "border-amber-300 dark:border-amber-700" : "border-zinc-200 dark:border-zinc-800"}`}
+          >
             <summary className="cursor-pointer text-sm font-medium text-zinc-800 dark:text-zinc-200">
               Datos que el formato pide y el sistema no tiene
             </summary>
@@ -903,7 +917,7 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
             </label>
           )}
 
-          <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+          <div className={`rounded-lg border p-3 ${aMano ? "border-amber-300 dark:border-amber-700" : "border-zinc-200 dark:border-zinc-800"}`}>
             <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Datos de la reunión</p>
             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
               SEPA los toma del PDF firmado. Si adjuntas una foto o un escaneo, escríbelos aquí.
@@ -966,7 +980,13 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
             <p className="text-xs text-zinc-500 dark:text-zinc-400">Leyendo el documento…</p>
           )}
           {lectura && !enviado && (
-            <p className="rounded-md bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-950 dark:text-zinc-400">
+            <p
+              className={`rounded-md px-3 py-2 text-xs ${
+                aMano
+                  ? "bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:text-amber-300"
+                  : "bg-zinc-50 text-zinc-600 dark:bg-zinc-950 dark:text-zinc-400"
+              }`}
+            >
               {lectura}
             </p>
           )}

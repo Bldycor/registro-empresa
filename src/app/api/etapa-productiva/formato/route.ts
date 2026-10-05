@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { esPdf } from "@/lib/leer-pdf";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { FormatoEPSchema } from "@/lib/validations";
@@ -87,7 +88,11 @@ export async function PATCH(request: Request) {
     try {
       const respuesta = await fetch(archivoNuevo);
       if (respuesta.ok) {
-        const leido = await leerFormato(await respuesta.arrayBuffer(), m.momento);
+        const archivo = await respuesta.arrayBuffer();
+        // Una foto no se lee: lo que falte lo escribió el aprendiz a mano.
+        const leido = esPdf(archivo)
+          ? await leerFormato(archivo, m.momento)
+          : { datos: {}, leidos: 0, sinTexto: true };
         lectura = { leidos: leido.leidos, sinTexto: leido.sinTexto };
         if (leido.leidos > 0) {
           // Lo nuevo se suma a lo leído antes en otro momento, sin borrarlo.

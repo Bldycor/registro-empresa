@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireApiUser } from "@/lib/auth-guards";
 import { leerFormato } from "@/lib/leer-gfpi023";
+import { esPdf } from "@/lib/leer-pdf";
 
 // Lee el formato GFPI-F-023 recién adjuntado y devuelve lo que trae, **sin guardar nada**: el
 // aprendiz lo ve al instante en el formulario, lo corrige si hace falta y recién al enviar queda
@@ -25,7 +26,13 @@ export async function POST(request: Request) {
     if (!respuesta.ok) {
       return NextResponse.json({ datos: {}, leidos: 0, sinTexto: false, error: "no-descargable" });
     }
-    const lectura = await leerFormato(await respuesta.arrayBuffer(), momento);
+    const archivo = await respuesta.arrayBuffer();
+    // Una foto no se lee (decisión de Coordinación, 4 oct 2026): el aprendiz escribe a mano lo
+    // que falte, en el formulario o en la vista previa.
+    if (!esPdf(archivo)) {
+      return NextResponse.json({ datos: {}, leidos: 0, sinTexto: true, esImagen: true });
+    }
+    const lectura = await leerFormato(archivo, momento);
     return NextResponse.json(lectura);
   } catch (error) {
     console.error("[formato/leer] No se pudo leer el PDF adjunto:", error);
