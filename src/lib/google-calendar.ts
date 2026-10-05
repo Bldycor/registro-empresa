@@ -1,10 +1,12 @@
-import { google } from "googleapis";
+// Solo el cliente de Calendar (2 MB) en vez de todo `googleapis` (más de 200 MB): las funciones
+// que agendan reuniones arrancan mucho más rápido en Vercel.
+import { auth, calendar } from "@googleapis/calendar";
 import crypto from "crypto";
 
 const TIME_ZONE = "America/Bogota";
 
 export function getOAuthClient() {
-  return new google.auth.OAuth2(
+  return new auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
     process.env.GOOGLE_REDIRECT_URI
@@ -22,7 +24,7 @@ export function isGoogleCalendarConfigured(): boolean {
 function getCalendarClient() {
   const client = getOAuthClient();
   client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
-  return google.calendar({ version: "v3", auth: client });
+  return calendar({ version: "v3", auth: client });
 }
 
 type EventInput = {

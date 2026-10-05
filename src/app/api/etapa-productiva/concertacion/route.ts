@@ -1,5 +1,5 @@
+import { requireApiUser } from "@/lib/auth-guards";
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { ConcertacionSchema } from "@/lib/validations";
 import { rangesOverlap } from "@/lib/time";
@@ -18,13 +18,11 @@ function toDateOnly(fecha: string) {
 }
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "No autenticado." }, { status: 401 });
-  }
+  const { user: sesion, response } = await requireApiUser(["APRENDIZ"]);
+  if (!sesion) return response;
 
   const concertacion = await prisma.concertacionFuncion.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: sesion.id },
   });
 
   return NextResponse.json({
@@ -40,10 +38,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "No autenticado." }, { status: 401 });
-  }
+  const { user: sesion, response } = await requireApiUser(["APRENDIZ"]);
+  if (!sesion) return response;
 
   const body = await request.json();
   const parsed = ConcertacionSchema.safeParse(body);
@@ -60,14 +56,14 @@ export async function POST(request: Request) {
 
   const [citasDelDia, existing, user, companyProfile] = await Promise.all([
     prisma.concertacionFuncion.findMany({
-      where: { fecha: fechaDate, userId: { not: session.user.id } },
+      where: { fecha: fechaDate, userId: { not: sesion.id } },
     }),
-    prisma.concertacionFuncion.findUnique({ where: { userId: session.user.id } }),
+    prisma.concertacionFuncion.findUnique({ where: { userId: sesion.id } }),
     prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: sesion.id },
       include: { ficha: { select: { instructor: { select: { email: true } } } } },
     }),
-    prisma.companyProfile.findUnique({ where: { userId: session.user.id } }),
+    prisma.companyProfile.findUnique({ where: { userId: sesion.id } }),
   ]);
 
   const hayConflicto = citasDelDia.some((cita) =>
@@ -113,9 +109,9 @@ export async function POST(request: Request) {
     : null;
 
   const concertacion = await prisma.concertacionFuncion.upsert({
-    where: { userId: session.user.id },
+    where: { userId: sesion.id },
     update: { fecha: fechaDate, horaInicio, horaFin },
-    create: { userId: session.user.id, fecha: fechaDate, horaInicio, horaFin },
+    create: { userId: sesion.id, fecha: fechaDate, horaInicio, horaFin },
   });
 
   const aprendizNombre = `${user.nombres} ${user.apellidos}`;
@@ -182,7 +178,7 @@ export async function POST(request: Request) {
   }
 
   const actualizada = await prisma.concertacionFuncion.update({
-    where: { userId: session.user.id },
+    where: { userId: sesion.id },
     data: { videollamadaUrl, googleEventId },
   });
 

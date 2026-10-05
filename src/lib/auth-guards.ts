@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
@@ -7,7 +8,10 @@ import type { Role } from "@/generated/prisma/enums";
 // Usuario de la sesión actual, con su rol ya resuelto desde la base de datos. La sesión (JWT)
 // solo guarda el id; el rol se consulta aquí para no duplicarlo en el token y evitar que quede
 // desactualizado si un coordinador cambia el rol de alguien.
-export async function getSessionUser() {
+//
+// `cache` (React) la resuelve una sola vez por petición: el layout, la página y sus componentes
+// pueden pedirla sin repetir la consulta.
+export const getSessionUser = cache(async () => {
   const session = await auth();
   if (!session?.user?.id) return null;
 
@@ -17,7 +21,7 @@ export async function getSessionUser() {
   });
 
   return user;
-}
+});
 
 // Para Server Components / páginas: exige sesión y, opcionalmente, uno de los roles indicados.
 // Si no cumple, redirige (a /login si no hay sesión, a /formulario si el rol no alcanza).

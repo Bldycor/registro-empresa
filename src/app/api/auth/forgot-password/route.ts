@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { ForgotPasswordSchema } from "@/lib/validations";
 import { sendPasswordResetEmail } from "@/lib/mailer";
+import { registrarAuditoria } from "@/lib/auditoria";
 
 const TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hora
 
@@ -32,6 +33,16 @@ export async function POST(request: Request) {
     return genericResponse;
   }
 
+  // Un enlace cada 2 minutos por cuenta: evita que alguien inunde el correo de otra persona
+  // pidiendo enlaces sin parar. La respuesta es la misma, para no revelar nada.
+  const reciente = await prisma.passwordResetToken.findFirst({
+    where: { userId: user.id, createdAt: { gt: new Date(Date.now() - 2 * 60 * 1000) } },
+    select: { id: true },
+  });
+  if (reciente) {
+    return genericResponse;
+  }
+
   try {
     const token = crypto.randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + TOKEN_TTL_MS);
@@ -50,6 +61,7 @@ export async function POST(request: Request) {
       : `/reset-password?token=${token}`;
 
     await sendPasswordResetEmail({ nombres: user.nombres, email: user.email, resetUrl });
+    await registrarAuditoria({ accion: "RECUPERACION_SOLICITADA", entidad: "Sesion", entidadId: user.id });
   } catch (error) {
     console.error(
       "[api/auth/forgot-password] No se pudo generar/enviar el enlace de recuperación:",

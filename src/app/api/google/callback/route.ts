@@ -1,4 +1,5 @@
-import { auth } from "@/auth";
+import { cookies } from "next/headers";
+import { getSessionUser } from "@/lib/auth-guards";
 import { getOAuthClient } from "@/lib/google-calendar";
 
 function textResponse(body: string, status = 200) {
@@ -9,12 +10,22 @@ function textResponse(body: string, status = 200) {
 }
 
 export async function GET(request: Request) {
-  const session = await auth();
-  if (!session?.user) {
+  const user = await getSessionUser();
+  if (!user) {
     return textResponse("No autenticado.", 401);
+  }
+  if (user.role !== "ADMIN") {
+    return textResponse("Solo el administrador conecta Google Calendar.", 403);
   }
 
   const { searchParams } = new URL(request.url);
+  const almacen = await cookies();
+  const stateEsperado = almacen.get("sepa_google_state")?.value;
+  almacen.delete({ name: "sepa_google_state", path: "/api/google" });
+  if (!stateEsperado || searchParams.get("state") !== stateEsperado) {
+    return textResponse("La conexión no se inició desde SEPA o ya expiró. Vuelve a empezar en /api/google/auth.", 400);
+  }
+
   const code = searchParams.get("code");
   const error = searchParams.get("error");
 

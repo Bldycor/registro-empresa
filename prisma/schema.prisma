@@ -445,6 +445,15 @@ model User {
   empresasCreadas             Empresa[]                     @relation("EmpresaCreadaPor")
   empresasActualizadas        Empresa[]                     @relation("EmpresaActualizadaPor")
   avisosPlazo                 AvisoPlazo[]                  @relation("AvisosPlazo")
+
+  // Protección del ingreso (4 oct 2026): tras 5 intentos fallidos seguidos la cuenta queda
+  // bloqueada 15 minutos. Un ingreso correcto reinicia el contador.
+  intentosFallidos Int       @default(0)
+  bloqueadoHasta   DateTime?
+  ultimoIngreso    DateTime?
+
+  @@index([fichaId])
+  @@index([role])
 }
 
 // Ficha SENA. La precarga el coordinador académico (carga masiva por código) antes de que los
@@ -491,6 +500,8 @@ model Ficha {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([instructorId])
 }
 
 // Catálogo institucional de competencias/resultados de aprendizaje por programa de formación
@@ -913,6 +924,8 @@ model BitacoraActividad {
   fechaFin               DateTime?
   evidenciaCumplimiento  String?
   observaciones          String?
+
+  @@index([bitacoraId])
 }
 
 // Evidencia de cierre: carta de terminación del contrato de aprendizaje a satisfacción de la
@@ -1199,4 +1212,25 @@ model Empresa {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Trazabilidad (4 oct 2026): cada creación, cambio o borrado que se hace en SEPA, más los ingresos
+// y bloqueos, con quién, cuándo y desde qué IP. Lo escribe solo `src/lib/prisma.ts` (extensión de
+// consultas) y `src/lib/auditoria.ts`; nadie lo edita ni lo borra desde la aplicación. Sin llaves
+// foráneas a propósito: el rastro se conserva aunque se borre el usuario o el registro.
+model RegistroAuditoria {
+  id            String   @id @default(cuid())
+  fecha         DateTime @default(now())
+  usuarioId     String?
+  usuarioNombre String?
+  rol           String?
+  accion        String
+  entidad       String
+  entidadId     String?
+  detalle       Json?
+  ip            String?
+
+  @@index([fecha])
+  @@index([usuarioId, fecha])
+  @@index([entidad, entidadId])
 }

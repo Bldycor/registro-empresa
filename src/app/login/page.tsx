@@ -29,7 +29,11 @@ function LoginForm() {
     setLoading(false);
 
     if (result?.error) {
-      setError("Cédula o contraseña incorrectos.");
+      setError(
+        result.code === "bloqueada"
+          ? "Por seguridad, la cuenta quedó bloqueada 15 minutos tras 5 intentos fallidos. Espera e inténtalo de nuevo, o recupera la contraseña."
+          : "Cédula o contraseña incorrectos. Tras 5 intentos fallidos la cuenta se bloquea 15 minutos.",
+      );
       return;
     }
 

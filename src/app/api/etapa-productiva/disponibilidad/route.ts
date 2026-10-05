@@ -1,13 +1,11 @@
+import { requireApiUser } from "@/lib/auth-guards";
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { ocupaFranja } from "@/lib/reuniones";
 
 export async function GET(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "No autenticado." }, { status: 401 });
-  }
+  const { user: sesion, response } = await requireApiUser(["APRENDIZ"]);
+  if (!sesion) return response;
 
   const { searchParams } = new URL(request.url);
   const fecha = searchParams.get("fecha");
@@ -24,7 +22,7 @@ export async function GET(request: Request) {
 
   if (tipo === "concertacion") {
     const citas = await prisma.concertacionFuncion.findMany({
-      where: { fecha: fechaDate, userId: { not: session.user.id } },
+      where: { fecha: fechaDate, userId: { not: sesion.id } },
       select: { horaInicio: true, horaFin: true },
       orderBy: { horaInicio: "asc" },
     });
@@ -32,7 +30,7 @@ export async function GET(request: Request) {
   }
 
   const yo = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: sesion.id },
     select: { ficha: { select: { instructorId: true } } },
   });
   const instructorId = yo?.ficha?.instructorId;
@@ -43,7 +41,7 @@ export async function GET(request: Request) {
   const reuniones = await prisma.evaluacion.findMany({
     where: {
       fecha: fechaDate,
-      userId: { not: session.user.id },
+      userId: { not: sesion.id },
       user: { ficha: { instructorId } },
       // Una reunión extraordinaria rechazada ya no ocupa la franja.
       AND: [ocupaFranja],

@@ -1,14 +1,20 @@
-import { PrismaClient } from "@/generated/prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { prismaBase } from "@/lib/prisma-base";
+import { auditarEscritura, debeAuditar } from "@/lib/auditoria";
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
-
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-
-export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+// Cliente de la aplicación: el mismo de siempre, más la trazabilidad automática. Toda creación,
+// cambio o borrado queda en `RegistroAuditoria` (quién, cuándo, desde dónde y qué datos), sin que
+// cada ruta tenga que acordarse de hacerlo. Ver src/lib/auditoria.ts.
+export const prisma = prismaBase.$extends({
+  name: "auditoria",
+  query: {
+    $allModels: {
+      async $allOperations({ model, operation, args, query }) {
+        const resultado = await query(args);
+        if (debeAuditar(model, operation)) {
+          await auditarEscritura(model, operation, args as Record<string, unknown>, resultado);
+        }
+        return resultado;
+      },
+    },
+  },
+});

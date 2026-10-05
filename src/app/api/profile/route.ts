@@ -1,27 +1,23 @@
+import { requireApiUser } from "@/lib/auth-guards";
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { ProfileSchema } from "@/lib/validations";
 import { validarNit } from "@/lib/nit";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "No autenticado." }, { status: 401 });
-  }
+  const { user: sesion, response } = await requireApiUser(["APRENDIZ"]);
+  if (!sesion) return response;
 
   const profile = await prisma.companyProfile.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: sesion.id },
   });
 
   return NextResponse.json({ profile });
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "No autenticado." }, { status: 401 });
-  }
+  const { user: sesion, response } = await requireApiUser(["APRENDIZ"]);
+  if (!sesion) return response;
 
   let body: unknown;
   try {
@@ -79,9 +75,9 @@ export async function POST(request: Request) {
 
   try {
     const profile = await prisma.companyProfile.upsert({
-      where: { userId: session.user.id },
+      where: { userId: sesion.id },
       update: datos,
-      create: { ...datos, userId: session.user.id },
+      create: { ...datos, userId: sesion.id },
     });
 
     return NextResponse.json({ profile }, { status: 200 });

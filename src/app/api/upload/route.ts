@@ -27,6 +27,9 @@ export async function POST(request: Request) {
       onBeforeGenerateToken: async (pathname) => {
         return {
           allowedContentTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
+          // Tope de 10 MB por archivo: un formato firmado o una foto caben de sobra, y evita que
+          // alguien llene el almacenamiento con archivos enormes.
+          maximumSizeInBytes: 10 * 1024 * 1024,
           addRandomSuffix: true,
           tokenPayload: JSON.stringify({ userId: user.id, pathname }),
         };
@@ -41,7 +44,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("[api/upload] Error al generar el token de subida:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Error al generar el token de subida." },
+      { error: "No se pudo preparar la subida del archivo. Inténtalo de nuevo; si sigue fallando, el archivo puede superar los 10 MB o no ser PDF ni imagen." },
       { status: 400 },
     );
   }

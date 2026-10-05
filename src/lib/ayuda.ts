@@ -135,6 +135,7 @@ const INSTRUCTOR: GuiaRol = {
     "Los plazos que ves en ámbar son advertencias de la guía GFPI-G-040: nada se bloquea, pero quedan registrados.",
     "Una evidencia se da por completa cuando está avalada; haberla entregado tarde no la deja atrasada para siempre.",
     "Recibes copia de los avisos de plazo de tus aprendices y el recordatorio antes de cada reunión.",
+    "Los números en naranja del menú son lo que espera tu revisión en cada bandeja; un Momento cuenta cuando la reunión ya pasó y falta valorarlo.",
   ],
 };
 
@@ -201,6 +202,14 @@ const COORDINADOR: GuiaRol = {
           opcion: "Reportes",
           que: "Métricas, cumplimiento por evidencia con la lista de aprendices en riesgo, y el listado por aprendiz. Filtras y descargas en Excel o en PDF.",
         },
+        {
+          opcion: "Funciones en la empresa",
+          que: "Qué funciones hacen los aprendices en su práctica, por ficha y por programa —las asignadas en el plan del Momento 1 y las que reportan en sus bitácoras—: las más comunes, cuáles coinciden con las competencias técnicas del programa, qué competencias no aparecen en la práctica y qué funciones no contempla ninguna, con recomendaciones como insumo para mejorar el programa de formación.",
+        },
+        {
+          opcion: "Trazabilidad",
+          que: "Quién hizo qué, cuándo y desde qué conexión: cada creación, cambio o borrado, cada ingreso, los intentos fallidos y las cuentas bloqueadas. Filtras por persona, acción, tipo de registro y fechas. Las contraseñas nunca se guardan ahí, y nadie puede editar ni borrar el registro.",
+        },
         { opcion: "Mi perfil", que: "Actualizas tus datos de contacto." },
       ],
     },
@@ -209,6 +218,7 @@ const COORDINADOR: GuiaRol = {
     "Tienes 8 días hábiles para avalar una alternativa, 15 para un cambio y 8 para registrarla en SofiaPlus: cada pendiente muestra su antigüedad.",
     "El sistema solo señala el riesgo de deserción; declararla es una decisión tuya y queda con su causa.",
     "El paso de «Por certificar» a «Certificado» lo haces tú, cuando la certificación se expide fuera del sistema.",
+    "Los números en naranja del menú son lo que espera tu acción en cada bandeja.",
   ],
 };
 
@@ -347,6 +357,14 @@ export const ayudaMenu: Record<string, { icono: string; resumen: string }> = {
   "/formulario/admin/empresas": {
     icono: "🏢",
     resumen: "Registra, importa y corrige las empresas por NIT, con el RUES.",
+  },
+  "/formulario/reportes/funciones": {
+    icono: "🧭",
+    resumen: "Qué hacen los aprendices en la empresa vs. las competencias del programa.",
+  },
+  "/formulario/coordinador/auditoria": {
+    icono: "🛡️",
+    resumen: "Quién hizo qué y cuándo: cambios, ingresos y bloqueos.",
   },
   "/formulario/coordinador/configuracion": {
     icono: "🏛️",

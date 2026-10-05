@@ -1,5 +1,5 @@
+import { requireApiUser } from "@/lib/auth-guards";
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { EvaluacionAgendaSchema } from "@/lib/validations";
 import { TODAS_LAS_VARIABLES, variableCategoria } from "@/lib/evaluacion-variables";
@@ -41,19 +41,17 @@ function toDateOnly(fecha: string) {
 // Momentos 2 (seguimiento) y 3 (cierre) del propio aprendiz — la Concertación (Momento 1) sigue
 // viviendo en /api/etapa-productiva/concertacion, sin cambios.
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "No autenticado." }, { status: 401 });
-  }
+  const { user: sesion, response } = await requireApiUser(["APRENDIZ"]);
+  if (!sesion) return response;
 
   const [evaluaciones, aprendiz] = await Promise.all([
     prisma.evaluacion.findMany({
-      where: { userId: session.user.id, numero: { in: [2, 3] }, esExtraordinario: false },
+      where: { userId: sesion.id, numero: { in: [2, 3] }, esExtraordinario: false },
       select: EVALUACION_SELECT,
       orderBy: { numero: "asc" },
     }),
     prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: sesion.id },
       select: { ficha: { select: { instructor: { select: { nombres: true, apellidos: true } } } } },
     }),
   ]);
@@ -67,10 +65,8 @@ export async function GET() {
 // Agenda (o reagenda) la reunión de Momento 2 o 3. Solo se puede reagendar mientras el instructor
 // no haya finalizado la evaluación (estado APROBADA la deja fija).
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "No autenticado." }, { status: 401 });
-  }
+  const { user: sesion, response } = await requireApiUser(["APRENDIZ"]);
+  if (!sesion) return response;
 
   const body = await request.json();
   const parsed = EvaluacionAgendaSchema.safeParse(body);
@@ -81,7 +77,7 @@ export async function POST(request: Request) {
 
   const [user, existing] = await Promise.all([
     prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: sesion.id },
       select: {
         nombres: true,
         apellidos: true,
@@ -91,7 +87,7 @@ export async function POST(request: Request) {
       },
     }),
     prisma.evaluacion.findFirst({
-      where: { userId: session.user.id, numero: d.numero, esExtraordinario: false },
+      where: { userId: sesion.id, numero: d.numero, esExtraordinario: false },
     }),
   ]);
 
@@ -128,7 +124,7 @@ export async function POST(request: Request) {
   const reunionesDelDia = await prisma.evaluacion.findMany({
     where: {
       fecha: fechaDate,
-      userId: { not: session.user.id },
+      userId: { not: sesion.id },
       user: { ficha: { instructorId } },
       // Una reunión extraordinaria rechazada ya no ocupa la franja.
       AND: [ocupaFranja],
@@ -158,7 +154,7 @@ export async function POST(request: Request) {
       })
     : await prisma.evaluacion.create({
         data: {
-          userId: session.user.id,
+          userId: sesion.id,
           numero: d.numero,
           fecha: fechaDate,
           horaInicio: d.horaInicio,

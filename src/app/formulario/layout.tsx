@@ -8,6 +8,7 @@ import { EvidenciaEPNav } from "@/components/evidencia-ep-nav";
 import { BienvenidaSplash } from "@/components/bienvenida-splash";
 import { bienvenidaRol } from "@/lib/ayuda";
 import { calcularSeguimiento } from "@/lib/seguimiento-evidencias";
+import { pendientesMenu } from "@/lib/pendientes-menu";
 
 export default async function FormularioLayout({
   children,
@@ -20,9 +21,28 @@ export default async function FormularioLayout({
     redirect("/login");
   }
 
+  // Una sola consulta trae lo del encabezado y, si es aprendiz, todo lo que necesita su insignia
+  // roja (antes eran cuatro viajes seguidos a la base en cada pantalla).
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { role: true, nombres: true, apellidos: true },
+    select: {
+      role: true,
+      nombres: true,
+      apellidos: true,
+      companyProfile: { select: { id: true } },
+      estado: true,
+      fechaInicioEtapaProductiva: true,
+      fechaFinEtapaProductiva: true,
+      totalBitacoras: true,
+      bitacoraInicioTramo: true,
+      ficha: { select: { fechaLimiteIniciarEP: true } },
+      seleccionesAlternativa: { select: { estado: true }, orderBy: { createdAt: "desc" } },
+      formalizacionEtapaProductiva: { select: { estado: true } },
+      concertacionFuncion: { select: { estado: true } },
+      bitacoras: { select: { numero: true, estado: true } },
+      evaluaciones: { where: { esExtraordinario: false }, select: { numero: true, estado: true } },
+      certificacionEmpresario: { select: { estado: true } },
+    },
   });
 
   if (!user) {
@@ -62,71 +82,41 @@ export default async function FormularioLayout({
   );
 
   if (user.role === "APRENDIZ") {
-    const profile = await prisma.companyProfile.findUnique({
-      where: { userId: session.user.id },
-      select: { id: true },
-    });
+    const profile = user.companyProfile;
 
     // Insignia roja del nav: cuenta evidencias Rechazadas + evidencias Atrasadas (vencidas según
     // su propia fecha real de inicio/fin de EP — mismo cálculo que el panel de Seguimiento del
     // instructor, ver src/lib/seguimiento-evidencias.ts) por sección. Solo hace falta calcularla
     // si ya hay nav que mostrar (perfil completo).
     const alertas = profile
-      ? await (async () => {
-          const userId = session.user.id;
-          const [rechazos, aprendiz] = await Promise.all([
-            (async () => {
-              const [alternativa, formalizacion, bitacoras, evaluaciones, certificacion] =
-                await Promise.all([
-                  prisma.seleccionAlternativaEP.count({ where: { userId, estado: "RECHAZADA" } }),
-                  prisma.formalizacionEtapaProductiva.count({ where: { userId, estado: "RECHAZADA" } }),
-                  prisma.bitacora.count({ where: { userId, estado: "RECHAZADA" } }),
-                  // Una reunión extraordinaria no aprobada no es una evidencia rechazada: no suma a la insignia.
-                  prisma.evaluacion.count({ where: { userId, estado: "RECHAZADA", esExtraordinario: false } }),
-                  prisma.certificacionEmpresario.count({ where: { userId, estado: "RECHAZADA" } }),
-                ]);
-              return { alternativa, formalizacion, bitacoras, evaluaciones, certificacion };
-            })(),
-            prisma.user.findUnique({
-              where: { id: userId },
-              select: {
-                estado: true,
-                fechaInicioEtapaProductiva: true,
-                fechaFinEtapaProductiva: true,
-                totalBitacoras: true,
-                bitacoraInicioTramo: true,
-                ficha: { select: { fechaLimiteIniciarEP: true } },
-                seleccionesAlternativa: { select: { estado: true }, orderBy: { createdAt: "desc" }, take: 1 },
-                formalizacionEtapaProductiva: { select: { estado: true } },
-                concertacionFuncion: { select: { estado: true } },
-                bitacoras: { select: { numero: true, estado: true } },
-                evaluaciones: {
-                  where: { numero: { in: [2, 3] }, esExtraordinario: false },
-                  select: { numero: true, estado: true },
-                },
-                certificacionEmpresario: { select: { estado: true } },
-              },
-            }),
-          ]);
+      ? (() => {
+          const rechazada = (e: { estado: string } | null | undefined) => (e?.estado === "RECHAZADA" ? 1 : 0);
+          const momentos = user.evaluaciones.filter((e) => e.numero === 2 || e.numero === 3);
+          const rechazos = {
+            alternativa: user.seleccionesAlternativa.filter((s) => s.estado === "RECHAZADA").length,
+            formalizacion: rechazada(user.formalizacionEtapaProductiva),
+            bitacoras: user.bitacoras.filter((b) => b.estado === "RECHAZADA").length,
+            // Una reunión extraordinaria no aprobada no es una evidencia rechazada: no suma a la insignia.
+            evaluaciones: user.evaluaciones.filter((e) => e.estado === "RECHAZADA").length,
+            certificacion: rechazada(user.certificacionEmpresario),
+          };
 
-          const checklist = aprendiz
-            ? calcularSeguimiento({
-                hoy: new Date(),
-                fechaInicioEP: aprendiz.fechaInicioEtapaProductiva,
-                fechaFinEP: aprendiz.fechaFinEtapaProductiva,
-                fechaLimiteIniciarEPFicha: aprendiz.ficha?.fechaLimiteIniciarEP ?? null,
-                alternativaAprobada: aprendiz.seleccionesAlternativa[0]?.estado === "APROBADA",
-                formalizacionAprobada: aprendiz.formalizacionEtapaProductiva?.estado === "APROBADA",
-                concertacionAprobada: aprendiz.concertacionFuncion?.estado === "APROBADA",
-                bitacoras: aprendiz.bitacoras,
-                totalBitacoras: aprendiz.totalBitacoras,
-                bitacoraInicioTramo: aprendiz.bitacoraInicioTramo,
-                estadoAprendiz: aprendiz.estado,
-                evaluacion2Aprobada: aprendiz.evaluaciones.some((e) => e.numero === 2 && e.estado === "APROBADA"),
-                evaluacion3Aprobada: aprendiz.evaluaciones.some((e) => e.numero === 3 && e.estado === "APROBADA"),
-                certificacionAprobada: aprendiz.certificacionEmpresario?.estado === "APROBADA",
-              })
-            : [];
+          const checklist = calcularSeguimiento({
+            hoy: new Date(),
+            fechaInicioEP: user.fechaInicioEtapaProductiva,
+            fechaFinEP: user.fechaFinEtapaProductiva,
+            fechaLimiteIniciarEPFicha: user.ficha?.fechaLimiteIniciarEP ?? null,
+            alternativaAprobada: user.seleccionesAlternativa[0]?.estado === "APROBADA",
+            formalizacionAprobada: user.formalizacionEtapaProductiva?.estado === "APROBADA",
+            concertacionAprobada: user.concertacionFuncion?.estado === "APROBADA",
+            bitacoras: user.bitacoras,
+            totalBitacoras: user.totalBitacoras,
+            bitacoraInicioTramo: user.bitacoraInicioTramo,
+            estadoAprendiz: user.estado,
+            evaluacion2Aprobada: momentos.some((e) => e.numero === 2 && e.estado === "APROBADA"),
+            evaluacion3Aprobada: momentos.some((e) => e.numero === 3 && e.estado === "APROBADA"),
+            certificacionAprobada: user.certificacionEmpresario?.estado === "APROBADA",
+          });
 
           const porClave = Object.fromEntries(checklist.map((c) => [c.clave, c.cantidadAtrasada]));
 
@@ -152,12 +142,14 @@ export default async function FormularioLayout({
     );
   }
 
+  const pendientes = await pendientesMenu(session.user.id, user.role);
+
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
       <BienvenidaSplash nombre={user.nombres} mensaje={bienvenidaRol[user.role] ?? ""} />
       {header}
       <div className="flex flex-1 flex-col sm:flex-row">
-        <PanelSidebar role={user.role} />
+        <PanelSidebar role={user.role} pendientes={pendientes} />
         <main className="flex flex-1 flex-col">{children}</main>
       </div>
     </div>

@@ -1,16 +1,14 @@
+import { requireApiUser } from "@/lib/auth-guards";
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { PersonalUpdateSchema } from "@/lib/validations";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "No autenticado." }, { status: 401 });
-  }
+  const { user: sesion, response } = await requireApiUser();
+  if (!sesion) return response;
 
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: sesion.id },
     select: {
       nombres: true,
       apellidos: true,
@@ -26,10 +24,8 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "No autenticado." }, { status: 401 });
-  }
+  const { user: sesion, response } = await requireApiUser();
+  if (!sesion) return response;
 
   const body = await request.json();
   const parsed = PersonalUpdateSchema.safeParse(body);
@@ -44,7 +40,7 @@ export async function PATCH(request: Request) {
   const { email, celular, direccionResidencia } = parsed.data;
 
   const existingEmail = await prisma.user.findUnique({ where: { email } });
-  if (existingEmail && existingEmail.id !== session.user.id) {
+  if (existingEmail && existingEmail.id !== sesion.id) {
     return NextResponse.json(
       { error: { email: ["Ya existe una cuenta con este correo."] } },
       { status: 409 }
@@ -52,7 +48,7 @@ export async function PATCH(request: Request) {
   }
 
   const user = await prisma.user.update({
-    where: { id: session.user.id },
+    where: { id: sesion.id },
     data: { email, celular, direccionResidencia },
     select: {
       nombres: true,

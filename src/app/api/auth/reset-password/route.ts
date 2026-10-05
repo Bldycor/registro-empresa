@@ -30,7 +30,8 @@ export async function POST(request: Request) {
   await prisma.$transaction([
     prisma.user.update({
       where: { id: resetToken.userId },
-      data: { passwordHash },
+      // Restablecer la contraseña también levanta un bloqueo por intentos fallidos.
+      data: { passwordHash, intentosFallidos: 0, bloqueadoHasta: null },
     }),
     prisma.passwordResetToken.update({
       where: { id: resetToken.id },
