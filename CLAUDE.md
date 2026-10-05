@@ -109,6 +109,8 @@ docs/                             # requisitos y plan
 - Pausas: `PRACTICA_INTERRUMPIDA` y `APLAZADA`. Cierre por abandono: `DESERTADO`. En los tres el reloj de plazos está detenido: no se cuentan atrasos.
 
 **Evidencias y evaluaciones:**
+- **Un clic para todo «Satisfactorio»** (4 oct 2026): en la valoración del instructor (Momento 1, 6 criterios; Momentos 2 y 3, 13 criterios) el botón «Marcar todos como Satisfactorio» los valora todos de una vez, sin tocar las observaciones; después se ajusta cualquiera. Solo el instructor valora: las demás pantallas solo muestran la rúbrica.
+- **Las filas de la rúbrica** (`EvaluacionVariable`) nacen al agendar el momento y también cuando el aprendiz lo registra desde el formato (antes no, y el instructor no podía guardar: pasó con el Momento 2 de Camilo, 4 oct 2026). El guardado del instructor usa `upsert`, así que un momento sin filas se completa en vez de fallar.
 - Se evalúa con la **rúbrica de GFPI-F-023** (variables *Satisfactorio / Por mejorar* y juicio *Aprobado / No aprobado* en el Momento 3). La convención A/D/P de los requisitos originales **no se usa**; el enum `Calificacion` quedó sin uso.
 - Una evidencia está completa **cuando está avalada**. Haberla hecho tarde no la deja "atrasada" para siempre.
 - Plazos: Concertación, 15 días desde el inicio; Momento 2, al **50 % del plan**; Momento 3, 10 días antes del cierre; certificación del empresario, hasta el fin de la EP.

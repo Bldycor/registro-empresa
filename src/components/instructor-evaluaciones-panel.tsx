@@ -249,6 +249,17 @@ function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved:
     setValores((prev) => ({ ...prev, [variable]: { ...prev[variable], [campo]: valor } }));
   }
 
+  // Un clic valora todos los criterios como «Satisfactorio» (pedido de Coordinación, 4 oct 2026);
+  // después se puede cambiar cualquiera uno por uno. Las observaciones no se tocan.
+  const criterios = Object.values(valores);
+  const satisfactorios = criterios.filter((v) => v.valoracion === "SATISFACTORIO").length;
+  const porMejorar = criterios.filter((v) => v.valoracion === "POR_MEJORAR").length;
+  function marcarTodoSatisfactorio() {
+    setValores((prev) =>
+      Object.fromEntries(Object.entries(prev).map(([k, v]) => [k, { ...v, valoracion: "SATISFACTORIO" }])),
+    );
+  }
+
   function alternarCompetencia(c: CompetenciaCatalogo) {
     setSeleccionadas((prev) => {
       const next = new Set(prev);
@@ -333,6 +344,24 @@ function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved:
         >
           Ver el formato GFPI-F-023 que envió el aprendiz
         </a>
+      )}
+
+      {!bloqueado && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950">
+          <button
+            type="button"
+            onClick={marcarTodoSatisfactorio}
+            disabled={satisfactorios === criterios.length}
+            className="rounded-md bg-sena px-3 py-1.5 text-sm font-medium text-white hover:bg-sena-oscuro disabled:opacity-50"
+          >
+            ✓ Marcar todos como Satisfactorio
+          </button>
+          <span className="text-xs text-zinc-600 dark:text-zinc-400">
+            {satisfactorios} de {criterios.length} en Satisfactorio
+            {porMejorar > 0 && ` · el botón cambia también ${porMejorar} en «Por mejorar»`}. Luego puedes
+            ajustar cualquiera.
+          </span>
+        </div>
       )}
 
       {esConcertacion ? (

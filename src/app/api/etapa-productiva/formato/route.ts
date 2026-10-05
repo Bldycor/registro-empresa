@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { TODAS_LAS_VARIABLES, variableCategoria } from "@/lib/evaluacion-variables";
 import { esPdf } from "@/lib/leer-pdf";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
@@ -258,6 +259,11 @@ export async function PATCH(request: Request) {
           fecha: toDateOnly(fechaRealizado),
           horaInicio,
           horaFin,
+          // Las 13 variables de la rúbrica nacen vacías, como al agendar: sin ellas el instructor
+          // no podía guardar su valoración (4 oct 2026).
+          variables: {
+            create: TODAS_LAS_VARIABLES.map((variable) => ({ variable, categoria: variableCategoria[variable] })),
+          },
         },
         select: { id: true, estado: true, fecha: true, modalidad: true },
       });

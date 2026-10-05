@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { variableCategoria } from "@/lib/evaluacion-variables";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { EvaluacionRubricaSchema } from "@/lib/validations";
@@ -66,9 +67,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   await prisma.$transaction([
     ...d.variables.map((v) =>
-      prisma.evaluacionVariable.update({
+      // upsert: un momento registrado sin sus filas de rúbrica (pasaba con los que el aprendiz
+      // registró desde el formato) se completa aquí en vez de fallar.
+      prisma.evaluacionVariable.upsert({
         where: { evaluacionId_variable: { evaluacionId: id, variable: v.variable } },
-        data: { valoracion: v.valoracion ?? null, observaciones: v.observaciones || null },
+        update: { valoracion: v.valoracion ?? null, observaciones: v.observaciones || null },
+        create: {
+          evaluacionId: id,
+          variable: v.variable,
+          categoria: variableCategoria[v.variable],
+          valoracion: v.valoracion ?? null,
+          observaciones: v.observaciones || null,
+        },
       })
     ),
     prisma.evaluacion.update({
