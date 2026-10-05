@@ -114,6 +114,31 @@ const SOLO_LECTURA: [string, string][] = [
 const inputClass =
   "rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950";
 
+// Casilla dentro de la vista previa: resaltada mientras siga vacía.
+const casillaPrevia = (vacia: boolean) =>
+  `w-full rounded-md border px-3 py-1.5 text-sm outline-none focus:border-sena sm:max-w-md dark:bg-zinc-900 ${
+    vacia ? "border-amber-400 bg-amber-50/60 dark:border-amber-600 dark:bg-amber-950/20" : "border-zinc-300 bg-white dark:border-zinc-700"
+  }`;
+
+type Modalidad = "" | "PRESENCIAL" | "VIRTUAL";
+const MODALIDAD_LABEL: Record<Exclude<Modalidad, "">, string> = { PRESENCIAL: "Presencial", VIRTUAL: "Virtual" };
+const ETIQUETA_ENLACE = "Enlace de grabación";
+const ETIQUETAS_MODALIDAD = ["Modalidad del seguimiento", "La evaluación se realizó en forma"];
+// La fecha de la reunión de cada momento (en el 3, «Fecha de fin de la ejecución» es otra cosa).
+const ETIQUETAS_FECHA = ["Fecha del momento de seguimiento", "Fecha del momento de evaluación"];
+
+function modalidadDeTexto(texto: string | null | undefined): Modalidad {
+  const t = (texto ?? "").toLowerCase();
+  if (/presencial/.test(t)) return "PRESENCIAL";
+  if (/virtual|remot|teams|meet|zoom/.test(t)) return "VIRTUAL";
+  return "";
+}
+
+function aDiaMesAnio(fecha: string): string {
+  const [y, m, d] = fecha.split("-");
+  return y && m && d ? `${d}/${m}/${y}` : "";
+}
+
 const VARIABLE_LABEL: Record<string, string> = {
   APLICACION_CONOCIMIENTO: "Aplicación de conocimiento",
   MEJORA_CONTINUA: "Mejora continua",
@@ -134,14 +159,16 @@ function Vacio() {
   return <span className="text-zinc-400 dark:text-zinc-500">(sin diligenciar)</span>;
 }
 
-function Fila({ etiqueta, valor, delDocumento }: Campo) {
+// `editor`: la casilla para escribir el dato aquí mismo, en la vista previa, cuando el sistema no
+// lo tiene y el PDF no se pudo leer (pedido de Coordinación, 4 oct 2026).
+function Fila({ etiqueta, valor, delDocumento, editor }: Campo & { editor?: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-0.5 border-b border-zinc-100 py-1.5 last:border-0 dark:border-zinc-800 sm:flex-row sm:gap-3">
+    <div className="flex flex-col gap-0.5 border-b border-zinc-100 py-1.5 last:border-0 dark:border-zinc-800 sm:flex-row sm:items-center sm:gap-3">
       <dt className="shrink-0 text-xs uppercase tracking-wide text-zinc-400 dark:text-zinc-500 sm:w-64">
         {etiqueta}
       </dt>
-      <dd className="text-sm text-zinc-800 dark:text-zinc-200">
-        {valor ? valor : <Vacio />}
+      <dd className="min-w-0 flex-1 text-sm text-zinc-800 dark:text-zinc-200">
+        {editor ?? (valor ? valor : <Vacio />)}
         {valor && delDocumento && (
           <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
             leído del PDF
@@ -230,6 +257,11 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
   const [retroalimentacion, setRetroalimentacion] = useState("");
   // Solo cuando el momento no está en SEPA porque se hizo por fuera.
   const [realizado, setRealizado] = useState({ fecha: "", horaInicio: "", horaFin: "" });
+  // Datos de la reunión que el PDF suele traer; si no se pudo leer, el aprendiz los escribe.
+  const [manual, setManual] = useState<{ enlaceGrabacion: string; modalidad: Modalidad }>({
+    enlaceGrabacion: "",
+    modalidad: "",
+  });
 
   // Se recarga al abrirlo, no solo al montar: los datos generales son los mismos para los tres
   // momentos, así que si el aprendiz acaba de escribirlos en otro momento, aquí ya se ven.
@@ -255,6 +287,10 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
         // Lo ya guardado del momento se precarga para no hacerle reescribir nada.
         const f: Formato = data.formato;
         const valorDe = (etiqueta: string) => f.detalle.find((c) => c.etiqueta === etiqueta)?.valor ?? "";
+        setManual({
+          enlaceGrabacion: valorDe(ETIQUETA_ENLACE),
+          modalidad: modalidadDeTexto(ETIQUETAS_MODALIDAD.map(valorDe).find(Boolean)),
+        });
         const textoDe = (titulo: string) => f.textos.find((t) => t.titulo === titulo)?.cuerpo ?? "";
         if (f.momento === 1) {
           setPlan({
@@ -359,7 +395,89 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
           return c;
         })
       : formato.detalle
-  ).map(conLeido);
+  )
+    .map((c) => {
+      // Lo escrito a mano manda sobre lo leído del PDF.
+      if (c.etiqueta === ETIQUETA_ENLACE && manual.enlaceGrabacion.trim()) {
+        return { ...c, valor: manual.enlaceGrabacion.trim(), delDocumento: false };
+      }
+      if (ETIQUETAS_MODALIDAD.includes(c.etiqueta) && manual.modalidad) {
+        return { ...c, valor: MODALIDAD_LABEL[manual.modalidad], delDocumento: false };
+      }
+      if (ETIQUETAS_FECHA.includes(c.etiqueta) && !c.valor && realizado.fecha) {
+        return { ...c, valor: aDiaMesAnio(realizado.fecha), delDocumento: false };
+      }
+      if (momento === 1 && c.etiqueta === "Fecha del momento" && !c.valor && realizado.fecha) {
+        return { ...c, valor: aDiaMesAnio(realizado.fecha), delDocumento: false };
+      }
+      return c;
+    })
+    .map(conLeido);
+
+  // Qué casillas de la previa se pueden escribir: las que el sistema no trae (según el formato
+  // que devolvió el servidor, no lo que se va escribiendo, para que la casilla no desaparezca).
+  const sinValorSistema = (etiqueta: string) => !formato.detalle.find((c) => c.etiqueta === etiqueta)?.valor;
+  const correoSinValor = !formato.encabezado
+    .find((b) => b.titulo === "Datos del aprendiz")
+    ?.campos.find((c) => c.etiqueta === "Correo electrónico institucional")?.valor;
+
+  function editorDetalle(c: Campo): React.ReactNode | undefined {
+    if (c.etiqueta === ETIQUETA_ENLACE && sinValorSistema(c.etiqueta)) {
+      return (
+        <input
+          type="url"
+          aria-label={c.etiqueta}
+          placeholder="Pega aquí el enlace de la grabación"
+          value={manual.enlaceGrabacion}
+          onChange={(e) => setManual((prev) => ({ ...prev, enlaceGrabacion: e.target.value }))}
+          className={casillaPrevia(!manual.enlaceGrabacion.trim())}
+        />
+      );
+    }
+    if (momento !== 1 && ETIQUETAS_MODALIDAD.includes(c.etiqueta) && sinValorSistema(c.etiqueta)) {
+      return (
+        <select
+          aria-label={c.etiqueta}
+          value={manual.modalidad}
+          onChange={(e) => setManual((prev) => ({ ...prev, modalidad: e.target.value as Modalidad }))}
+          className={casillaPrevia(!manual.modalidad)}
+        >
+          <option value="">Selecciona</option>
+          <option value="PRESENCIAL">Presencial</option>
+          <option value="VIRTUAL">Virtual</option>
+        </select>
+      );
+    }
+    if (momento !== 1 && ETIQUETAS_FECHA.includes(c.etiqueta) && sinValorSistema(c.etiqueta)) {
+      return (
+        <input
+          type="date"
+          aria-label={c.etiqueta}
+          max={hoyEnColombia}
+          value={realizado.fecha}
+          onChange={(e) => setRealizado((prev) => ({ ...prev, fecha: e.target.value }))}
+          className={casillaPrevia(!realizado.fecha)}
+        />
+      );
+    }
+    return undefined;
+  }
+
+  function editorEncabezado(bloque: string, c: Campo): React.ReactNode | undefined {
+    if (bloque === "Datos del aprendiz" && c.etiqueta === "Correo electrónico institucional" && correoSinValor) {
+      return (
+        <input
+          type="email"
+          aria-label={c.etiqueta}
+          placeholder="tucorreo@soy.sena.edu.co"
+          value={datos.correoInstitucional}
+          onChange={(e) => setDatos((prev) => ({ ...prev, correoInstitucional: e.target.value }))}
+          className={casillaPrevia(!datos.correoInstitucional.trim())}
+        />
+      );
+    }
+    return undefined;
+  }
 
   const textosPrevia = formato.textos.map((t) => {
     if (momento === 1) {
@@ -383,6 +501,12 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
   const enBlanco = [
     ...encabezadoPrevia.flatMap((b) => b.campos.filter((c) => !c.valor).map((c) => c.etiqueta)),
     ...detallePrevia.filter((c) => !c.valor).map((c) => c.etiqueta),
+  ];
+  const porEscribirAqui = [
+    ...encabezadoPrevia.flatMap((b) =>
+      b.campos.filter((c) => !c.valor && editorEncabezado(b.titulo, c)).map((c) => c.etiqueta),
+    ),
+    ...detallePrevia.filter((c) => !c.valor && editorDetalle(c)).map((c) => c.etiqueta),
   ];
 
   // Del D/M/AAAA del documento al AAAA-MM-DD que usan los campos de fecha.
@@ -410,13 +534,13 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
 
       if (d.sinTexto) {
         setLectura(
-          "Ese PDF no tiene texto (parece una foto o un escaneo), así que no se pudo leer nada de él. Diligencia los campos a mano.",
+          "Ese archivo es una foto o un escaneo: no tiene texto, así que SEPA no pudo leer nada de él. Escribe los datos que falten en las casillas de abajo o directamente en la vista previa del formato; el archivo se envía igual.",
         );
         return;
       }
       if (!d.leidos) {
         setLectura(
-          "No se reconoció ningún campo del formato en ese PDF. Diligencia los campos a mano; el documento se envía igual.",
+          "No se reconoció ningún campo del formato en ese PDF. Escribe los datos que falten en las casillas de abajo o directamente en la vista previa; el documento se envía igual.",
         );
         return;
       }
@@ -457,6 +581,15 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
       setDatos(datosFusionados);
       if (momento === 1) setPlan(planFusionado);
       setDelDocumento(leido);
+      // Lo leído de la reunión entra en sus casillas, donde se puede corregir.
+      setManual((prev) => ({
+        enlaceGrabacion: prev.enlaceGrabacion.trim() || (leido.enlaceGrabacion ?? ""),
+        modalidad: prev.modalidad || modalidadDeTexto(leido.modalidadMomento),
+      }));
+      if (!realizado.fecha && leido.fechaMomento) {
+        const fecha = aFechaCampo(leido.fechaMomento);
+        if (fecha && fecha <= hoyEnColombia) setRealizado((prev) => ({ ...prev, fecha }));
+      }
 
       // Leer solo diligencia el formulario. Nada queda guardado hasta que el aprendiz revisa y
       // pulsa «Enviar a mi instructor» (así lo pidió Coordinación, 29 sep 2026).
@@ -485,13 +618,29 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
     const planAGuardar = conPlanDelCatalogo(valores?.plan ?? plan);
     const archivoAGuardar = valores ? valores.archivoUrl : archivoUrl;
 
-    const cuandoSeHizo = formato?.existe
-      ? {}
-      : { fechaRealizado: realizado.fecha, horaInicio: realizado.horaInicio, horaFin: realizado.horaFin };
+    // El día de la reunión va cuando el momento no está en SEPA, o está pero sin día.
+    const fechaFaltante = ETIQUETAS_FECHA.some((e) => formato?.detalle.some((c) => c.etiqueta === e && !c.valor));
+    const cuandoSeHizo =
+      formato?.existe && !fechaFaltante
+        ? {}
+        : { fechaRealizado: realizado.fecha, horaInicio: realizado.horaInicio, horaFin: realizado.horaFin };
     const cuerpo =
       momento === 1
-        ? { momento: 1 as const, ...planAGuardar, ...cuandoSeHizo, archivoUrl: archivoAGuardar }
-        : { momento, retroalimentacionAprendiz: retroalimentacion, ...cuandoSeHizo, archivoUrl: archivoAGuardar };
+        ? {
+            momento: 1 as const,
+            ...planAGuardar,
+            ...cuandoSeHizo,
+            enlaceGrabacion: manual.enlaceGrabacion,
+            archivoUrl: archivoAGuardar,
+          }
+        : {
+            momento,
+            retroalimentacionAprendiz: retroalimentacion,
+            ...cuandoSeHizo,
+            enlaceGrabacion: manual.enlaceGrabacion,
+            modalidad: manual.modalidad,
+            archivoUrl: archivoAGuardar,
+          };
 
     const res = await fetch("/api/etapa-productiva/formato", {
       method: "PATCH",
@@ -754,6 +903,47 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
             </label>
           )}
 
+          <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+            <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Datos de la reunión</p>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              SEPA los toma del PDF firmado. Si adjuntas una foto o un escaneo, escríbelos aquí.
+            </p>
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-sm text-zinc-700 dark:text-zinc-300">
+                Enlace de grabación
+                <input
+                  type="url"
+                  value={manual.enlaceGrabacion}
+                  onChange={(e) => setManual((prev) => ({ ...prev, enlaceGrabacion: e.target.value }))}
+                  placeholder="https://…"
+                  className={inputClass}
+                />
+              </label>
+              {momento !== 1 && (
+                <label className="flex flex-col gap-1 text-sm text-zinc-700 dark:text-zinc-300">
+                  {momento === 2 ? "Modalidad del seguimiento" : "La evaluación se realizó en forma"}
+                  <select
+                    value={manual.modalidad}
+                    onChange={(e) => setManual((prev) => ({ ...prev, modalidad: e.target.value as Modalidad }))}
+                    className={inputClass}
+                  >
+                    <option value="">Selecciona</option>
+                    <option value="PRESENCIAL">Presencial</option>
+                    <option value="VIRTUAL">Virtual</option>
+                  </select>
+                </label>
+              )}
+              {momento !== 1 && formato.existe && ETIQUETAS_FECHA.some((e) => sinValorSistema(e) && formato.detalle.some((c) => c.etiqueta === e)) && (
+                <DatePickerField
+                  label="Día en que se hizo la reunión"
+                  value={realizado.fecha}
+                  onChange={(v) => setRealizado((prev) => ({ ...prev, fecha: v }))}
+                  max={hoyEnColombia}
+                />
+              )}
+            </div>
+          </div>
+
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             Al adjuntar el formato firmado, SEPA lo lee y completa con él los campos que le falten
             —modalidad, tipo de documento, NIT, fecha de SofiaPlus, ARL, plan de trabajo—. Lo que tú
@@ -831,7 +1021,7 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
                 </p>
                 <dl>
                   {b.campos.map((c) => (
-                    <Fila key={c.etiqueta} etiqueta={c.etiqueta} valor={c.valor} />
+                    <Fila key={c.etiqueta} etiqueta={c.etiqueta} valor={c.valor} editor={editorEncabezado(b.titulo, c)} />
                   ))}
                 </dl>
               </div>
@@ -843,7 +1033,7 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
               </p>
               <dl>
                 {detallePrevia.map((c) => (
-                  <Fila key={c.etiqueta} etiqueta={c.etiqueta} valor={c.valor} />
+                  <Fila key={c.etiqueta} etiqueta={c.etiqueta} valor={c.valor} editor={editorDetalle(c)} />
                 ))}
               </dl>
             </div>
@@ -878,9 +1068,11 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
 
           {enBlanco.length > 0 && (
             <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
-              Quedan {enBlanco.length} campos en blanco: {enBlanco.slice(0, 6).join(", ")}
-              {enBlanco.length > 6 ? "…" : ""}. Puedes enviarlo así; el formato saldrá con esos
-              espacios vacíos.
+              Quedan {enBlanco.length} campo{enBlanco.length === 1 ? "" : "s"} en blanco: {enBlanco.slice(0, 6).join(", ")}
+              {enBlanco.length > 6 ? "…" : ""}.{" "}
+              {porEscribirAqui.length > 0 &&
+                `${porEscribirAqui.length === enBlanco.length ? "Todos" : `${porEscribirAqui.length}`} se pueden escribir aquí mismo, en las casillas resaltadas del formato. `}
+              Puedes enviarlo así; el formato saldrá con los espacios que queden vacíos.
             </p>
           )}
 

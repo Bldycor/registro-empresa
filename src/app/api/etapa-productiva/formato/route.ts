@@ -51,6 +51,14 @@ export async function GET(request: Request) {
   return NextResponse.json({ formato, datos });
 }
 
+// «Virtual», «remota», «Teams»… → VIRTUAL; «Presencial» → PRESENCIAL. Lo demás no se adivina.
+function modalidadDelDocumento(texto: string | null | undefined): "PRESENCIAL" | "VIRTUAL" | null {
+  const t = (texto ?? "").toLowerCase();
+  if (/presencial/.test(t)) return "PRESENCIAL";
+  if (/virtual|remot|teams|meet|zoom/.test(t)) return "VIRTUAL";
+  return null;
+}
+
 export async function PATCH(request: Request) {
   const { user, response } = await requireApiUser(["APRENDIZ"]);
   if (!user) return response;
@@ -224,14 +232,15 @@ export async function PATCH(request: Request) {
           : fechaDelDocumento(datosDocumento?.arlFechaAfiliacion),
         arlNumeroPoliza: limpiar(m.arlNumeroPoliza) ?? datosDocumento?.arlNumeroPoliza ?? null,
         horario: limpiar(m.horario) ?? datosDocumento?.horario ?? null,
-        enlaceGrabacion: datosDocumento?.enlaceGrabacion ?? undefined,
+        // Lo que el aprendiz escribe manda; si no escribió nada, lo leído del PDF.
+        enlaceGrabacion: limpiar(m.enlaceGrabacion) ?? datosDocumento?.enlaceGrabacion ?? undefined,
         archivoUrl: limpiar(m.archivoUrl),
       },
     });
   } else {
     let evaluacion = await prisma.evaluacion.findFirst({
       where: { userId: user.id, numero: m.momento, esExtraordinario: false },
-      select: { id: true, estado: true },
+      select: { id: true, estado: true, fecha: true, modalidad: true },
     });
     if (!evaluacion) {
       const problema = faltaRegistro(m.momento);
@@ -245,7 +254,7 @@ export async function PATCH(request: Request) {
           horaInicio,
           horaFin,
         },
-        select: { id: true, estado: true },
+        select: { id: true, estado: true, fecha: true, modalidad: true },
       });
     }
     if (evaluacion.estado === "APROBADA") {
@@ -255,12 +264,23 @@ export async function PATCH(request: Request) {
       );
     }
 
+    // Un momento registrado sin día (raro, pero pasa) toma el que escriba el aprendiz, siempre
+    // que no sea futuro. Un día ya registrado no se cambia desde aquí: se reprograma.
+    if (!evaluacion.fecha && fechaRealizado) {
+      if (fechaRealizado > hoy) return faltaRegistro(m.momento)!;
+    }
+    // Modalidad: la que elija el aprendiz; si no eligió y el momento no la tiene, la del PDF.
+    const modalidad =
+      m.modalidad || (!evaluacion.modalidad ? modalidadDelDocumento(datosDocumento?.modalidadMomento) : null);
+
     await prisma.evaluacion.update({
       where: { id: evaluacion.id },
       data: {
         retroalimentacionAprendiz: limpiar(m.retroalimentacionAprendiz),
         archivoUrl: limpiar(m.archivoUrl),
-        enlaceGrabacion: datosDocumento?.enlaceGrabacion ?? undefined,
+        fecha: !evaluacion.fecha && fechaRealizado ? toDateOnly(fechaRealizado) : undefined,
+        modalidad: modalidad ?? undefined,
+        enlaceGrabacion: limpiar(m.enlaceGrabacion) ?? datosDocumento?.enlaceGrabacion ?? undefined,
         numeroVisitas:
           m.momento === 3 && datosDocumento?.numeroVisitas
             ? Number(datosDocumento.numeroVisitas)

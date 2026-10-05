@@ -1218,6 +1218,8 @@ export const FormatoMomento1Schema = MomentoRealizadoSchema.extend({
     .optional(),
   arlNumeroPoliza: textoCorto,
   horario: z.string().trim().max(500).nullable().optional(),
+  // Escrito a mano cuando el PDF no se pudo leer (una foto o un escaneo; 4 oct 2026).
+  enlaceGrabacion: z.string().trim().max(500).nullable().optional(),
   archivoUrl: z.string().trim().nullable().optional(),
 });
 
@@ -1226,6 +1228,9 @@ export const FormatoMomento1Schema = MomentoRealizadoSchema.extend({
 export const FormatoMomento23Schema = MomentoRealizadoSchema.extend({
   momento: z.union([z.literal(2), z.literal(3)]),
   retroalimentacionAprendiz: textoLargo,
+  // Escritos a mano cuando el PDF no se pudo leer (una foto o un escaneo; 4 oct 2026).
+  enlaceGrabacion: z.string().trim().max(500).nullable().optional(),
+  modalidad: z.union([z.enum(ModalidadEjecucionEPValues), z.literal("")]).nullable().optional(),
   archivoUrl: z.string().trim().nullable().optional(),
 });
 
