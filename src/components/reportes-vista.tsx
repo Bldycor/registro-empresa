@@ -3,6 +3,17 @@ import { describirFiltros, porcentaje, type Reporte } from "@/lib/reportes";
 import { formatoMomento } from "@/lib/plazos-institucionales";
 import { estadoAprendizLabel } from "@/lib/validations";
 import { ImprimirBoton } from "@/components/imprimir-boton";
+import { IndicadorExplicado, PanoramaAprendices } from "@/components/panorama-aprendices";
+import {
+  lecturaBitacorasAprobadas,
+  lecturaBitacorasATiempo,
+  lecturaConteoAlerta,
+  lecturaJuicio,
+  lecturaNovedades,
+  lecturaPlanes,
+  lecturaRubrica,
+  lecturaSinAnotar,
+} from "@/lib/lectura-indicadores";
 
 // Vista de los tres reportes (ver `construirReporte`). Es un componente de servidor: los filtros
 // son un formulario GET, así que la URL guarda la consulta y el Excel usa exactamente la misma.
@@ -37,16 +48,6 @@ function Seccion({
   );
 }
 
-function Cifra({ etiqueta, valor, detalle }: { etiqueta: string; valor: string | number; detalle?: string }) {
-  return (
-    <div className="rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800 print:border-zinc-300">
-      <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{etiqueta}</p>
-      <p className="text-xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">{valor}</p>
-      {detalle && <p className="text-xs text-zinc-500 dark:text-zinc-400">{detalle}</p>}
-    </div>
-  );
-}
-
 // Colores de estado (fijos, nunca de serie): siempre van con su ícono y su etiqueta, así que el
 // color nunca es lo único que dice el estado.
 const ESTADOS_CUMPLIMIENTO = [
@@ -55,41 +56,6 @@ const ESTADOS_CUMPLIMIENTO = [
   { clave: "atrasada", etiqueta: "Atrasada", icono: "!", clase: "bg-[#d03b3b]" },
   { clave: "pendiente", etiqueta: "Pendiente", icono: "·", clase: "bg-zinc-300 dark:bg-zinc-600" },
 ] as const;
-
-// Indicador principal: número grande y una línea que lo explica. `tono` marca solo lo que pide
-// atención, con ícono y no solo color.
-function Indicador({
-  etiqueta,
-  valor,
-  detalle,
-  alerta = false,
-}: {
-  etiqueta: string;
-  valor: string | number;
-  detalle?: string;
-  alerta?: boolean;
-}) {
-  return (
-    <div
-      className={`rounded-xl border px-4 py-3 print:border-zinc-300 ${
-        alerta
-          ? "border-red-200 bg-red-50/60 dark:border-red-900 dark:bg-red-950/30"
-          : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
-      }`}
-    >
-      <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-        {alerta && (
-          <span aria-hidden className="grid h-4 w-4 place-items-center rounded-full bg-red-600 text-[10px] font-bold text-white">
-            !
-          </span>
-        )}
-        {etiqueta}
-      </p>
-      <p className="mt-1 text-3xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">{valor}</p>
-      {detalle && <p className="text-xs text-zinc-500 dark:text-zinc-400">{detalle}</p>}
-    </div>
-  );
-}
 
 // Barras horizontales de un solo tono (magnitud por categoría), con el valor al final.
 function BarrasEstado({ filas, total }: { filas: { etiqueta: string; cantidad: number }[]; total: number }) {
@@ -372,79 +338,108 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
         ))}
       </nav>
 
-      <div id="resumen" className="grid scroll-mt-4 grid-cols-2 gap-2 lg:grid-cols-4">
-        <Indicador etiqueta="Aprendices" valor={m.aprendices} detalle={describirFiltros(r)} />
-        <Indicador
-          etiqueta="Al día"
-          valor={porcentaje(m.aprendices - r.cumplimiento.enRiesgo.length, m.aprendices)}
-          detalle={`${m.aprendices - r.cumplimiento.enRiesgo.length} sin evidencias atrasadas`}
-        />
-        <Indicador
-          etiqueta="En riesgo"
-          valor={r.cumplimiento.enRiesgo.length}
-          detalle="Evidencias atrasadas o causal de deserción"
-          alerta={r.cumplimiento.enRiesgo.length > 0}
-        />
-        <Indicador
-          etiqueta="Certificados"
-          valor={m.porEstado.find((e) => e.estado === "CERTIFICADO")?.cantidad ?? 0}
-          detalle={`${m.porEstado.find((e) => e.estado === "POR_CERTIFICAR")?.cantidad ?? 0} más por certificar`}
-        />
-      </div>
+      <PanoramaAprendices s={m.semaforo} total={m.aprendices} />
+
+      <details className="rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 print:hidden">
+        <summary className="cursor-pointer font-medium text-zinc-800 dark:text-zinc-100">¿Cómo leer este reporte?</summary>
+        <ul className="mt-2 list-disc space-y-1 pl-5">
+          <li>Cada aprendiz está en <b>un solo grupo</b>: al día, necesita atención, por certificar, certificado o en pausa. Por eso los números suman el total.</li>
+          <li><b>Al día</b> no quiere decir que ya terminó: quiere decir que nada de lo que ya debió entregar está vencido.</li>
+          <li><b>Necesita atención</b> no es una sanción: es una alerta para llamar al aprendiz o a su instructor. Las fechas salen de la guía GFPI-G-040.</li>
+          <li>Junto a cada número hay una línea con <span className="font-medium text-emerald-800 dark:text-emerald-300">✓ verde</span> si va bien, <span className="font-medium text-amber-800 dark:text-amber-300">! ámbar</span> si conviene revisar y <span className="font-medium text-red-700 dark:text-red-300">! rojo</span> si pide acción. Son referencias para leer, no reglas: nada se bloquea.</li>
+          <li>Los filtros de arriba cambian todo el reporte, y el Excel descarga exactamente lo que ves.</li>
+        </ul>
+      </details>
 
       <Seccion titulo="Métricas" descripcion="Totales de los aprendices que cumplen los filtros.">
         <h3 className="mb-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">Aprendices por estado</h3>
         <BarrasEstado filas={m.porEstado} total={m.aprendices} />
         <h3 className="mb-2 mt-5 text-sm font-semibold text-zinc-900 dark:text-zinc-100">Evidencias y evaluación</h3>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <Cifra
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <IndicadorExplicado
             etiqueta="Bitácoras a tiempo"
             valor={porcentaje(m.bitacoras.aTiempo, m.bitacoras.entregadas)}
             detalle={`${m.bitacoras.aTiempo} de ${m.bitacoras.entregadas} entregadas · ${m.bitacoras.conAtraso} con atraso`}
+            significado="De las bitácoras entregadas, cuántas llegaron a más tardar en su fecha límite."
+            lectura={lecturaBitacorasATiempo(m.bitacoras.aTiempo, m.bitacoras.entregadas)}
           />
-          <Cifra etiqueta="Bitácoras aprobadas" valor={m.bitacoras.aprobadas} />
-          <Cifra
-            etiqueta="Rúbrica en «Satisfactorio»"
+          <IndicadorExplicado
+            etiqueta="Bitácoras avaladas"
+            valor={m.bitacoras.aprobadas}
+            detalle={`de ${m.bitacoras.entregadas} entregadas`}
+            significado="Bitácoras que el instructor ya revisó y aprobó."
+            lectura={lecturaBitacorasAprobadas(m.bitacoras.aprobadas, m.bitacoras.entregadas)}
+          />
+          <IndicadorExplicado
+            etiqueta="Criterios en «Satisfactorio»"
             valor={porcentaje(m.rubrica.satisfactorio, m.rubrica.valoradas)}
-            detalle={`${m.rubrica.satisfactorio} de ${m.rubrica.valoradas} variables valoradas (Momentos 2 y 3)`}
+            detalle={`${m.rubrica.satisfactorio} de ${m.rubrica.valoradas} criterios valorados`}
+            significado="De los criterios que el instructor valoró en los Momentos 2 y 3 (técnicos y actitudinales), cuántos quedaron en «Satisfactorio»."
+            lectura={lecturaRubrica(m.rubrica.satisfactorio, m.rubrica.valoradas)}
           />
-          <Cifra
+          <IndicadorExplicado
             etiqueta="Juicio final (Momento 3)"
             valor={`${m.momento3.aprobados} aprobado${m.momento3.aprobados === 1 ? "" : "s"}`}
             detalle={`${m.momento3.noAprobados} no aprobado${m.momento3.noAprobados === 1 ? "" : "s"}`}
+            significado="Lo que decidió el instructor al cerrar la etapa productiva de cada aprendiz."
+            lectura={lecturaJuicio(m.momento3.aprobados, m.momento3.noAprobados)}
           />
         </div>
         <h3 className="mb-2 mt-5 text-sm font-semibold text-zinc-900 dark:text-zinc-100">Novedades, planes y alertas</h3>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <Cifra
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <IndicadorExplicado
             etiqueta="Novedades registradas"
             valor={m.novedades.total}
-            detalle={`${porcentaje(m.novedades.total - m.novedades.fueraDePlazo, m.novedades.total)} dentro de los 3 días hábiles`}
+            detalle={
+              m.novedades.total
+                ? `${porcentaje(m.novedades.total - m.novedades.fueraDePlazo, m.novedades.total)} dentro de los 3 días hábiles`
+                : undefined
+            }
+            significado="Hechos que cambian la práctica sin detenerla: cambio de jefe o de funciones, incapacidad, accidente… La guía pide registrarlos en 3 días hábiles."
+            lectura={lecturaNovedades(m.novedades.total, m.novedades.fueraDePlazo)}
           />
-          <Cifra
+          <IndicadorExplicado
             etiqueta="Novedades sin anotar en bitácora"
             valor={m.novedades.sinAnotarEnBitacora}
-            detalle="Plazo de 5 días hábiles"
+            significado="Novedades que todavía no aparecen en la bitácora del aprendiz (plazo: 5 días hábiles)."
+            lectura={lecturaSinAnotar(m.novedades.sinAnotarEnBitacora, m.novedades.total)}
           />
-          <Cifra
+          <IndicadorExplicado
             etiqueta="Planes de mejoramiento"
             valor={m.planesMejoramiento.total}
             detalle={`${m.planesMejoramiento.abiertos} sin cerrar · ${m.planesMejoramiento.noCumplidos} no cumplidos`}
+            significado="Medidas formativas cuando un aprendiz no supera resultados de aprendizaje (Acuerdo 009)."
+            lectura={lecturaPlanes(m.planesMejoramiento.total, m.planesMejoramiento.abiertos, m.planesMejoramiento.noCumplidos)}
           />
-          <Cifra
+          <IndicadorExplicado
             etiqueta="Planes con plazo vencido"
             valor={m.planesMejoramiento.vencidos}
-            detalle="Máximo 20 días calendario · solo advertencia"
+            significado="Planes cuyo plazo (máximo 20 días) ya pasó sin que el instructor los cerrara."
+            lectura={lecturaConteoAlerta(
+              m.planesMejoramiento.vencidos,
+              "Ningún plan tiene el plazo vencido.",
+              "El instructor debe verificarlos y cerrarlos como cumplidos o no cumplidos.",
+            )}
           />
-          <Cifra
-            etiqueta="Aprendices fuera del plazo de 24 meses"
+          <IndicadorExplicado
+            etiqueta="Fuera del plazo de 24 meses"
             valor={m.alertas.plazo24Meses}
-            detalle="Acuerdo 007 de 2012 · solo advertencia"
+            significado="Aprendices del Acuerdo 007 de 2012 que se acercan o pasan los 24 meses para terminar."
+            lectura={lecturaConteoAlerta(
+              m.alertas.plazo24Meses,
+              "Nadie está en riesgo de pasar el límite.",
+              "Revisar su caso: el plazo para culminar está por vencer o ya venció.",
+            )}
           />
-          <Cifra
+          <IndicadorExplicado
             etiqueta="Instructores sobre el tope"
             valor={m.alertas.instructoresSobreTope}
-            detalle="Más de 80 aprendices activos · todo el centro"
+            significado="Instructores con más de 80 aprendices activos (todo el centro, no solo el filtro)."
+            lectura={lecturaConteoAlerta(
+              m.alertas.instructoresSobreTope,
+              "Ningún instructor pasa el tope de 80.",
+              "Conviene redistribuir fichas: más de 80 aprendices dificulta el acompañamiento.",
+            )}
           />
         </div>
       </Seccion>
@@ -481,9 +476,12 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
             </tr>
           ))}
         </Tabla>
-        <h3 className="mb-2 mt-5 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-          Aprendices en riesgo ({r.cumplimiento.enRiesgo.length})
+        <h3 id="necesitan-atencion" className="mb-1 mt-5 scroll-mt-4 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          Necesitan atención ({r.cumplimiento.enRiesgo.length})
         </h3>
+        <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
+          Qué le falta a cada uno. Abre su expediente para ver el detalle y contactarlo.
+        </p>
         {r.cumplimiento.enRiesgo.length === 0 ? (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Nadie tiene evidencias atrasadas ni causal de deserción.</p>
         ) : (
@@ -564,7 +562,12 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
                 </td>
                 <td className={td}>{a.documento}</td>
                 <td className={td}>{a.ficha ?? "—"}</td>
-                <td className={td}>{a.empresa ?? "—"}</td>
+                <td className={td}>
+                  {a.empresa ?? "—"}
+                  {a.sede && a.sede !== "Sede principal" && (
+                    <span className="block text-xs text-zinc-500 dark:text-zinc-400">{a.sede}</span>
+                  )}
+                </td>
                 <td className={`${td} whitespace-nowrap tabular-nums`}>{a.nit ?? "—"}</td>
                 <td className={td}>{a.instructor ?? "—"}</td>
                 <td className={td}>{a.estado}</td>

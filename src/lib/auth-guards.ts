@@ -5,6 +5,13 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import type { Role } from "@/generated/prisma/enums";
 
+const NOMBRE_ROL: Record<Role, string> = {
+  APRENDIZ: "aprendiz",
+  INSTRUCTOR: "instructor",
+  COORDINADOR: "Coordinación",
+  ADMIN: "administrador",
+};
+
 // Usuario de la sesión actual, con su rol ya resuelto desde la base de datos. La sesión (JWT)
 // solo guarda el id; el rol se consulta aquí para no duplicarlo en el token y evitar que quede
 // desactualizado si un coordinador cambia el rol de alguien.
@@ -40,9 +47,18 @@ export async function requireApiUser(allowedRoles?: Role[]) {
     return { user: null, response: NextResponse.json({ error: "No autenticado." }, { status: 401 }) };
   }
   if (allowedRoles && !allowedRoles.includes(user.role)) {
+    // Pasa sobre todo cuando en el mismo navegador se ingresa con otra cuenta: las pestañas que
+    // quedaron abiertas pasan a la nueva sesión. El mensaje lo dice para que no parezca una falla.
+    const quien = `${user.nombres} ${user.apellidos}`.trim();
+    const para = allowedRoles.map((r) => NOMBRE_ROL[r]).join(" o ");
     return {
       user: null,
-      response: NextResponse.json({ error: "No autorizado para esta acción." }, { status: 403 }),
+      response: NextResponse.json(
+        {
+          error: `La sesión abierta en este navegador es de ${quien} (${NOMBRE_ROL[user.role]}), y esta acción es de ${para}. Si ingresaste con otra cuenta en otra pestaña, cierra sesión y vuelve a ingresar con la cuenta correcta.`,
+        },
+        { status: 403 },
+      ),
     };
   }
   return { user, response: null };

@@ -84,6 +84,8 @@ export const SELECT_FORMATO = {
       direccionEmpresa: true,
       nitEmpresa: true,
       empresa: { select: { municipio: true, departamento: true } },
+      // La sede del aprendiz manda sobre la principal (un NIT, varias sucursales; 9 oct 2026).
+      sucursal: { select: { nombre: true, municipio: true, departamento: true } },
       nombreCoformador: true,
       cargoCoformador: true,
       correoCoformador: true,
@@ -205,7 +207,13 @@ export function encabezadoFormato(
         {
           etiqueta: "Dirección",
           valor: limpio(
-            [e?.direccionEmpresa, e?.empresa?.municipio, e?.empresa?.departamento].filter(Boolean).join(", "),
+            [
+              e?.sucursal ? `${e.sucursal.nombre}: ${e.direccionEmpresa}` : e?.direccionEmpresa,
+              e?.sucursal?.municipio ?? e?.empresa?.municipio,
+              e?.sucursal?.departamento ?? e?.empresa?.departamento,
+            ]
+              .filter(Boolean)
+              .join(", "),
           ),
         },
         conDocumento("NIT", limpio(e?.nitEmpresa) ?? limpio(d?.nitEmpresa), "nitEmpresa"),

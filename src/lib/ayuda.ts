@@ -200,7 +200,11 @@ const COORDINADOR: GuiaRol = {
       opciones: [
         {
           opcion: "Reportes",
-          que: "Métricas, cumplimiento por evidencia con la lista de aprendices en riesgo, y el listado por aprendiz. Filtras y descargas en Excel o en PDF.",
+          que: "Empieza con un panorama fácil de explicar: una frase, un cuadro por aprendiz coloreado según cómo va, y cuatro tarjetas (cuántos acompañamos, cuántos van al día, quiénes necesitan atención y cuántos terminaron) con qué significa cada número y cómo leerlo. Después, las métricas explicadas, el cumplimiento por evidencia con la lista de quienes necesitan atención, los consolidados por ficha y programa y el listado por aprendiz. Filtras y descargas en Excel o en PDF.",
+        },
+        {
+          opcion: "Gestión de instructores",
+          que: "Cómo va el acompañamiento de cada instructor a los aprendices de sus fichas: cuántos van al día y cuántos necesitan atención, qué entregas esperan su revisión y cuáles llevan más de 8 días hábiles, cuánto tarda en responder y si ya valoró los momentos que se hicieron. Cada número dice qué mide y cómo leerlo; sirve para apoyar, no para sancionar.",
         },
         {
           opcion: "Funciones en la empresa",
@@ -225,12 +229,12 @@ const COORDINADOR: GuiaRol = {
 // El administrador ve lo mismo que Coordinación, más la gestión de cuentas de coordinación.
 const OPCION_COORDINADORES: OpcionAyuda = {
   opcion: "Coordinadores",
-  que: "Creas y administras las cuentas de coordinación. Junto con «Empresas», son las opciones exclusivas del administrador; el resto del menú es igual al de Coordinación.",
+  que: "Creas y administras las cuentas de coordinación. Es la opción exclusiva del administrador; el resto del menú es igual al de Coordinación.",
 };
 
 const OPCION_EMPRESAS: OpcionAyuda = {
   opcion: "Empresas",
-  que: "El registro oficial de las empresas donde los aprendices hacen la práctica. Solo tú lo creas y lo corriges. Cada empresa se identifica por su NIT —con el dígito de verificación comprobado—, toma la razón social del RUES de las Cámaras de Comercio, y su departamento y municipio se eligen de la lista oficial del DANE. Puedes registrarlas una por una o importarlas en bloque desde una hoja de cálculo, revisando antes fila por fila, y enlazar las que los aprendices habían escrito a mano. El aprendiz elige su empresa por el NIT; si no está registrada, no puede completar su perfil hasta que la registres.",
+  que: "El registro oficial de las empresas donde los aprendices hacen la práctica. Lo crean y lo corrigen el administrador y Coordinación; el aprendiz no puede registrar empresas. Cada empresa se identifica por su NIT —con el dígito de verificación comprobado—, toma la razón social del RUES de las Cámaras de Comercio, y su departamento y municipio se eligen de la lista oficial del DANE. Puedes registrarlas una por una o importarlas en bloque desde una hoja de cálculo, revisando antes fila por fila, y enlazar las que los aprendices habían escrito a mano. El aprendiz elige su empresa por el NIT; si no está registrada, no puede completar su perfil hasta que la registres. Varios aprendices pueden estar en la misma empresa, y una empresa puede tener varias sedes con el mismo NIT: en «Sedes» agregas sus sucursales (nombre, dirección y ubicación) y cada aprendiz elige la suya. Una sede con aprendices no se puede quitar.",
 };
 
 export function guiaDelRol(role: string): GuiaRol {
@@ -246,7 +250,13 @@ export function guiaDelRol(role: string): GuiaRol {
       ),
     };
   }
-  return COORDINADOR;
+  // Coordinación también administra el catálogo de empresas (9 oct 2026).
+  return {
+    ...COORDINADOR,
+    secciones: COORDINADOR.secciones.map((s) =>
+      s.titulo === "Estructura" ? { ...s, opciones: [OPCION_EMPRESAS, ...s.opciones] } : s,
+    ),
+  };
 }
 
 // Ayuda corta de cada opción de menú, para el ícono y la descripción que se ven al navegar
@@ -356,7 +366,11 @@ export const ayudaMenu: Record<string, { icono: string; resumen: string }> = {
   },
   "/formulario/admin/empresas": {
     icono: "🏢",
-    resumen: "Registra, importa y corrige las empresas por NIT, con el RUES.",
+    resumen: "Empresas por NIT, con el RUES, y sus sedes o sucursales.",
+  },
+  "/formulario/reportes/instructores": {
+    icono: "🧑‍🏫",
+    resumen: "Cómo acompaña cada instructor: al día, revisión a tiempo y momentos valorados.",
   },
   "/formulario/reportes/funciones": {
     icono: "🧭",

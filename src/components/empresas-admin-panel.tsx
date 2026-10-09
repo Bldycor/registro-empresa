@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DEPARTAMENTOS, MUNICIPIOS_POR_DEPARTAMENTO } from "@/lib/colombia";
 
-// Catálogo de empresas co-formadoras (solo el administrador; decisión de Coordinación, 2 oct 2026).
+// Catálogo de empresas co-formadoras (administrador y Coordinación; decisiones del 2 y 9 oct 2026).
 // Todo el proceso queda en una pantalla, en el orden en que se usa:
 //   1. Registrar una empresa —el NIT se consulta en el RUES para tomar la razón social oficial—.
 //   2. Importar muchas a la vez desde una hoja de cálculo, con revisión previa fila por fila.
@@ -19,7 +19,9 @@ type Empresa = {
   departamento: string | null;
   municipio: string | null;
   aprendices: number;
+  sucursales: Sucursal[];
 };
+type Sucursal = { id: string; nombre: string; direccion: string; departamento: string; municipio: string; aprendices: number };
 type Pendiente = { nombre: string; direccion: string; aprendices: number };
 type Rues = { razonSocial: string; estadoMatricula: string | null; camaraComercio: string | null; ultimoAnoRenovado: string | null };
 
@@ -230,6 +232,185 @@ function FormularioEmpresa({
         )}
       </div>
     </form>
+  );
+}
+
+// Sedes de una empresa (un NIT, varias sucursales; decisión de Coordinación, 9 oct 2026). La
+// sede principal es la dirección de la empresa; aquí se agregan las demás. Cada aprendiz elige
+// la suya en «Mi perfil».
+type BorradorSede = { nombre: string; direccion: string; departamento: string; municipio: string };
+const SEDE_VACIA: BorradorSede = { nombre: "", direccion: "", departamento: "", municipio: "" };
+
+function FormularioSede({
+  inicial,
+  textoBoton,
+  onGuardar,
+  onCancelar,
+}: {
+  inicial: BorradorSede;
+  textoBoton: string;
+  onGuardar: (b: BorradorSede) => Promise<string | null>;
+  onCancelar: () => void;
+}) {
+  const [b, setB] = useState<BorradorSede>(inicial);
+  const [error, setError] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  const municipios = useMemo(
+    () => (b.departamento ? (MUNICIPIOS_POR_DEPARTAMENTO[b.departamento] ?? []) : []),
+    [b.departamento],
+  );
+  async function guardar(e: React.FormEvent) {
+    e.preventDefault();
+    setGuardando(true);
+    setError(null);
+    const problema = await onGuardar(b);
+    setGuardando(false);
+    if (problema) setError(problema);
+  }
+  return (
+    <form onSubmit={guardar} className="grid grid-cols-1 gap-2 rounded-md border border-zinc-200 p-3 dark:border-zinc-800 sm:grid-cols-2">
+      <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
+        Nombre de la sede
+        <input value={b.nombre} onChange={(e) => setB({ ...b, nombre: e.target.value })} placeholder="Ejemplo: Sede Bello" className={inputClass} />
+      </label>
+      <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
+        Dirección
+        <input value={b.direccion} onChange={(e) => setB({ ...b, direccion: e.target.value })} className={inputClass} />
+      </label>
+      <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
+        Departamento
+        <select value={b.departamento} onChange={(e) => setB({ ...b, departamento: e.target.value, municipio: "" })} className={inputClass}>
+          <option value="">Selecciona</option>
+          {DEPARTAMENTOS.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
+        Municipio
+        <select value={b.municipio} onChange={(e) => setB({ ...b, municipio: e.target.value })} disabled={!b.departamento} className={inputClass}>
+          <option value="">{b.departamento ? "Selecciona" : "Primero el departamento"}</option>
+          {municipios.map((m) => (
+            <option key={m.codigo} value={m.nombre}>
+              {m.nombre}
+            </option>
+          ))}
+        </select>
+      </label>
+      {error && <p className="text-sm text-red-600 sm:col-span-2">{error}</p>}
+      <div className="flex gap-2 sm:col-span-2">
+        <button type="submit" disabled={guardando} className="rounded-md bg-sena px-3 py-1.5 text-sm font-medium text-white hover:bg-sena-oscuro disabled:opacity-50">
+          {guardando ? "Guardando…" : textoBoton}
+        </button>
+        <button type="button" onClick={onCancelar} className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800">
+          Cancelar
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function SedesEmpresa({ empresa, onCambio }: { empresa: Empresa; onCambio: () => void }) {
+  const [abierto, setAbierto] = useState(false);
+  const [agregando, setAgregando] = useState(false);
+  const [editando, setEditando] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  async function enviar(url: string, method: string, b?: BorradorSede): Promise<string | null> {
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: b ? JSON.stringify({ ...b, empresaId: empresa.id }) : undefined,
+    });
+    if (!res.ok) return primerError((await res.json().catch(() => ({}))).error);
+    onCambio();
+    return null;
+  }
+
+  async function quitar(s: Sucursal) {
+    setAviso(null);
+    const problema = await enviar(`/api/admin/sucursales/${s.id}`, "DELETE");
+    if (problema) setAviso(problema);
+  }
+
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setAbierto(!abierto)}
+        aria-expanded={abierto}
+        className="text-xs font-medium text-zinc-600 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+      >
+        {abierto ? "Ocultar sedes" : `Sedes: principal${empresa.sucursales.length ? ` + ${empresa.sucursales.length} sucursal${empresa.sucursales.length === 1 ? "" : "es"}` : ""}`}
+      </button>
+      {abierto && (
+        <div className="mt-2 flex flex-col gap-2 border-l-2 border-zinc-200 pl-3 dark:border-zinc-700">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            <span className="font-medium text-zinc-700 dark:text-zinc-300">Sede principal</span> · {empresa.direccion}
+            {empresa.municipio ? `, ${empresa.municipio}` : ""} — la dirección de la empresa.
+          </p>
+          {empresa.sucursales.map((s) =>
+            editando === s.id ? (
+              <FormularioSede
+                key={s.id}
+                inicial={{ nombre: s.nombre, direccion: s.direccion, departamento: s.departamento, municipio: s.municipio }}
+                textoBoton="Guardar sede"
+                onGuardar={async (b) => {
+                  const problema = await enviar(`/api/admin/sucursales/${s.id}`, "PATCH", b);
+                  if (!problema) setEditando(null);
+                  return problema;
+                }}
+                onCancelar={() => setEditando(null)}
+              />
+            ) : (
+              <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span className="text-zinc-600 dark:text-zinc-300">
+                  <span className="font-medium text-zinc-800 dark:text-zinc-100">{s.nombre}</span> · {s.direccion}, {s.municipio} ({s.departamento}) ·{" "}
+                  {s.aprendices} aprendiz(es)
+                </span>
+                <span className="flex gap-3">
+                  <button type="button" onClick={() => setEditando(s.id)} className="underline">
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => quitar(s)}
+                    disabled={s.aprendices > 0}
+                    title={s.aprendices > 0 ? "Tiene aprendices: no se puede quitar" : undefined}
+                    className="text-red-700 underline disabled:cursor-not-allowed disabled:text-zinc-400 disabled:no-underline dark:text-red-400"
+                  >
+                    Quitar
+                  </button>
+                </span>
+              </div>
+            ),
+          )}
+          {aviso && <p className="text-sm text-red-600">{aviso}</p>}
+          {agregando ? (
+            <FormularioSede
+              inicial={SEDE_VACIA}
+              textoBoton="Agregar sede"
+              onGuardar={async (b) => {
+                const problema = await enviar("/api/admin/sucursales", "POST", b);
+                if (!problema) setAgregando(false);
+                return problema;
+              }}
+              onCancelar={() => setAgregando(false)}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAgregando(true)}
+              className="w-fit rounded-md border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              + Agregar sucursal
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -551,6 +732,7 @@ export function EmpresasAdminPanel() {
                         NIT {e.nit} · {e.direccion}
                         {e.municipio ? ` · ${e.municipio}, ${e.departamento}` : ""} · {e.aprendices} aprendiz(es)
                       </p>
+                      <SedesEmpresa empresa={e} onCambio={cargar} />
                     </div>
                     <button
                       type="button"

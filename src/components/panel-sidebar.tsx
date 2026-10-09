@@ -38,6 +38,7 @@ const gruposCoordinacion = (estructuraExtra: Grupo["items"] = []): Grupo[] => [
     icono: "📊",
     items: [
       { href: "/formulario/reportes", label: "Reportes" },
+      { href: "/formulario/reportes/instructores", label: "Gestión de instructores" },
       { href: "/formulario/reportes/funciones", label: "Funciones en la empresa" },
       { href: "/formulario/coordinador/auditoria", label: "Trazabilidad" },
     ],
@@ -47,6 +48,7 @@ const gruposCoordinacion = (estructuraExtra: Grupo["items"] = []): Grupo[] => [
     icono: "🗃️",
     items: [
       ...estructuraExtra,
+      { href: "/formulario/admin/empresas", label: "Empresas" },
       { href: "/formulario/coordinador/fichas", label: "Fichas" },
       { href: "/formulario/coordinador/instructores", label: "Instructores" },
       { href: "/formulario/coordinador/competencias", label: "Competencias" },
@@ -107,10 +109,7 @@ const roleNav: Record<string, Grupo[]> = {
     },
   ],
   COORDINADOR: gruposCoordinacion(),
-  ADMIN: gruposCoordinacion([
-    { href: "/formulario/admin/coordinadores", label: "Coordinadores" },
-    { href: "/formulario/admin/empresas", label: "Empresas" },
-  ]),
+  ADMIN: gruposCoordinacion([{ href: "/formulario/admin/coordinadores", label: "Coordinadores" }]),
 };
 
 function Contador({ n, suave = false }: { n: number; suave?: boolean }) {

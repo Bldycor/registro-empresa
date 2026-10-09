@@ -4,7 +4,7 @@ import { requireApiUser } from "@/lib/auth-guards";
 import { validarNit } from "@/lib/nit";
 
 // Busca una empresa del catálogo por NIT, para que el aprendiz vea al instante si su empresa ya
-// está registrada. Devuelve solo nombre y dirección: es lo que el formulario necesita mostrar.
+// está registrada. Devuelve nombre, dirección y sus sucursales: lo que el formulario necesita.
 export async function GET(request: Request) {
   const { user, response } = await requireApiUser();
   if (!user) return response;
@@ -17,7 +17,18 @@ export async function GET(request: Request) {
 
   const empresa = await prisma.empresa.findUnique({
     where: { nit: nit.nit },
-    select: { nit: true, nombre: true, direccion: true, departamento: true, municipio: true },
+    select: {
+      nit: true,
+      nombre: true,
+      direccion: true,
+      departamento: true,
+      municipio: true,
+      // Sedes para que el aprendiz elija dónde hace la práctica (9 oct 2026).
+      sucursales: {
+        select: { id: true, nombre: true, direccion: true, departamento: true, municipio: true },
+        orderBy: { nombre: "asc" },
+      },
+    },
   });
 
   return NextResponse.json({ valido: true, nit: nit.nit, empresa });

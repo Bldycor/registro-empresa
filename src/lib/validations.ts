@@ -663,6 +663,8 @@ export const ProfileSchema = z.object({
   nitEmpresa: z.string().trim().min(1, "Escribe el NIT de la empresa."),
   empresaPatrocinadora: z.string().trim().optional(),
   direccionEmpresa: z.string().trim().optional(),
+  // Sede donde hace la práctica: una sucursal del mismo NIT, o vacío para la sede principal.
+  sucursalId: z.string().trim().optional(),
   nombreCoformador: z.string().trim().min(2, "Ingresa el nombre del coformador."),
   cargoCoformador: z.string().trim().min(2, "Ingresa el cargo del coformador."),
   correoCoformador: z.string().trim().email("Ingresa un correo válido del coformador."),

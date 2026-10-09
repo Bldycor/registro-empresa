@@ -123,10 +123,10 @@ export async function construirReporte(f: FiltrosReporte) {
             fechaFinFormacion: true,
             fechaInicioProductiva: true,
             reglamento: true,
-            instructor: { select: { nombres: true, apellidos: true } },
+            instructor: { select: { id: true, nombres: true, apellidos: true } },
           },
         },
-        companyProfile: { select: { empresaPatrocinadora: true, nitEmpresa: true } },
+        companyProfile: { select: { empresaPatrocinadora: true, nitEmpresa: true, sucursal: { select: { nombre: true } } } },
         seleccionesAlternativa: { select: { estado: true }, orderBy: { createdAt: "desc" }, take: 1 },
         formalizacionEtapaProductiva: { select: { estado: true } },
         concertacionFuncion: { select: { estado: true, fecha: true } },
@@ -171,6 +171,10 @@ export async function construirReporte(f: FiltrosReporte) {
   const novedades = { total: 0, fueraDePlazo: 0, sinAnotarEnBitacora: 0 };
   const planesMejoramiento = { total: 0, abiertos: 0, vencidos: 0, noCumplidos: 0 };
   let conAdvertenciaPlazo = 0;
+  // Cada aprendiz en UN solo grupo, para que los indicadores sumen siempre el total y se lean de
+  // un vistazo (pedido de Coordinación, 9 oct 2026): primero lo que dice su estado, y entre los
+  // activos, si tiene algo vencido o no.
+  const semaforo = { alDia: 0, enRiesgo: 0, porCertificar: 0, certificados: 0, enPausa: 0 };
   const rubrica = { valoradas: 0, satisfactorio: 0 };
   const matriz = Object.fromEntries(
     (Object.keys(ETIQUETA_EVIDENCIA) as ChecklistItem["clave"][]).map((clave) => [
@@ -325,9 +329,21 @@ export async function construirReporte(f: FiltrosReporte) {
     // Cumplimiento.
     for (const c of checklist) matriz[c.clave][c.estado]++;
     const atrasadas = checklist.filter((c) => c.estado === "atrasada").map((c) => `${ETIQUETA_EVIDENCIA[c.clave]}: ${c.detalle}`);
-    if (atrasadas.length > 0 || riesgo.enRiesgo) {
+    const necesitaAtencion = atrasadas.length > 0 || riesgo.enRiesgo;
+    if (necesitaAtencion) {
       enRiesgo.push({ id: a.id, nombre, ficha: a.ficha?.codigo ?? null, instructor, atrasadas, causaDesercion: riesgo.causa });
     }
+    const grupo: keyof typeof semaforo =
+      a.estado === "CERTIFICADO"
+        ? "certificados"
+        : a.estado === "POR_CERTIFICAR"
+          ? "porCertificar"
+          : a.estado !== "ACTIVO"
+            ? "enPausa"
+            : necesitaAtencion
+              ? "enRiesgo"
+              : "alDia";
+    semaforo[grupo]++;
 
     // Consolidado por ficha y por programa.
     const atrasosAprendiz = checklist.filter((c) => c.estado === "atrasada").length;
@@ -363,7 +379,12 @@ export async function construirReporte(f: FiltrosReporte) {
       empresa: a.companyProfile?.empresaPatrocinadora ?? null,
       // NIT de la empresa co-formadora (lo registra el aprendiz en «Mi perfil»).
       nit: a.companyProfile?.nitEmpresa ?? null,
+      // Sede dentro de la empresa (un NIT puede tener varias; 9 oct 2026).
+      sede: a.companyProfile?.empresaPatrocinadora ? (a.companyProfile.sucursal?.nombre ?? "Sede principal") : null,
       instructor,
+      instructorId: a.ficha?.instructor?.id ?? null,
+      // El grupo del panorama (al día, necesita atención…), el mismo para todos los informes.
+      grupo,
       estado: estadoAprendizLabel[a.estado],
       inicioEP: a.fechaInicioEtapaProductiva,
       finEP: a.fechaFinEtapaProductiva,
@@ -402,6 +423,7 @@ export async function construirReporte(f: FiltrosReporte) {
     },
     metricas: {
       aprendices: aprendices.length,
+      semaforo,
       porEstado: Object.entries(porEstado).map(([estado, cantidad]) => ({
         estado,
         etiqueta: estadoAprendizLabel[estado as keyof typeof estadoAprendizLabel],

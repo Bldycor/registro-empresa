@@ -4,7 +4,8 @@ import { departamentoOficial, municipioOficial } from "@/lib/colombia";
 
 // Catálogo de empresas co-formadoras (decisión de Coordinación, 2 oct 2026):
 // - Una empresa = un NIT. Varios aprendices pueden estar en la misma empresa.
-// - Solo el administrador crea y edita empresas.
+// - El administrador y Coordinación crean y editan empresas y sus sucursales (9 oct 2026): un
+//   mismo NIT puede tener varias sedes, y cada aprendiz elige la suya.
 // - El aprendiz elige la suya por NIT; si no está registrada, no puede guardar su perfil de
 //   empresa hasta que el administrador la registre.
 //
@@ -15,19 +16,49 @@ import { departamentoOficial, municipioOficial } from "@/lib/colombia";
 export async function sincronizarPerfiles(empresaId: string) {
   const empresa = await prisma.empresa.findUnique({
     where: { id: empresaId },
-    select: { nombre: true, direccion: true, nit: true },
+    select: { nombre: true, direccion: true, nit: true, sucursales: { select: { id: true, direccion: true } } },
   });
   if (!empresa) return 0;
 
+  // Nombre y NIT son los de la empresa para todos; la dirección, la de la sede de cada aprendiz
+  // (9 oct 2026: un NIT puede tener varias sucursales).
   const { count } = await prisma.companyProfile.updateMany({
     where: { empresaId },
-    data: {
-      empresaPatrocinadora: empresa.nombre,
-      direccionEmpresa: empresa.direccion,
-      nitEmpresa: empresa.nit,
-    },
+    data: { empresaPatrocinadora: empresa.nombre, nitEmpresa: empresa.nit },
   });
+  await prisma.companyProfile.updateMany({
+    where: { empresaId, sucursalId: null },
+    data: { direccionEmpresa: empresa.direccion },
+  });
+  for (const s of empresa.sucursales) {
+    await prisma.companyProfile.updateMany({ where: { sucursalId: s.id }, data: { direccionEmpresa: s.direccion } });
+  }
   return count;
+}
+
+// Sucursal de una empresa: nombre, dirección y ubicación oficial (mismas listas del DANE).
+export type SucursalValida = { nombre: string; direccion: string; departamento: string; municipio: string };
+
+export function validarSucursal(entrada: {
+  nombre?: string;
+  direccion?: string;
+  departamento?: string;
+  municipio?: string;
+}): { ok: true; sucursal: SucursalValida } | { ok: false; errores: Record<string, string> } {
+  const errores: Record<string, string> = {};
+  const nombre = (entrada.nombre ?? "").replace(/\s+/g, " ").trim();
+  if (nombre.length < 2) errores.nombre = "Escribe el nombre de la sucursal (por ejemplo, «Sede Bello» o «Planta norte»).";
+  if (/^sede principal$/i.test(nombre)) errores.nombre = "«Sede principal» es la dirección de la empresa: usa otro nombre.";
+  const direccion = (entrada.direccion ?? "").replace(/\s+/g, " ").trim();
+  if (direccion.length < 5) errores.direccion = "Falta la dirección de la sucursal.";
+  const departamento = departamentoOficial(entrada.departamento ?? "");
+  if (!departamento) errores.departamento = "Elige el departamento.";
+  const municipioEscrito = (entrada.municipio ?? "").replace(/\s+/g, " ").trim();
+  const municipio = departamento ? municipioOficial(departamento, municipioEscrito) : null;
+  if (!municipioEscrito) errores.municipio = "Elige el municipio.";
+  else if (departamento && !municipio) errores.municipio = `«${municipioEscrito}» no es un municipio de ${departamento}.`;
+  if (Object.keys(errores).length > 0 || !departamento || !municipio) return { ok: false, errores };
+  return { ok: true, sucursal: { nombre, direccion, departamento, municipio } };
 }
 
 // Nombre de empresa normalizado para agrupar lo que escribieron los aprendices antes del

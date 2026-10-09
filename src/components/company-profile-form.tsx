@@ -23,6 +23,8 @@ export function CompanyProfileForm({
     handleSubmit,
     reset,
     watch,
+    setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<ProfileInput>({
     resolver: zodResolver(ProfileSchema),
@@ -44,9 +46,11 @@ export function CompanyProfileForm({
         direccion: string;
         departamento: string | null;
         municipio: string | null;
+        sucursales: { id: string; nombre: string; direccion: string; departamento: string; municipio: string }[];
       };
   const [busqueda, setBusqueda] = useState<Busqueda>({ estado: "vacio" });
   const nitEscrito = watch("nitEmpresa") ?? "";
+  const sedeElegida = watch("sucursalId") ?? "";
 
   useEffect(() => {
     const nit = nitEscrito.trim();
@@ -62,12 +66,18 @@ export function CompanyProfileForm({
         .then((d) => {
           if (!d.valido) setBusqueda({ estado: "invalido", error: d.error });
           else if (!d.empresa) setBusqueda({ estado: "no-registrada", nit: d.nit });
-          else setBusqueda({ estado: "encontrada", ...d.empresa });
+          else {
+            setBusqueda({ estado: "encontrada", ...d.empresa });
+            // Si la sede elegida no es de esta empresa (cambió el NIT), vuelve a la principal.
+            const sedes: { id: string }[] = d.empresa.sucursales ?? [];
+            const actual = (getValues("sucursalId") ?? "").trim();
+            if (actual && !sedes.some((s) => s.id === actual)) setValue("sucursalId", "");
+          }
         })
         .catch(() => setBusqueda({ estado: "invalido", error: "No se pudo consultar el NIT. Inténtalo de nuevo." }));
     }, 500);
     return () => clearTimeout(espera);
-  }, [nitEscrito]);
+  }, [nitEscrito, setValue, getValues]);
 
   useEffect(() => {
     if (defaultValues) reset(defaultValues);
@@ -209,28 +219,49 @@ export function CompanyProfileForm({
             {busqueda.estado === "no-registrada" && (
               <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
                 La empresa con NIT <strong>{busqueda.nit}</strong> todavía no está registrada en
-                SEPA. Pídele al administrador que la registre; cuando lo haga, podrás guardar.
+                SEPA. Pídele a Coordinación o al administrador que la registre; cuando lo haga, podrás guardar.
               </p>
             )}
-            {busqueda.estado === "encontrada" && (
-              <dl className="grid grid-cols-1 gap-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-800 sm:grid-cols-2">
-                <div>
-                  <dt className="text-[11px] uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
-                    Empresa
-                  </dt>
-                  <dd className="text-sm text-zinc-800 dark:text-zinc-200">{busqueda.nombre}</dd>
-                </div>
-                <div>
-                  <dt className="text-[11px] uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
-                    Dirección
-                  </dt>
-                  <dd className="text-sm text-zinc-800 dark:text-zinc-200">
-                    {busqueda.direccion}
-                    {busqueda.municipio ? `, ${busqueda.municipio} (${busqueda.departamento})` : ""}
-                  </dd>
-                </div>
-              </dl>
-            )}
+            {busqueda.estado === "encontrada" && (() => {
+              // Un NIT puede tener varias sedes (9 oct 2026): la dirección es la de la sede elegida.
+              const sede = busqueda.sucursales.find((s) => s.id === sedeElegida);
+              const direccion = sede
+                ? `${sede.direccion}, ${sede.municipio} (${sede.departamento})`
+                : `${busqueda.direccion}${busqueda.municipio ? `, ${busqueda.municipio} (${busqueda.departamento})` : ""}`;
+              return (
+                <>
+                  {busqueda.sucursales.length > 0 && (
+                    <Field label="Sede donde haces la práctica" error={errors.sucursalId?.message}>
+                      <select {...register("sucursalId")} className={`${inputClass} w-full min-w-0 max-w-full truncate`}>
+                        <option value="">Sede principal — {busqueda.direccion}{busqueda.municipio ? `, ${busqueda.municipio}` : ""}</option>
+                        {busqueda.sucursales.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.nombre} — {s.direccion}, {s.municipio}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                        Esta empresa tiene varias sedes con el mismo NIT. Si tu sede no aparece, pídele a
+                        Coordinación que la registre.
+                      </p>
+                    </Field>
+                  )}
+                  <dl className="grid grid-cols-1 gap-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-800 sm:grid-cols-2">
+                    <div>
+                      <dt className="text-[11px] uppercase tracking-wide text-zinc-400 dark:text-zinc-500">Empresa</dt>
+                      <dd className="text-sm text-zinc-800 dark:text-zinc-200">
+                        {busqueda.nombre}
+                        {sede ? <span className="block text-xs text-zinc-500 dark:text-zinc-400">{sede.nombre}</span> : null}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[11px] uppercase tracking-wide text-zinc-400 dark:text-zinc-500">Dirección</dt>
+                      <dd className="text-sm text-zinc-800 dark:text-zinc-200">{direccion}</dd>
+                    </div>
+                  </dl>
+                </>
+              );
+            })()}
             {busqueda.estado === "vacio" && defaultValues?.empresaPatrocinadora && (
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
                 Empresa que tenías registrada: <strong>{defaultValues.empresaPatrocinadora}</strong>.
@@ -243,6 +274,11 @@ export function CompanyProfileForm({
             <legend className="mb-1 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
               Coformador
             </legend>
+            <p className="-mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+              Estos datos los escribes y actualizas tú. Si tu coformador cambia durante la etapa
+              productiva, cambia aquí sus datos y guarda; registra también la novedad «Cambio de
+              coformador» en Novedades para que tu instructor quede enterado.
+            </p>
 
             <Field label="Nombre del coformador" error={errors.nombreCoformador?.message}>
               <input {...register("nombreCoformador")} className={inputClass} />

@@ -53,6 +53,7 @@ export default async function ActualizarPage() {
           empresaPatrocinadora: profile.empresaPatrocinadora,
           direccionEmpresa: profile.direccionEmpresa,
           nitEmpresa: profile.nitEmpresa ?? "",
+          sucursalId: profile.sucursalId ?? "",
           nombreCoformador: profile.nombreCoformador,
           cargoCoformador: profile.cargoCoformador,
           correoCoformador: profile.correoCoformador,

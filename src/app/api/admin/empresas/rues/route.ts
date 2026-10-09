@@ -8,7 +8,7 @@ import { consultarRues } from "@/lib/rues";
 // oficial (solo ADMIN). No guarda nada. Si el RUES no responde, se avisa y se puede registrar a
 // mano: el registro de SEPA no depende de que un servicio externo esté en línea.
 export async function GET(request: Request) {
-  const { user, response } = await requireApiUser(["ADMIN"]);
+  const { user, response } = await requireApiUser(["ADMIN", "COORDINADOR"]);
   if (!user) return response;
 
   const nit = validarNit(new URL(request.url).searchParams.get("nit") ?? "");

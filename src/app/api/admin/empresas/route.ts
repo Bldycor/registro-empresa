@@ -4,10 +4,10 @@ import { requireApiUser } from "@/lib/auth-guards";
 import { EmpresaSchema } from "@/lib/validations";
 import { empresasPendientes, validarEmpresa } from "@/lib/empresas";
 
-// Catálogo de empresas co-formadoras. Solo el ADMIN lo ve y lo administra (decisión de
-// Coordinación, 2 oct 2026).
+// Catálogo de empresas co-formadoras, con sus sucursales. Lo administran el ADMIN y Coordinación
+// (decisiones del 2 y 9 oct 2026).
 export async function GET() {
-  const { user, response } = await requireApiUser(["ADMIN"]);
+  const { user, response } = await requireApiUser(["ADMIN", "COORDINADOR"]);
   if (!user) return response;
 
   const [empresas, pendientes] = await Promise.all([
@@ -21,6 +21,10 @@ export async function GET() {
         municipio: true,
         updatedAt: true,
         _count: { select: { perfiles: true } },
+        sucursales: {
+          select: { id: true, nombre: true, direccion: true, departamento: true, municipio: true, _count: { select: { perfiles: true } } },
+          orderBy: { nombre: "asc" },
+        },
       },
       orderBy: { nombre: "asc" },
     }),
@@ -28,13 +32,17 @@ export async function GET() {
   ]);
 
   return NextResponse.json({
-    empresas: empresas.map((e) => ({ ...e, aprendices: e._count.perfiles })),
+    empresas: empresas.map((e) => ({
+      ...e,
+      aprendices: e._count.perfiles,
+      sucursales: e.sucursales.map((s) => ({ ...s, aprendices: s._count.perfiles })),
+    })),
     pendientes,
   });
 }
 
 export async function POST(request: Request) {
-  const { user, response } = await requireApiUser(["ADMIN"]);
+  const { user, response } = await requireApiUser(["ADMIN", "COORDINADOR"]);
   if (!user) return response;
 
   const parsed = EmpresaSchema.safeParse(await request.json().catch(() => null));

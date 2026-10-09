@@ -223,7 +223,16 @@ export function ExpedienteAprendiz({ expediente: e, propio = false }: { expedien
           <Dato etiqueta="Celular">{e.celular}</Dato>
           <Dato etiqueta="Correo del instructor">{instructor?.email}</Dato>
           <Dato etiqueta="Empresa">{empresa?.empresaPatrocinadora}</Dato>
-          <Dato etiqueta="Dirección de la empresa">{empresa?.direccionEmpresa}</Dato>
+          <Dato etiqueta="Sede">{empresa ? (empresa.sucursal?.nombre ?? "Sede principal") : ""}</Dato>
+          <Dato etiqueta="Dirección de la sede">
+            {[
+              empresa?.direccionEmpresa,
+              empresa?.sucursal?.municipio ?? empresa?.empresa?.municipio,
+              empresa?.sucursal?.departamento ?? empresa?.empresa?.departamento,
+            ]
+              .filter(Boolean)
+              .join(", ")}
+          </Dato>
           {/* El NIT va en los informes de instructor, Coordinación y Admin; no en la vista del aprendiz. */}
           {!propio && <Dato etiqueta="NIT de la empresa">{empresa?.nitEmpresa ?? ""}</Dato>}
           <Dato etiqueta="Coformador">

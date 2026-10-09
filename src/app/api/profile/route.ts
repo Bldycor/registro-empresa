@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   }
 
   // La empresa se toma del catálogo por su NIT; lo que el navegador mande como nombre o dirección
-  // se ignora. Si el NIT no está registrado, no se guarda: el administrador tiene que registrar la
+  // se ignora. Si el NIT no está registrado, no se guarda: el administrador o Coordinación tiene que registrar la
   // empresa primero (decisión de Coordinación, 2 oct 2026).
   const nit = validarNit(parsed.data.nitEmpresa);
   if (!nit.ok) {
@@ -47,17 +47,27 @@ export async function POST(request: Request) {
   }
   const empresa = await prisma.empresa.findUnique({
     where: { nit: nit.nit },
-    select: { id: true, nit: true, nombre: true, direccion: true },
+    select: { id: true, nit: true, nombre: true, direccion: true, sucursales: { select: { id: true, direccion: true } } },
   });
   if (!empresa) {
     return NextResponse.json(
       {
         error: {
           nitEmpresa: [
-            `La empresa con NIT ${nit.nit} todavía no está registrada en SEPA. Pídele al administrador que la registre; cuando lo haga, vuelve a guardar.`,
+            `La empresa con NIT ${nit.nit} todavía no está registrada en SEPA. Pídele a Coordinación o al administrador que la registre; cuando lo haga, vuelve a guardar.`,
           ],
         },
       },
+      { status: 400 },
+    );
+  }
+
+  // Sede: una sucursal de ESA empresa, o la principal si no eligió ninguna.
+  const sucursalId = (parsed.data.sucursalId ?? "").trim() || null;
+  const sucursal = sucursalId ? empresa.sucursales.find((s) => s.id === sucursalId) : null;
+  if (sucursalId && !sucursal) {
+    return NextResponse.json(
+      { error: { sucursalId: ["Esa sede no pertenece a la empresa elegida. Vuelve a elegirla."] } },
       { status: 400 },
     );
   }
@@ -69,7 +79,8 @@ export async function POST(request: Request) {
     celularCoformador: parsed.data.celularCoformador,
     empresaId: empresa.id,
     empresaPatrocinadora: empresa.nombre,
-    direccionEmpresa: empresa.direccion,
+    sucursalId: sucursal?.id ?? null,
+    direccionEmpresa: sucursal?.direccion ?? empresa.direccion,
     nitEmpresa: empresa.nit,
   };
 

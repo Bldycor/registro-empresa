@@ -546,8 +546,14 @@ model CompanyProfile {
   // sincronizados para que todo lo que ya los leía (reportes, formato, citaciones) siga igual.
   empresaId String?
   empresa   Empresa? @relation(fields: [empresaId], references: [id], onDelete: SetNull)
+  // Sede donde hace la práctica (9 oct 2026): una empresa (un NIT) puede tener varias
+  // sucursales. Vacío = la sede principal (la dirección de la empresa). `direccionEmpresa` es la
+  // copia de la dirección de la sede elegida.
+  sucursalId String?
+  sucursal   SucursalEmpresa? @relation(fields: [sucursalId], references: [id], onDelete: SetNull)
 
   @@index([empresaId])
+  @@index([sucursalId])
 
   nombreCoformador     String // Nombre del coformador
   cargoCoformador      String // Cargo del coformador
@@ -1212,7 +1218,8 @@ model Empresa {
   actualizadoPorId String?
   actualizadoPor   User?   @relation("EmpresaActualizadaPor", fields: [actualizadoPorId], references: [id], onDelete: SetNull)
 
-  perfiles CompanyProfile[]
+  perfiles    CompanyProfile[]
+  sucursales  SucursalEmpresa[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1237,4 +1244,26 @@ model RegistroAuditoria {
   @@index([fecha])
   @@index([usuarioId, fecha])
   @@index([entidad, entidadId])
+}
+
+// Sucursal de una empresa co-formadora (decisión de Coordinación, 9 oct 2026): el mismo NIT
+// puede tener varias sedes, y varios aprendices pueden estar en la misma o en distintas. La sede
+// principal es la dirección de la propia `Empresa`; aquí van las demás. Las administran
+// Coordinación y el administrador.
+model SucursalEmpresa {
+  id           String  @id @default(cuid())
+  empresaId    String
+  empresa      Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  nombre       String
+  direccion    String
+  departamento String
+  municipio    String
+
+  perfiles CompanyProfile[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([empresaId, nombre])
+  @@index([empresaId])
 }

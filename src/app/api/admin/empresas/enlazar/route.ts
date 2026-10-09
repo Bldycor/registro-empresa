@@ -9,7 +9,7 @@ import { nombreNormalizado, sincronizarPerfiles } from "@/lib/empresas";
 // más—, así el administrador registra cada empresa una vez y todos sus aprendices quedan
 // enlazados, sin tener que pedirle el NIT a cada uno.
 export async function POST(request: Request) {
-  const { user, response } = await requireApiUser(["ADMIN"]);
+  const { user, response } = await requireApiUser(["ADMIN", "COORDINADOR"]);
   if (!user) return response;
 
   const parsed = EnlazarEmpresaSchema.safeParse(await request.json().catch(() => null));

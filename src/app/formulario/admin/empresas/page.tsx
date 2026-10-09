@@ -3,9 +3,10 @@ import { EmpresasAdminPanel } from "@/components/empresas-admin-panel";
 
 export const dynamic = "force-dynamic";
 
-// Catálogo de empresas co-formadoras: solo el administrador las registra y edita.
+// Catálogo de empresas co-formadoras y sus sedes: lo administran el administrador y Coordinación.
 export default async function EmpresasPage() {
-  await requireUser(["ADMIN"]);
+  // El catálogo lo administran el administrador y Coordinación (decisión del 9 oct 2026).
+  await requireUser(["ADMIN", "COORDINADOR"]);
 
   return (
     <div className="flex flex-1 flex-col px-4 py-10 sm:px-8">
@@ -15,7 +16,8 @@ export default async function EmpresasPage() {
           El registro oficial de las empresas donde los aprendices hacen la práctica. Cada empresa
           se identifica por su NIT, con la razón social del RUES y su ubicación según el DANE. El
           aprendiz elige la suya por el NIT y no puede cambiar estos datos; si su empresa no está
-          aquí, no puede completar su perfil hasta que la registres.
+          aquí, no puede completar su perfil hasta que la registres. Si la empresa tiene varias sedes
+          con el mismo NIT, agrégalas en «Sedes»: cada aprendiz elige la suya.
         </p>
         <EmpresasAdminPanel />
       </div>

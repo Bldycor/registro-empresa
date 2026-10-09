@@ -7,7 +7,7 @@ import { sincronizarPerfiles, validarEmpresa } from "@/lib/empresas";
 // Edición de una empresa del catálogo (solo ADMIN). Lo que cambie aquí se copia de inmediato a
 // los perfiles de todos los aprendices enlazados, para que reportes y formatos lo muestren igual.
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { user, response } = await requireApiUser(["ADMIN"]);
+  const { user, response } = await requireApiUser(["ADMIN", "COORDINADOR"]);
   if (!user) return response;
 
   const { id } = await params;

@@ -35,7 +35,7 @@ function partirFila(linea: string): string[] {
 }
 
 export async function POST(request: Request) {
-  const { user, response } = await requireApiUser(["ADMIN"]);
+  const { user, response } = await requireApiUser(["ADMIN", "COORDINADOR"]);
   if (!user) return response;
 
   const cuerpo = (await request.json().catch(() => null)) as { filas?: string; simular?: boolean } | null;

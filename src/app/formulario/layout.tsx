@@ -5,7 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { LogoutButton } from "@/components/logout-button";
 import { PanelSidebar } from "@/components/panel-sidebar";
 import { EvidenciaEPNav } from "@/components/evidencia-ep-nav";
+import { Suspense } from "react";
 import { BienvenidaSplash } from "@/components/bienvenida-splash";
+import { RastroNavegacion } from "@/components/rastro-navegacion";
 import { bienvenidaRol } from "@/lib/ayuda";
 import { calcularSeguimiento } from "@/lib/seguimiento-evidencias";
 import { pendientesMenu } from "@/lib/pendientes-menu";
@@ -135,9 +137,12 @@ export default async function FormularioLayout({
     return (
       <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-zinc-950 print:bg-white">
         <BienvenidaSplash nombre={user.nombres} mensaje={bienvenidaRol[user.role] ?? ""} />
+        <Suspense fallback={null}>
+          <RastroNavegacion />
+        </Suspense>
         {header}
         {profile && <EvidenciaEPNav alertas={alertas} />}
-        <main className="flex flex-1 flex-col">{children}</main>
+        <main className="flex min-w-0 flex-1 flex-col">{children}</main>
       </div>
     );
   }
@@ -147,10 +152,13 @@ export default async function FormularioLayout({
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
       <BienvenidaSplash nombre={user.nombres} mensaje={bienvenidaRol[user.role] ?? ""} />
+        <Suspense fallback={null}>
+          <RastroNavegacion />
+        </Suspense>
       {header}
       <div className="flex flex-1 flex-col sm:flex-row">
         <PanelSidebar role={user.role} pendientes={pendientes} />
-        <main className="flex flex-1 flex-col">{children}</main>
+        <main className="flex min-w-0 flex-1 flex-col">{children}</main>
       </div>
     </div>
   );
