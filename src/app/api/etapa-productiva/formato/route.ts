@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { TODAS_LAS_VARIABLES, variableCategoria } from "@/lib/evaluacion-variables";
+import type { ValoracionLeida } from "@/lib/leer-rubrica";
 import { esPdf } from "@/lib/leer-pdf";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
@@ -78,7 +79,8 @@ export async function PATCH(request: Request) {
   // escribir al aprendiz lo que ya está en el documento firmado. Si el PDF es un escaneo sin texto
   // —o si algo falla al leerlo— no pasa nada: el formato sigue su curso con lo que ya había.
   const archivoNuevo = (m.archivoUrl ?? "").trim();
-  let lectura: { leidos: number; sinTexto: boolean } | null = null;
+  let lectura: { leidos: number; sinTexto: boolean; rubrica?: number } | null = null;
+  let rubricaLeida: ValoracionLeida[] = [];
   let datosDocumento: Partial<DatosDocumento> | null = null;
 
   if (archivoNuevo) {
@@ -94,7 +96,8 @@ export async function PATCH(request: Request) {
         const leido = esPdf(archivo)
           ? await leerFormato(archivo, m.momento)
           : { datos: {}, leidos: 0, sinTexto: true };
-        lectura = { leidos: leido.leidos, sinTexto: leido.sinTexto };
+        lectura = { leidos: leido.leidos, sinTexto: leido.sinTexto, rubrica: leido.rubrica?.length ?? 0 };
+        rubricaLeida = leido.rubrica ?? [];
         if (leido.leidos > 0) {
           // Lo nuevo se suma a lo leído antes en otro momento, sin borrarlo.
           datosDocumento = { ...((previo?.datosDocumento as Partial<DatosDocumento>) ?? {}), ...leido.datos };
@@ -298,6 +301,39 @@ export async function PATCH(request: Request) {
             : undefined,
       },
     });
+  }
+
+  // Momentos 2 y 3: la valoración marcada con «X» en el formato firmado entra a la rúbrica del
+  // momento (9 oct 2026). Nunca pisa lo que el instructor ya valoró: solo llena lo que está sin
+  // valorar, y la observación solo si no hay una.
+  if (m.momento !== 1 && rubricaLeida.length) {
+    const evaluacion = await prisma.evaluacion.findFirst({
+      where: { userId: user.id, numero: m.momento, esExtraordinario: false },
+      select: { id: true, estado: true, variables: { select: { variable: true, valoracion: true, observaciones: true } } },
+    });
+    if (evaluacion && evaluacion.estado !== "APROBADA") {
+      const actuales = new Map(evaluacion.variables.map((v) => [v.variable, v]));
+      await prisma.$transaction(
+        rubricaLeida
+          .filter((v) => !actuales.get(v.variable)?.valoracion)
+          .map((v) =>
+            prisma.evaluacionVariable.upsert({
+              where: { evaluacionId_variable: { evaluacionId: evaluacion.id, variable: v.variable } },
+              update: {
+                valoracion: v.valoracion,
+                observaciones: actuales.get(v.variable)?.observaciones || v.observaciones,
+              },
+              create: {
+                evaluacionId: evaluacion.id,
+                variable: v.variable,
+                categoria: variableCategoria[v.variable],
+                valoracion: v.valoracion,
+                observaciones: v.observaciones,
+              },
+            }),
+          ),
+      );
+    }
   }
 
   const formato = await construirFormato(user.id, m.momento);

@@ -12,7 +12,8 @@
 //   que él ya haya escrito manda sobre lo que diga el PDF.
 // - Un PDF escaneado (una foto del papel) no tiene texto: ahí no se lee nada y se avisa.
 
-import { textoDelPdf } from "@/lib/leer-pdf";
+import { paginasDelPdf, textoDePaginas } from "@/lib/leer-pdf";
+import { leerRubrica, type ValoracionLeida } from "@/lib/leer-rubrica";
 
 export type DatosDocumento = {
   regional: string | null;
@@ -316,13 +317,17 @@ export type LecturaDocumento = {
   leidos: number;
   // El PDF no tenía texto (probablemente es una foto o un escaneo).
   sinTexto: boolean;
+  // Momentos 2 y 3: las 13 variables marcadas con «X» en el formato (9 oct 2026). Vacío si el
+  // momento no está diligenciado en el PDF.
+  rubrica?: ValoracionLeida[];
 };
 
 export async function leerFormato(
   archivo: ArrayBuffer,
   momento: 1 | 2 | 3,
 ): Promise<LecturaDocumento> {
-  const texto = await textoDelPdf(archivo);
+  const paginas = await paginasDelPdf(archivo);
+  const texto = textoDePaginas(paginas);
   if (texto.replace(/\s/g, "").length < 200) {
     return { datos: {}, leidos: 0, sinTexto: true };
   }
@@ -344,5 +349,7 @@ export async function leerFormato(
     if (datos[campo]) utiles[campo] = datos[campo];
   }
 
-  return { datos: utiles, leidos: Object.keys(utiles).length, sinTexto: false };
+  const rubrica = momento === 1 ? [] : leerRubrica(paginas, momento).filter((v) => v.valoracion);
+
+  return { datos: utiles, leidos: Object.keys(utiles).length, sinTexto: false, ...(rubrica.length ? { rubrica } : {}) };
 }

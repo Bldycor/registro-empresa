@@ -24,6 +24,7 @@ import { fechaEnColombia } from "@/lib/plazos-institucionales";
 // valora solo el instructor; acá se muestran como quedaron, en solo lectura.
 
 type Campo = { etiqueta: string; valor: string | null; delDocumento?: boolean };
+type VariableLeida = { variable: string; valoracion: "SATISFACTORIO" | "POR_MEJORAR" | null; observaciones: string | null };
 type Bloque = { titulo: string; campos: Campo[] };
 
 type Formato = {
@@ -32,7 +33,13 @@ type Formato = {
   encabezado: Bloque[];
   detalle: Campo[];
   textos: { titulo: string; cuerpo: string | null }[];
-  variables: { categoria: "TECNICO" | "ACTITUDINAL"; nombre: string; valoracion: string | null; observaciones: string | null }[];
+  variables: {
+    categoria: "TECNICO" | "ACTITUDINAL";
+    nombre: string;
+    valoracion: string | null;
+    observaciones: string | null;
+    delDocumento?: boolean;
+  }[];
   archivoUrl: string | null;
   existe: boolean;
   faltantes: string[];
@@ -213,8 +220,18 @@ function TablaVariables({
                   ? "Por mejorar"
                   : "Sin valorar"}
             </span>
+            {v.delDocumento && (
+              <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                leído del PDF
+              </span>
+            )}
             {v.observaciones && (
               <span className="text-xs text-zinc-500 dark:text-zinc-400">{v.observaciones}</span>
+            )}
+            {v.valoracion === "POR_MEJORAR" && !v.observaciones && (
+              <span className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                ! Sin observación: tu instructor deberá escribirla
+              </span>
             )}
           </li>
         ))}
@@ -258,6 +275,8 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
     horario: "",
   });
   const [retroalimentacion, setRetroalimentacion] = useState("");
+  // Momentos 2 y 3: la valoración marcada con «X» en el PDF adjunto (se guarda al enviar).
+  const [rubricaLeida, setRubricaLeida] = useState<VariableLeida[]>([]);
   // Solo cuando el momento no está en SEPA porque se hizo por fuera.
   const [realizado, setRealizado] = useState({ fecha: "", horaInicio: "", horaFin: "" });
   // Datos de la reunión que el PDF suele traer; si no se pudo leer, el aprendiz los escribe.
@@ -591,6 +610,7 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
       setDatos(datosFusionados);
       if (momento === 1) setPlan(planFusionado);
       setDelDocumento(leido);
+      setRubricaLeida(Array.isArray(d.rubrica) ? d.rubrica : []);
       // Lo leído de la reunión entra en sus casillas, donde se puede corregir.
       setManual((prev) => ({
         enlaceGrabacion: prev.enlaceGrabacion.trim() || (leido.enlaceGrabacion ?? ""),
@@ -603,8 +623,9 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
 
       // Leer solo diligencia el formulario. Nada queda guardado hasta que el aprendiz revisa y
       // pulsa «Enviar a mi instructor» (así lo pidió Coordinación, 29 sep 2026).
+      const nRubrica = Array.isArray(d.rubrica) ? d.rubrica.length : 0;
       setLectura(
-        `Del PDF se tomaron ${d.leidos} ${d.leidos === 1 ? "dato" : "datos"} y quedaron puestos en el formulario. Revísalos, corrige lo que haga falta y pulsa «Enviar a mi instructor» para guardarlos.`,
+        `Del PDF se tomaron ${d.leidos} ${d.leidos === 1 ? "dato" : "datos"}${nRubrica ? ` y la valoración de ${nRubrica} variables` : ""} y quedaron puestos en el formato. Revísalos en la vista previa y pulsa «Enviar a mi instructor» para guardarlos.`,
       );
     } catch {
       setAMano(true);
@@ -695,8 +716,28 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
     }
   }
 
-  const tecnicas = formato.variables.filter((v) => v.categoria === "TECNICO");
-  const actitudinales = formato.variables.filter((v) => v.categoria === "ACTITUDINAL");
+  // Lo que el instructor ya valoró manda; lo que siga sin valorar se completa con lo leído del PDF.
+  const CLAVES_VARIABLES = Object.keys(VARIABLE_LABEL);
+  const variablesPrevia: Formato["variables"] =
+    momento === 1
+      ? formato.variables
+      : CLAVES_VARIABLES.map((clave, i) => {
+          const guardada = formato.variables.find((v) => v.nombre === clave);
+          const leida = rubricaLeida.find((v) => v.variable === clave);
+          const categoria: "TECNICO" | "ACTITUDINAL" = i < 8 ? "TECNICO" : "ACTITUDINAL";
+          if (guardada?.valoracion || !leida?.valoracion) {
+            return guardada ?? { categoria, nombre: clave, valoracion: null, observaciones: null };
+          }
+          return {
+            categoria,
+            nombre: clave,
+            valoracion: leida.valoracion,
+            observaciones: guardada?.observaciones || leida.observaciones,
+            delDocumento: true,
+          };
+        }).filter((v) => formato.variables.length > 0 || v.valoracion);
+  const tecnicas = variablesPrevia.filter((v) => v.categoria === "TECNICO");
+  const actitudinales = variablesPrevia.filter((v) => v.categoria === "ACTITUDINAL");
 
   return (
     <section className="mt-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
@@ -1073,9 +1114,15 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
               <>
                 <TablaVariables titulo="Factores técnicos" filas={tecnicas} />
                 <TablaVariables titulo="Factores actitudinales y comportamentales" filas={actitudinales} />
-                {formato.variables.length === 0 && (
+                {variablesPrevia.length === 0 && (
                   <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
                     Las 13 variables las valora tu instructor después de la reunión.
+                  </p>
+                )}
+                {variablesPrevia.some((v) => v.delDocumento) && (
+                  <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                    Las valoraciones marcadas «leído del PDF» salen del formato firmado y se guardan al enviarlo.
+                    Tu instructor las revisa al cerrar el momento.
                   </p>
                 )}
               </>

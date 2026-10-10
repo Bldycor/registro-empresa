@@ -9,7 +9,12 @@ export function esPdf(archivo: ArrayBuffer): boolean {
   return new TextDecoder("latin1").decode(inicio).includes("%PDF");
 }
 
-export async function textoDelPdf(archivo: ArrayBuffer): Promise<string> {
+// Un texto del PDF con su posición (en puntos, origen abajo a la izquierda, como lo da pdfjs).
+export type TextoPosicionado = { s: string; x: number; y: number; w: number };
+
+// Cada página como lista de textos con posición. La necesita la lectura de las casillas marcadas
+// con «X» (la rúbrica de los Momentos 2 y 3), donde importa en qué columna cae cada marca.
+export async function paginasDelPdf(archivo: ArrayBuffer): Promise<TextoPosicionado[][]> {
   const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
   await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
 
@@ -21,16 +26,32 @@ export async function textoDelPdf(archivo: ArrayBuffer): Promise<string> {
     isEvalSupported: false,
   }).promise;
 
-  let texto = "";
+  const paginas: TextoPosicionado[][] = [];
   for (let pagina = 1; pagina <= pdf.numPages; pagina++) {
     const contenido = await (await pdf.getPage(pagina)).getTextContent();
-    texto += contenido.items.map((item) => ("str" in item ? item.str : "")).join(" ") + "\n";
+    paginas.push(
+      contenido.items.flatMap((item) =>
+        "str" in item && item.str.trim()
+          ? [{ s: item.str.replace(/\u00a0/g, " "), x: item.transform[4], y: item.transform[5], w: item.width }]
+          : [],
+      ),
+    );
   }
-  return texto.replace(/ /g, " ").replace(/[ \t]+/g, " ");
+  return paginas;
 }
 
-// Borra del texto los trozos que trae la propia plantilla (instrucciones, títulos de columna,
-// notas al pie): no son datos del aprendiz.
+export function textoDePaginas(paginas: TextoPosicionado[][]): string {
+  return paginas
+    .map((p) => p.map((i) => i.s).join(" ") + "\n")
+    .join("")
+    .replace(/\u00a0/g, " ")
+    .replace(/[ \t]+/g, " ");
+}
+
+export async function textoDelPdf(archivo: ArrayBuffer): Promise<string> {
+  return textoDePaginas(await paginasDelPdf(archivo));
+}
+
 export function limpiarConPatrones(valor: string, patrones: RegExp[]): string {
   let v = valor;
   for (const patron of patrones) v = v.replace(patron, " ");

@@ -390,6 +390,7 @@ function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved:
             valores={valores}
             onChange={actualizar}
             disabled={bloqueado}
+            obligarObservacion
           />
           <RubricaGrupo
             titulo="Actitudinales"
@@ -398,6 +399,7 @@ function RubricaForm({ evaluacion, onSaved }: { evaluacion: Evaluacion; onSaved:
             valores={valores}
             onChange={actualizar}
             disabled={bloqueado}
+            obligarObservacion
           />
 
           <div className="flex flex-col gap-1">
@@ -513,6 +515,7 @@ function RubricaGrupo({
   valores,
   onChange,
   disabled,
+  obligarObservacion = false,
 }: {
   titulo: string;
   variables: readonly string[];
@@ -520,6 +523,7 @@ function RubricaGrupo({
   valores: Record<string, { valoracion: string; observaciones: string }>;
   onChange: (variable: string, campo: "valoracion" | "observaciones", valor: string) => void;
   disabled: boolean;
+  obligarObservacion?: boolean;
 }) {
   return (
     <div>
@@ -545,13 +549,28 @@ function RubricaGrupo({
                 ))}
               </select>
             </div>
-            <input
-              value={valores[variable]?.observaciones ?? ""}
-              onChange={(e) => onChange(variable, "observaciones", e.target.value)}
-              disabled={disabled}
-              placeholder="Observación (opcional)"
-              className={`${inputClass} mt-2 w-full`}
-            />
+            {(() => {
+              // «Por mejorar» exige observación en los Momentos 2 y 3 (9 oct 2026).
+              const exigida = obligarObservacion && valores[variable]?.valoracion === "POR_MEJORAR";
+              const falta = exigida && !valores[variable]?.observaciones?.trim();
+              return (
+                <>
+                  <input
+                    value={valores[variable]?.observaciones ?? ""}
+                    onChange={(e) => onChange(variable, "observaciones", e.target.value)}
+                    disabled={disabled}
+                    placeholder={exigida ? "Qué debe mejorar (obligatorio)" : "Observación (opcional)"}
+                    aria-invalid={falta || undefined}
+                    className={`${inputClass} mt-2 w-full ${falta ? "border-amber-500 dark:border-amber-600" : ""}`}
+                  />
+                  {falta && (
+                    <p className="mt-1 text-xs font-medium text-amber-800 dark:text-amber-300">
+                      ! En «Por mejorar» escribe qué debe mejorar el aprendiz.
+                    </p>
+                  )}
+                </>
+              );
+            })()}
           </div>
         ))}
       </div>

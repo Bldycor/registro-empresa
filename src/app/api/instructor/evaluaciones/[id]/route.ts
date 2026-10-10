@@ -57,6 +57,20 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         { status: 400 }
       );
     }
+    // «Por mejorar» exige escribir qué mejorar (decisión de Coordinación, 9 oct 2026).
+    const sinObservacion = d.variables.filter((v) => v.valoracion === "POR_MEJORAR" && !v.observaciones?.trim());
+    if (sinObservacion.length > 0) {
+      return NextResponse.json(
+        {
+          error: {
+            _root: [
+              `${sinObservacion.length === 1 ? "Un criterio está" : `${sinObservacion.length} criterios están`} en «Por mejorar» sin observación. Escribe qué debe mejorar el aprendiz antes de finalizar.`,
+            ],
+          },
+        },
+        { status: 400 },
+      );
+    }
     if (existing.numero === 3 && !d.juicioFinal) {
       return NextResponse.json(
         { error: { juicioFinal: ["El Momento 3 requiere un juicio final."] } },
