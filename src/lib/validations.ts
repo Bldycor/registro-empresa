@@ -702,6 +702,20 @@ export const ResetPasswordSchema = z
 
 export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
 
+// Cambio de contraseña de cualquier usuario, solo por el administrador y confirmando con su
+// propia contraseña (decisión de Coordinación, 9 oct 2026).
+export const CambioClaveAdminSchema = z
+  .object({
+    usuarioId: z.string().trim().min(1, "Elige a quién le cambias la contraseña."),
+    nuevaClave: z.string().min(8, "La nueva contraseña debe tener al menos 8 caracteres."),
+    confirmacion: z.string().min(1, "Repite la nueva contraseña."),
+    claveAdmin: z.string().min(1, "Escribe tu contraseña de administrador."),
+  })
+  .refine((d) => d.nuevaClave === d.confirmacion, {
+    message: "Las dos contraseñas nuevas no coinciden.",
+    path: ["confirmacion"],
+  });
+
 const todayDateString = () => new Date().toISOString().slice(0, 10);
 
 export const ConcertacionSchema = z

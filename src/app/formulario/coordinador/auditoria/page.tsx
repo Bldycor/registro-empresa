@@ -16,6 +16,8 @@ const ACCIONES: Record<string, { etiqueta: string; tono: string }> = {
   INGRESO_BLOQUEADO: { etiqueta: "Intento con cuenta bloqueada", tono: "rojo" },
   CUENTA_BLOQUEADA: { etiqueta: "Cuenta bloqueada", tono: "rojo" },
   RECUPERACION_SOLICITADA: { etiqueta: "Pidió recuperar contraseña", tono: "ambar" },
+  CLAVE_CAMBIADA_POR_ADMIN: { etiqueta: "Cambió la contraseña de", tono: "ambar" },
+  CAMBIO_CLAVE_RECHAZADO: { etiqueta: "Confirmación de administrador errada", tono: "rojo" },
   CREAR: { etiqueta: "Creó", tono: "azul" },
   CREAR_VARIOS: { etiqueta: "Creó varios", tono: "azul" },
   ACTUALIZAR: { etiqueta: "Modificó", tono: "neutro" },

@@ -109,7 +109,10 @@ const roleNav: Record<string, Grupo[]> = {
     },
   ],
   COORDINADOR: gruposCoordinacion(),
-  ADMIN: gruposCoordinacion([{ href: "/formulario/admin/coordinadores", label: "Coordinadores" }]),
+  ADMIN: gruposCoordinacion([
+    { href: "/formulario/admin/coordinadores", label: "Coordinadores" },
+    { href: "/formulario/admin/claves", label: "Contraseñas" },
+  ]),
 };
 
 function Contador({ n, suave = false }: { n: number; suave?: boolean }) {

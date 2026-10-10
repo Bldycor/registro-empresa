@@ -229,7 +229,12 @@ const COORDINADOR: GuiaRol = {
 // El administrador ve lo mismo que Coordinación, más la gestión de cuentas de coordinación.
 const OPCION_COORDINADORES: OpcionAyuda = {
   opcion: "Coordinadores",
-  que: "Creas y administras las cuentas de coordinación. Es la opción exclusiva del administrador; el resto del menú es igual al de Coordinación.",
+  que: "Creas y administras las cuentas de coordinación. Junto con «Contraseñas», son las opciones exclusivas del administrador; el resto del menú es igual al de Coordinación.",
+};
+
+const OPCION_CLAVES: OpcionAyuda = {
+  opcion: "Contraseñas",
+  que: "Cambias la contraseña de cualquier usuario de SEPA cuando no puede recuperarla por correo. Es exclusivo del administrador y siempre pide tu propia contraseña para confirmar; 5 intentos errados bloquean tu cuenta 15 minutos. Cambiarla también desbloquea la cuenta de la persona, y el cambio queda en Trazabilidad sin la contraseña.",
 };
 
 const OPCION_EMPRESAS: OpcionAyuda = {
@@ -246,7 +251,7 @@ export function guiaDelRol(role: string): GuiaRol {
       rol: "Administrador",
       resumen: `${COORDINADOR.resumen} Además administras las cuentas de coordinación.`,
       secciones: COORDINADOR.secciones.map((s) =>
-        s.titulo === "Estructura" ? { ...s, opciones: [OPCION_COORDINADORES, OPCION_EMPRESAS, ...s.opciones] } : s,
+        s.titulo === "Estructura" ? { ...s, opciones: [OPCION_COORDINADORES, OPCION_CLAVES, OPCION_EMPRESAS, ...s.opciones] } : s,
       ),
     };
   }
@@ -363,6 +368,10 @@ export const ayudaMenu: Record<string, { icono: string; resumen: string }> = {
   "/formulario/coordinador/aplazamientos": {
     icono: "⏳",
     resumen: "Registra la decisión del Comité, con su acta.",
+  },
+  "/formulario/admin/claves": {
+    icono: "🔑",
+    resumen: "Cambia la contraseña de cualquier usuario, confirmando con la tuya.",
   },
   "/formulario/admin/empresas": {
     icono: "🏢",
