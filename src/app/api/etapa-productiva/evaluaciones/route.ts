@@ -1,4 +1,5 @@
 import { requireApiUser } from "@/lib/auth-guards";
+import { momentoAnteriorEvaluado } from "@/lib/orden-momentos";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { EvaluacionAgendaSchema } from "@/lib/validations";
@@ -109,6 +110,12 @@ export async function POST(request: Request) {
     );
   }
 
+  // Orden de los momentos (9 oct 2026): el anterior tiene que estar evaluado.
+  const orden = await momentoAnteriorEvaluado(sesion.id, d.numero as 2 | 3);
+  if (!orden.ok) {
+    return NextResponse.json({ error: orden.mensaje }, { status: 409 });
+  }
+
   const fechaDate = toDateOnly(d.fecha);
 
   // Horario que tenía antes, para avisar el cambio si se está reprogramando (requisito §3.2).
@@ -150,7 +157,16 @@ export async function POST(request: Request) {
   const evaluacion = existing
     ? await prisma.evaluacion.update({
         where: { id: existing.id },
-        data: { fecha: fechaDate, horaInicio: d.horaInicio, horaFin: d.horaFin, modalidad: d.modalidad },
+        data: {
+          fecha: fechaDate,
+          horaInicio: d.horaInicio,
+          horaFin: d.horaFin,
+          modalidad: d.modalidad,
+          // Un momento devuelto por el instructor vuelve a quedar pendiente al agendarlo de nuevo.
+          ...(existing.estado === "RECHAZADA"
+            ? { estado: "PENDIENTE" as const, observaciones: null, avaladoPorId: null, fechaAval: null }
+            : {}),
+        },
       })
     : await prisma.evaluacion.create({
         data: {

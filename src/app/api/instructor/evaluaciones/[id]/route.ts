@@ -3,6 +3,7 @@ import { variableCategoria } from "@/lib/evaluacion-variables";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { EvaluacionRubricaSchema } from "@/lib/validations";
+import { momentoAnteriorEvaluado } from "@/lib/orden-momentos";
 
 // El instructor registra la evaluación: rúbrica de 13 variables + retroalimentación y, en el
 // Momento 3, el juicio final. "Guardar borrador" deja todo editable (estado PENDIENTE);
@@ -19,6 +20,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     select: {
       id: true,
       numero: true,
+      userId: true,
       esExtraordinario: true,
       user: { select: { ficha: { select: { instructorId: true } } } },
     },
@@ -50,6 +52,22 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const d = parsed.data;
 
   if (d.finalizar) {
+    // Orden de los momentos (9 oct 2026): no se cierra un momento si el anterior no está evaluado.
+    if (existing.numero === 2 || existing.numero === 3) {
+      const orden = await momentoAnteriorEvaluado(existing.userId, existing.numero);
+      if (!orden.ok) {
+        return NextResponse.json(
+          {
+            error: {
+              _root: [
+                `${orden.mensaje} Si este momento no corresponde, usa «Devolver este momento».`,
+              ],
+            },
+          },
+          { status: 409 },
+        );
+      }
+    }
     const faltantes = d.variables.filter((v) => !v.valoracion);
     if (faltantes.length > 0) {
       return NextResponse.json(

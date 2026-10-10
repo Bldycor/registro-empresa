@@ -20,6 +20,8 @@ const EVALUACION_SELECT = {
   numeroVisitas: true,
   estado: true,
   fechaAval: true,
+  // Motivo, cuando el instructor devolvió el momento (9 oct 2026).
+  observaciones: true,
   variables: {
     select: { variable: true, categoria: true, valoracion: true, observaciones: true },
   },

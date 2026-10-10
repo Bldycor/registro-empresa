@@ -7,6 +7,7 @@ import { ReunionExtraordinaria } from "@/components/reunion-extraordinaria";
 import { PlantillaEnlace, PLANTILLA_EVALUACION } from "@/components/plantilla-enlace";
 import { PlanesAprendiz } from "@/components/plan-mejoramiento";
 import { FormatoEP } from "@/components/formato-ep";
+import { mensajeOrden } from "@/lib/orden-momentos";
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +74,8 @@ export default async function EtapaProductivaPage() {
       retroalimentacionInstructor: e.retroalimentacionInstructor,
       retroalimentacionAprendiz: e.retroalimentacionAprendiz,
       estado: e.estado as "PENDIENTE" | "APROBADA" | "RECHAZADA",
+      motivoDevolucion: e.estado === "RECHAZADA" ? e.observaciones : null,
+      fechaDevolucion: e.estado === "RECHAZADA" ? (e.fechaAval?.toISOString() ?? null) : null,
       variables: e.variables.map((v) => ({
         variable: v.variable,
         categoria: v.categoria,
@@ -81,6 +84,12 @@ export default async function EtapaProductivaPage() {
       })),
     };
   }
+
+  // Orden de los momentos (9 oct 2026): uno solo se hace cuando el anterior está evaluado.
+  const m2 = evaluaciones.find((e) => e.numero === 2);
+  const m3 = evaluaciones.find((e) => e.numero === 3);
+  const bloqueoM2 = concertacion?.estado === "APROBADA" ? null : mensajeOrden(2);
+  const bloqueoM3 = m2?.estado === "APROBADA" ? null : mensajeOrden(3);
 
   return (
     <div className="flex flex-1 flex-col items-center gap-8 px-4 py-10">
@@ -131,13 +140,13 @@ export default async function EtapaProductivaPage() {
       </div>
 
       <div className="w-full max-w-2xl">
-        <EvaluacionMomento numero={2} data={mapEvaluacion(2)} instructorNombre={instructorNombre} />
-        <FormatoEP momento={2} />
+        <EvaluacionMomento numero={2} data={mapEvaluacion(2)} instructorNombre={instructorNombre} bloqueoOrden={bloqueoM2} />
+        {(!bloqueoM2 || m2?.estado === "APROBADA") && <FormatoEP momento={2} />}
       </div>
 
       <div className="w-full max-w-2xl">
-        <EvaluacionMomento numero={3} data={mapEvaluacion(3)} instructorNombre={instructorNombre} />
-        <FormatoEP momento={3} />
+        <EvaluacionMomento numero={3} data={mapEvaluacion(3)} instructorNombre={instructorNombre} bloqueoOrden={bloqueoM3} />
+        {(!bloqueoM3 || m3?.estado === "APROBADA") && <FormatoEP momento={3} />}
       </div>
 
       <div className="w-full max-w-2xl">

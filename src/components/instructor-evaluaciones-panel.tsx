@@ -40,6 +40,9 @@ type Evaluacion = {
   retroalimentacionInstructor: string | null;
   retroalimentacionAprendiz: string | null;
   estado: "PENDIENTE" | "APROBADA" | "RECHAZADA";
+  // Momento devuelto: el motivo y cuándo (9 oct 2026).
+  observaciones?: string | null;
+  fechaAval?: string | null;
   variables: Variable[];
   // Solo para tipo CONCERTACION: el programa de la ficha (para consultar el catálogo de
   // competencias) y lo ya concertado, guardado como texto (una competencia/RA por línea).
@@ -90,7 +93,7 @@ export function InstructorEvaluacionesPanel() {
     return <p className="text-sm text-zinc-500 dark:text-zinc-400">Cargando…</p>;
   }
 
-  const pendientes = items.filter((e) => e.estado !== "APROBADA").length;
+  const pendientes = items.filter((e) => e.estado === "PENDIENTE").length;
   const evaluadas = items.filter((e) => e.estado === "APROBADA").length;
 
   const programasDisponibles = Array.from(
@@ -98,7 +101,7 @@ export function InstructorEvaluacionesPanel() {
   ).sort((a, b) => a.localeCompare(b));
 
   const visibles = items.filter((e) => {
-    if (filtro === "PENDIENTES" && e.estado === "APROBADA") return false;
+    if (filtro === "PENDIENTES" && e.estado !== "PENDIENTE") return false;
     if (filtro === "EVALUADAS" && e.estado !== "APROBADA") return false;
     if (filtroPrograma && e.user.ficha?.programa !== filtroPrograma) return false;
     const texto = filtroTexto.trim().toLowerCase();
@@ -178,25 +181,124 @@ export function InstructorEvaluacionesPanel() {
                   className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
                     ev.estado === "APROBADA"
                       ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400"
-                      : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400"
+                      : ev.estado === "RECHAZADA"
+                        ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
+                        : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400"
                   }`}
                 >
-                  {ev.estado === "APROBADA" ? "Evaluada" : "Pendiente"}
+                  {ev.estado === "APROBADA" ? "Evaluada" : ev.estado === "RECHAZADA" ? "Devuelto" : "Pendiente"}
                 </span>
               </button>
 
               {expandidoId === ev.id && (
                 <div className="flex flex-col gap-4 border-t border-zinc-100 p-4 dark:border-zinc-800">
-                  {ev.estado !== "APROBADA" && (
-                    <ReprogramarReunion tipo={ev.tipo} id={ev.id} onDone={load} />
+                  {ev.estado === "RECHAZADA" ? (
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm dark:border-red-900 dark:bg-red-950/30">
+                      <p className="font-medium text-red-800 dark:text-red-200">
+                        Devolviste este momento{ev.fechaAval ? ` el ${new Date(ev.fechaAval).toLocaleDateString("es-CO", { timeZone: "America/Bogota" })}` : ""}.
+                      </p>
+                      {ev.observaciones && <p className="mt-1 text-red-900 dark:text-red-100">Motivo: {ev.observaciones}</p>}
+                      <p className="mt-1 text-xs text-red-800/80 dark:text-red-200/80">
+                        El aprendiz recibió el aviso. Vuelve a quedar pendiente cuando lo agende de nuevo o reenvíe su formato.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      {ev.estado !== "APROBADA" && (
+                        <ReprogramarReunion tipo={ev.tipo} id={ev.id} onDone={load} />
+                      )}
+                      <RubricaForm evaluacion={ev} onSaved={load} />
+                      {ev.tipo === "EVALUACION" && ev.estado === "PENDIENTE" && (
+                        <DevolverMomento evaluacion={ev} onDone={load} />
+                      )}
+                    </>
                   )}
-                  <RubricaForm evaluacion={ev} onSaved={load} />
                 </div>
               )}
             </li>
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+// Devolver un Momento 2 o 3 completo (9 oct 2026): no corresponde al momento que tocaba —por
+// ejemplo, el aprendiz hizo el Momento 3 sin tener evaluado el 2— o no se puede evaluar. El
+// aprendiz recibe el motivo por correo y lo ve en su panel.
+function DevolverMomento({ evaluacion, onDone }: { evaluacion: Evaluacion; onDone: () => void }) {
+  const [abierto, setAbierto] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function devolver() {
+    setEnviando(true);
+    setError(null);
+    const res = await fetch(`/api/instructor/evaluaciones/${evaluacion.id}/devolver`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ motivo }),
+    });
+    const d = await res.json().catch(() => ({}));
+    setEnviando(false);
+    if (!res.ok) {
+      setError(typeof d.error === "string" ? d.error : (Object.values(d.error ?? {}).flat()[0] as string) ?? "No se pudo devolver.");
+      return;
+    }
+    onDone();
+  }
+
+  if (!abierto) {
+    return (
+      <div className="flex flex-wrap items-center gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+        <button
+          type="button"
+          onClick={() => setAbierto(true)}
+          className="rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/40"
+        >
+          Devolver este momento
+        </button>
+        <span className="text-xs text-zinc-500 dark:text-zinc-400">
+          Si no corresponde al momento que toca (por ejemplo, hizo el Momento 3 sin tener el 2 evaluado) o no se puede evaluar.
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-red-200 bg-red-50/60 p-3 dark:border-red-900 dark:bg-red-950/20">
+      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+        Devolver el Momento {evaluacion.numero} de {evaluacion.user.nombres} {evaluacion.user.apellidos}
+      </p>
+      <p className="text-xs text-zinc-600 dark:text-zinc-300">
+        No queda evaluado, se borra la rúbrica que hayas marcado y se libera tu franja. El aprendiz recibe el motivo por correo
+        (con copia a ti) y lo ve en su panel.
+      </p>
+      <textarea
+        value={motivo}
+        onChange={(e) => setMotivo(e.target.value)}
+        rows={3}
+        placeholder="Motivo. Ejemplo: Realizaste el Momento 3, pero primero debe hacerse y evaluarse el Momento 2 (Seguimiento)."
+        className={`${inputClass} w-full`}
+      />
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={devolver}
+          disabled={enviando || motivo.trim().length < 10}
+          className="rounded-md bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-50"
+        >
+          {enviando ? "Devolviendo…" : "Confirmar devolución"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setAbierto(false)}
+          className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        >
+          Cancelar
+        </button>
+      </div>
     </div>
   );
 }

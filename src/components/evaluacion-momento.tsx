@@ -26,6 +26,9 @@ export type EvaluacionMomentoData = {
   retroalimentacionInstructor: string | null;
   retroalimentacionAprendiz: string | null;
   estado: "PENDIENTE" | "APROBADA" | "RECHAZADA";
+  // Si el instructor devolvió el momento (9 oct 2026): por qué y cuándo.
+  motivoDevolucion?: string | null;
+  fechaDevolucion?: string | null;
   variables: {
     variable: string;
     categoria: "TECNICO" | "ACTITUDINAL";
@@ -55,13 +58,17 @@ export function EvaluacionMomento({
   numero,
   data,
   instructorNombre,
+  bloqueoOrden = null,
 }: {
   numero: 2 | 3;
   data: EvaluacionMomentoData | null;
   instructorNombre: string | null;
+  // Si el momento anterior aún no está evaluado, por qué no se puede agendar este (9 oct 2026).
+  bloqueoOrden?: string | null;
 }) {
   const router = useRouter();
-  const [editando, setEditando] = useState(!data);
+  const devuelto = data?.estado === "RECHAZADA";
+  const [editando, setEditando] = useState(!data || devuelto);
   const [fecha, setFecha] = useState(data?.fecha?.slice(0, 10) ?? "");
   const [horaInicio, setHoraInicio] = useState(data?.horaInicio ?? "");
   const [horaFin, setHoraFin] = useState(data?.horaFin ?? "");
@@ -129,13 +136,36 @@ export function EvaluacionMomento({
             className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
               finalizada
                 ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400"
-                : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400"
+                : devuelto
+                  ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
+                  : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400"
             }`}
           >
-            {finalizada ? "Evaluada" : "Pendiente de evaluación"}
+            {finalizada ? "Evaluada" : devuelto ? "Devuelto" : "Pendiente de evaluación"}
           </span>
         )}
       </div>
+
+      {devuelto && (
+        <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm dark:border-red-900 dark:bg-red-950/30">
+          <p className="font-semibold text-red-800 dark:text-red-200">
+            ! Tu instructor devolvió este momento
+            {data?.fechaDevolucion
+              ? ` el ${new Date(data.fechaDevolucion).toLocaleDateString("es-CO", { timeZone: "America/Bogota" })}`
+              : ""}
+          </p>
+          {data?.motivoDevolucion && <p className="mt-1 text-red-900 dark:text-red-100">Motivo: {data.motivoDevolucion}</p>}
+          <p className="mt-1 text-xs text-red-800/80 dark:text-red-200/80">
+            No quedó evaluado. {bloqueoOrden ? "Primero completa el momento anterior; después vuelve a agendar este." : "Vuelve a agendarlo o reenvía su formato."}
+          </p>
+        </div>
+      )}
+
+      {bloqueoOrden && !finalizada && (
+        <p className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+          {bloqueoOrden}
+        </p>
+      )}
 
       {!instructorNombre && (
         <p className="rounded-md border border-dashed border-zinc-300 p-4 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
@@ -144,7 +174,7 @@ export function EvaluacionMomento({
         </p>
       )}
 
-      {instructorNombre && editando && (
+      {instructorNombre && editando && !bloqueoOrden && (
         <form onSubmit={agendar} className="flex flex-col gap-4">
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             Reunión con tu instructor, <strong>{instructorNombre}</strong>. Elige fecha y franja

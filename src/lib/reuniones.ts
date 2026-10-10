@@ -7,8 +7,10 @@ import { esCorreoValido } from "@/lib/citacion-correo";
 // Un solo criterio para los lugares que revisan choques de horario: la agenda de los Momentos 2 y
 // 3, la disponibilidad que ve el aprendiz, la agenda de extraordinarias y la reprogramación que
 // hace el instructor (`franjasOcupadasInstructor`).
+// Ni una extraordinaria rechazada ni un momento devuelto por el instructor (9 oct 2026) ocupan
+// la franja.
 export const ocupaFranja: Prisma.EvaluacionWhereInput = {
-  OR: [{ esExtraordinario: false }, { estado: { not: "RECHAZADA" } }],
+  estado: { not: "RECHAZADA" },
 };
 
 // En qué tabla vive la reunión: la Concertación (Momento 1) tiene su propio modelo; los Momentos

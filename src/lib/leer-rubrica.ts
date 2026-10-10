@@ -40,9 +40,11 @@ const ETIQUETAS: [VariableEvaluacion, RegExp][] = [
 
 const MARCA = /^[xX✓✔√]$/;
 
+// Algunos PDF guardan la ligadura «ti» como otra letra: «ProducEva», «ProducUva» (pasó con el de
+// Daniel Libardo Monroy, 9 oct 2026). Por eso «Produc…va» admite una pieza cualquiera en el medio.
 const encabezadoMomento: Record<2 | 3, RegExp> = {
-  2: /Momento\s*N\s*°\s*2\s*-\s*Seguimiento\s*Etapa\s*Productiva(?!\s*Media)/i,
-  3: /Momento\s*N\s*°\s*3\s*-\s*Evaluaci[oó]n\s*etapa\s*productiva(?!\s*media)/i,
+  2: /Momento\s*N\s*°\s*2\s*[-–]\s*Seguimiento\s*Etapa\s*Produc\S{1,3}va(?!\s*Media)/i,
+  3: /Momento\s*N\s*°\s*3\s*[-–]\s*Evaluaci[oó]n\s*etapa\s*produc\S{1,3}va(?!\s*media)/i,
 };
 
 function paginaDelMomento(paginas: TextoPosicionado[][], momento: 2 | 3): TextoPosicionado[] | null {
@@ -58,7 +60,8 @@ type Tabla = { y: number; satX: number; porX: number; obsX: number };
 
 function tablasDe(items: TextoPosicionado[]): Tabla[] {
   const tablas: Tabla[] = [];
-  for (const sat of items.filter((i) => /^satisfactori/i.test(i.s.trim()))) {
+  // «Satisfactorio» también llega como «Sa5sfactorio» (la misma ligadura «ti»).
+  for (const sat of items.filter((i) => /^sa(ti|\S)sfactori/i.test(i.s.trim()))) {
     const mismaFila = (i: TextoPosicionado) => Math.abs(i.y - sat.y) <= 8;
     const por = items.find((i) => mismaFila(i) && i.x > sat.x && /^por(\s|$)/i.test(i.s.trim()));
     const mejorar = items.find((i) => mismaFila(i) && i.x > sat.x && /mejorar/i.test(i.s));

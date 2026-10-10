@@ -11,6 +11,7 @@ import {
   componerCitacion,
   componerRecordatorioReunion,
   componerRechazoExtraordinaria,
+  componerDevolucionMomento,
   componerSolicitudExtraordinaria,
   type HorarioReunion,
 } from "@/lib/citacion-correo";
@@ -443,6 +444,31 @@ export async function sendRechazoExtraordinariaEmail(params: {
   const info = await transporter.sendMail({ from, to: params.aprendizEmail, ...correo });
   if (usingTestAccount) {
     console.log(`[mailer] Vista previa (Ethereal) del rechazo extraordinario: ${nodemailer.getTestMessageUrl(info)}`);
+  }
+  return { info };
+}
+
+// Momento 2 o 3 devuelto por el instructor (9 oct 2026): al aprendiz, con copia al instructor.
+export async function sendDevolucionMomentoEmail(params: {
+  aprendizEmail: string;
+  aprendizNombre: string;
+  instructorEmail: string | null;
+  instructorNombre: string;
+  numero: 2 | 3;
+  motivo: string;
+  anteriorPendiente: boolean;
+}) {
+  const from = process.env.EMAIL_FROM || "no-responder@registro-empresa.local";
+  const correo = componerDevolucionMomento({ ...params, appUrl: urlApp("/formulario/etapa-productiva/evaluaciones") });
+  const transporter = await getTransporter();
+  const info = await transporter.sendMail({
+    from,
+    to: params.aprendizEmail,
+    cc: params.instructorEmail ?? undefined,
+    ...correo,
+  });
+  if (usingTestAccount) {
+    console.log(`[mailer] Vista previa (Ethereal) del momento devuelto: ${nodemailer.getTestMessageUrl(info)}`);
   }
   return { info };
 }

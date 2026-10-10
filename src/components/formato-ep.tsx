@@ -250,6 +250,8 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [lectura, setLectura] = useState<string | null>(null);
+  // El PDF adjuntado trae diligenciado otro momento: no se envía en este espacio.
+  const [pdfDeOtroMomento, setPdfDeOtroMomento] = useState(false);
   // Lo leído del PDF que no se edita en el formulario (modalidad, tipo de documento, SofiaPlus…):
   // se muestra en la vista previa, marcado, para que el aprendiz lo verifique.
   const [delDocumento, setDelDocumento] = useState<Record<string, string>>({});
@@ -545,6 +547,7 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
   async function leerDelDocumento(url: string) {
     setLeyendo(true);
     setLectura(null);
+    setPdfDeOtroMomento(false);
     try {
       const res = await fetch("/api/etapa-productiva/formato/leer", {
         method: "POST",
@@ -553,6 +556,11 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
       });
       const d = await res.json();
       const leido: Record<string, string> = d.datos ?? {};
+      if (d.aviso) {
+        setPdfDeOtroMomento(true);
+        setLectura(d.aviso);
+        return;
+      }
       setAMano(Boolean(d.esImagen || d.sinTexto || !d.leidos));
 
       if (d.esImagen) {
@@ -1013,6 +1021,10 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
             onChange={(url) => {
               setArchivoUrl(url);
               if (url) leerDelDocumento(url);
+              else if (pdfDeOtroMomento) {
+                setPdfDeOtroMomento(false);
+                setLectura(null);
+              }
             }}
             onUploadingChange={setSubiendo}
           />
@@ -1022,8 +1034,11 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
           )}
           {lectura && !enviado && (
             <p
+              role={pdfDeOtroMomento ? "alert" : undefined}
               className={`rounded-md px-3 py-2 text-xs ${
-                aMano
+                pdfDeOtroMomento
+                  ? "border border-red-200 bg-red-50 font-medium text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"
+                  : aMano
                   ? "bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:text-amber-300"
                   : "bg-zinc-50 text-zinc-600 dark:bg-zinc-950 dark:text-zinc-400"
               }`}
@@ -1148,7 +1163,7 @@ export function FormatoEP({ momento }: { momento: 1 | 2 | 3 }) {
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={enviando || subiendo}
+              disabled={enviando || subiendo || pdfDeOtroMomento}
               onClick={enviar}
               className="rounded-md bg-sena px-4 py-2 text-sm font-medium text-white hover:bg-sena-oscuro disabled:opacity-50 dark:bg-sena dark:text-white"
             >

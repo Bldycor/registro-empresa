@@ -320,7 +320,16 @@ export type LecturaDocumento = {
   // Momentos 2 y 3: las 13 variables marcadas con «X» en el formato (9 oct 2026). Vacío si el
   // momento no está diligenciado en el PDF.
   rubrica?: ValoracionLeida[];
+  // Momentos 2 y 3: el PDF trae diligenciado otro momento y no este (9 oct 2026: un aprendiz subió
+  // su Momento 2 en el espacio del Momento 3). Con esto SEPA no lo acepta en ese espacio.
+  otroMomento?: 2 | 3;
 };
+
+const NOMBRE_MOMENTO: Record<2 | 3, string> = { 2: "Momento 2 (Seguimiento)", 3: "Momento 3 (Cierre)" };
+
+export function mensajeOtroMomento(adjuntado: 2 | 3, diligenciado: 2 | 3): string {
+  return `El PDF que adjuntaste trae diligenciado el ${NOMBRE_MOMENTO[diligenciado]}, no el ${NOMBRE_MOMENTO[adjuntado]}. Adjunta aquí el formato de este momento; ese PDF va en el ${NOMBRE_MOMENTO[diligenciado]}.`;
+}
 
 export async function leerFormato(
   archivo: ArrayBuffer,
@@ -350,6 +359,17 @@ export async function leerFormato(
   }
 
   const rubrica = momento === 1 ? [] : leerRubrica(paginas, momento).filter((v) => v.valoracion);
+  // Un PDF con los dos momentos diligenciados (el formato acumulado) se acepta en cualquiera de
+  // los dos; uno que solo trae el otro, no.
+  const otro = momento === 2 ? 3 : momento === 3 ? 2 : null;
+  const otroMomento =
+    otro && rubrica.length === 0 && leerRubrica(paginas, otro).some((v) => v.valoracion) ? otro : undefined;
 
-  return { datos: utiles, leidos: Object.keys(utiles).length, sinTexto: false, ...(rubrica.length ? { rubrica } : {}) };
+  return {
+    datos: utiles,
+    leidos: Object.keys(utiles).length,
+    sinTexto: false,
+    ...(rubrica.length ? { rubrica } : {}),
+    ...(otroMomento ? { otroMomento } : {}),
+  };
 }

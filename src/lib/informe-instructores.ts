@@ -136,7 +136,8 @@ export async function construirInformeInstructores() {
           } else extraordinariasAtendidas++;
           continue;
         }
-        if (!e.fecha || e.fecha > hoy) continue;
+        // Un momento devuelto no cuenta como realizado: el aprendiz lo vuelve a hacer (9 oct 2026).
+        if (!e.fecha || e.fecha > hoy || e.estado === "RECHAZADA") continue;
         realizados++;
         if (e.estado === "APROBADA") valorados++;
         else if (vigente) esperando(a, `Momento ${e.numero} por valorar`, e.fecha);

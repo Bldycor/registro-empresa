@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { TODAS_LAS_VARIABLES, variableCategoria } from "@/lib/evaluacion-variables";
 import type { ValoracionLeida } from "@/lib/leer-rubrica";
 import { esPdf } from "@/lib/leer-pdf";
+import { momentoAnteriorEvaluado } from "@/lib/orden-momentos";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { FormatoEPSchema } from "@/lib/validations";
 import { construirFormato } from "@/lib/formato-gfpi023";
 import { fechaEnColombia } from "@/lib/plazos-institucionales";
-import { leerFormato, type DatosDocumento } from "@/lib/leer-gfpi023";
+import { leerFormato, mensajeOtroMomento, type DatosDocumento } from "@/lib/leer-gfpi023";
 import { filasDesdeDocumento, textoDesdeFilas } from "@/lib/competencia-catalogo";
 import { catalogoDelAprendiz, problemaEnPlan } from "@/lib/competencias-validas";
 
@@ -96,6 +97,13 @@ export async function PATCH(request: Request) {
         const leido = esPdf(archivo)
           ? await leerFormato(archivo, m.momento)
           : { datos: {}, leidos: 0, sinTexto: true };
+        // Orden de los momentos: el PDF de otro momento no se acepta en este espacio.
+        if ("otroMomento" in leido && leido.otroMomento && m.momento !== 1) {
+          return NextResponse.json(
+            { error: { _root: [mensajeOtroMomento(m.momento, leido.otroMomento)] } },
+            { status: 409 },
+          );
+        }
         lectura = { leidos: leido.leidos, sinTexto: leido.sinTexto, rubrica: leido.rubrica?.length ?? 0 };
         rubricaLeida = leido.rubrica ?? [];
         if (leido.leidos > 0) {
@@ -251,6 +259,12 @@ export async function PATCH(request: Request) {
       where: { userId: user.id, numero: m.momento, esExtraordinario: false },
       select: { id: true, estado: true, fecha: true, modalidad: true },
     });
+    // Orden de los momentos (9 oct 2026): no se registra ni se envía el formato de un momento si
+    // el anterior todavía no fue evaluado por el instructor.
+    if (evaluacion?.estado !== "APROBADA") {
+      const orden = await momentoAnteriorEvaluado(user.id, m.momento);
+      if (!orden.ok) return NextResponse.json({ error: { _root: [orden.mensaje] } }, { status: 409 });
+    }
     if (!evaluacion) {
       const problema = faltaRegistro(m.momento);
       if (problema) return problema;
@@ -293,6 +307,10 @@ export async function PATCH(request: Request) {
         retroalimentacionAprendiz: limpiar(m.retroalimentacionAprendiz),
         archivoUrl: limpiar(m.archivoUrl),
         fecha: !evaluacion.fecha && fechaRealizado ? toDateOnly(fechaRealizado) : undefined,
+        // Reenviar el formato de un momento devuelto lo vuelve a dejar pendiente de revisión.
+        ...(evaluacion.estado === "RECHAZADA"
+          ? { estado: "PENDIENTE" as const, observaciones: null, avaladoPorId: null, fechaAval: null }
+          : {}),
         modalidad: modalidad ?? undefined,
         enlaceGrabacion: limpiar(m.enlaceGrabacion) ?? datosDocumento?.enlaceGrabacion ?? undefined,
         numeroVisitas:

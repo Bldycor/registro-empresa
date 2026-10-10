@@ -285,3 +285,43 @@ export function componerRechazoExtraordinaria(p: {
     ].join("\n"),
   };
 }
+
+
+// Momento devuelto por el instructor (9 oct 2026): no corresponde al momento que tocaba —por
+// ejemplo, se hizo el Momento 3 sin tener evaluado el 2— o no se puede evaluar. Va al aprendiz
+// con copia al instructor.
+export function componerDevolucionMomento(p: {
+  aprendizNombre: string;
+  numero: 2 | 3;
+  instructorNombre: string;
+  motivo: string;
+  anteriorPendiente: boolean;
+  appUrl: string;
+}): { subject: string; text: string; html: string } {
+  const momento = p.numero === 2 ? "Momento 2 (Seguimiento)" : "Momento 3 (Cierre)";
+  const anterior = p.numero === 2 ? "Momento 1 (Concertación)" : "Momento 2 (Seguimiento)";
+  const queHacer = p.anteriorPendiente
+    ? `Primero debe quedar evaluado el ${anterior}: agéndalo o completa su formato y, cuando tu instructor lo evalúe, vuelve a agendar el ${momento}.`
+    : `Revisa el motivo, corrige lo necesario y vuelve a agendar el ${momento} o a enviar su formato desde SEPA.`;
+  return {
+    subject: `SEPA · Tu instructor devolvió el ${momento}`,
+    text: [
+      `Hola ${p.aprendizNombre},`,
+      "",
+      `${p.instructorNombre} devolvió tu ${momento}: no quedó evaluado.`,
+      "",
+      `Motivo: ${p.motivo}`,
+      "",
+      `Qué hacer: ${queHacer}`,
+      "",
+      `Entra a SEPA: ${p.appUrl}`,
+    ].join("\n"),
+    html: [
+      `<p>Hola ${escaparHtml(p.aprendizNombre)},</p>`,
+      `<p><strong>${escaparHtml(p.instructorNombre)}</strong> devolvió tu ${escaparHtml(momento)}: no quedó evaluado.</p>`,
+      `<p><strong>Motivo:</strong> ${escaparHtml(p.motivo)}</p>`,
+      `<p><strong>Qué hacer:</strong> ${escaparHtml(queHacer)}</p>`,
+      `<p><a href="${escaparHtml(p.appUrl)}">Abrir mis evaluaciones en SEPA</a></p>`,
+    ].join("\n"),
+  };
+}
