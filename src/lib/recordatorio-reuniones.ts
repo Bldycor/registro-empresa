@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { fechaEnColombia, ZONA_HORARIA_COLOMBIA } from "@/lib/plazos-institucionales";
+import { fechaEnColombia } from "@/lib/plazos-institucionales";
+import { reunionYaEmpezo } from "@/lib/reuniones";
 import type { HorarioReunion } from "@/lib/citacion-correo";
 import { getVideoConferenceUrl } from "@/lib/video";
 import {
@@ -40,16 +41,6 @@ function diaSiguiente(fecha: string): string {
   return d.toISOString().slice(0, 10);
 }
 
-// "HH:mm" en Colombia.
-function horaEnColombia(ahora: Date): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: ZONA_HORARIA_COLOMBIA,
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).format(ahora);
-}
-
 const APRENDIZ_SELECT = {
   nombres: true,
   apellidos: true,
@@ -60,7 +51,6 @@ const APRENDIZ_SELECT = {
 
 export async function recordatoriosPendientes(ahora: Date): Promise<RecordatorioReunion[]> {
   const hoy = fechaEnColombia(ahora);
-  const horaActual = horaEnColombia(ahora);
   const fechas = [hoy, diaSiguiente(hoy)].map((f) => new Date(`${f}T00:00:00.000Z`));
   // Un proceso cerrado ya no tiene reuniones que recordar.
   const procesoAbierto = { estado: { notIn: ["CERTIFICADO" as const, "DESERTADO" as const] } };
@@ -120,7 +110,7 @@ export async function recordatoriosPendientes(ahora: Date): Promise<Recordatorio
         Boolean(r.fecha && r.horaInicio && r.horaFin),
     )
     // Una reunión de hoy que ya empezó no necesita recordatorio.
-    .filter((r) => !(r.fecha.toISOString().slice(0, 10) === hoy && r.horaInicio <= horaActual));
+    .filter((r) => !reunionYaEmpezo(r, ahora));
 
   if (candidatos.length === 0) return [];
 

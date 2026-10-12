@@ -110,7 +110,8 @@ export async function cancelCalendarMeetEvent(eventId: string) {
   try {
     await calendar.events.delete({ calendarId: "primary", eventId, sendUpdates: "all" });
   } catch (error) {
-    const codigo = (error as { code?: number }).code;
-    if (codigo !== 404 && codigo !== 410) throw error;
+    // gaxios deja el código HTTP en `status` (en `code` solo van los errores de red).
+    const estado = (error as { status?: number }).status;
+    if (estado !== 404 && estado !== 410) throw error;
   }
 }

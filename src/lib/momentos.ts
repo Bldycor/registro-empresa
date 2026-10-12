@@ -15,13 +15,14 @@ export const REABRIR_DEVUELTO = {
   fechaAval: null,
 } as const;
 
-// Lo que se limpia al devolverlo: el horario y la videollamada. Así el momento deja de contar
-// como agendado en todo lo que lee el horario —recordatorios, franja del instructor, avisos de
-// plazo— y, al agendarlo de nuevo, sale una citación nueva con su propio evento.
+// Lo que se limpia al devolver un momento cuya reunión todavía no empezó: el horario y la
+// videollamada. Así, al agendarlo de nuevo, sale una citación nueva. El id del evento de Google no
+// va aquí: se borra solo cuando Google confirma la cancelación; si falla, se conserva para que la
+// próxima vez que se agende se actualice ese mismo evento en vez de dejarlo huérfano. Una reunión
+// que ya pasó conserva su fecha: es la constancia de que se hizo.
 export const HORARIO_LIBERADO = {
   fecha: null,
   horaInicio: null,
   horaFin: null,
   videollamadaUrl: null,
-  googleEventId: null,
 } as const;

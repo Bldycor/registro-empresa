@@ -6,13 +6,14 @@ import { momentoAnteriorEvaluado } from "@/lib/orden-momentos";
 import { sendDevolucionMomentoEmail } from "@/lib/mailer";
 import { HORARIO_LIBERADO } from "@/lib/momentos";
 import { cancelCalendarMeetEvent, isGoogleCalendarConfigured } from "@/lib/google-calendar";
+import { destinatariosReunion, reunionYaEmpezo } from "@/lib/reuniones";
 
 // El instructor devuelve un Momento 2 o 3 completo (decisión de Coordinación, 9 oct 2026): no
 // corresponde al momento que tocaba —por ejemplo, el aprendiz hizo el Momento 3 sin tener evaluado
 // el 2— o no se puede evaluar. Queda «devuelto» (RECHAZADA) con el motivo, se borra la rúbrica que
-// se hubiera marcado, la reunión se cancela (horario, videollamada y evento de Google), y el
-// aprendiz recibe el aviso por correo —con copia al instructor y al coformador, que estaba citado— y
-// en su panel (insignia roja en Evaluaciones y el motivo en el momento). Para retomarlo, el
+// se hubiera marcado y, si la reunión todavía no empezó, se cancela (horario, videollamada y evento
+// de Google; una que ya pasó conserva su fecha como constancia). El aprendiz recibe el aviso por
+// correo —con copia a los citados a la reunión— y en su panel (insignia roja en Evaluaciones y el motivo en el momento). Para retomarlo, el
 // aprendiz lo vuelve a agendar o reenvía su formato, siempre que el anterior ya esté evaluado.
 const DevolverSchema = z.object({
   motivo: z.string().trim().min(10, "Escribe el motivo (al menos 10 caracteres): el aprendiz lo recibe por correo."),
@@ -35,6 +36,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       esExtraordinario: true,
       userId: true,
       fecha: true,
+      horaInicio: true,
       googleEventId: true,
       user: {
         select: {
@@ -61,6 +63,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Este momento ya fue devuelto." }, { status: 409 });
   }
 
+  // Solo se cancela una reunión que todavía no empezó; una que ya pasó queda como constancia.
+  const cancelarReunion = evaluacion.fecha !== null && !reunionYaEmpezo(evaluacion, new Date());
+
   // La condición sobre el estado va en la misma escritura: si el instructor lo finalizó en otra
   // pestaña entre la consulta y este punto, no se devuelve.
   const devuelto = await prisma.$transaction(async (tx) => {
@@ -71,7 +76,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         observaciones: parsed.data.motivo,
         avaladoPorId: user.id,
         fechaAval: new Date(),
-        ...HORARIO_LIBERADO,
+        ...(cancelarReunion ? HORARIO_LIBERADO : {}),
       },
     });
     if (count === 0) return false;
@@ -83,25 +88,35 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Este momento cambió mientras tanto: recarga la página." }, { status: 409 });
   }
 
-  if (evaluacion.googleEventId && isGoogleCalendarConfigured()) {
-    try {
-      await cancelCalendarMeetEvent(evaluacion.googleEventId);
-    } catch (error) {
-      console.error("[instructor/evaluaciones/devolver] No se pudo cancelar el evento de Google Calendar:", error);
-    }
-  }
-
   const numero = evaluacion.numero as 2 | 3;
-  const anterior = await momentoAnteriorEvaluado(evaluacion.userId, numero);
   const instructor = evaluacion.user.ficha?.instructor;
+  // Cancelar el evento y revisar el momento anterior no dependen uno del otro.
+  const [, anterior] = await Promise.all([
+    cancelarReunion && evaluacion.googleEventId && isGoogleCalendarConfigured()
+      ? cancelCalendarMeetEvent(evaluacion.googleEventId)
+          .then(() => prisma.evaluacion.update({ where: { id }, data: { googleEventId: null } }))
+          .catch((error) =>
+            console.error("[instructor/evaluaciones/devolver] No se pudo cancelar el evento de Google Calendar:", error),
+          )
+      : null,
+    momentoAnteriorEvaluado(evaluacion.userId, numero),
+  ]);
+
   let correoEnviado = true;
   try {
+    // Los mismos citados a la reunión del momento (`destinatariosReunion`), con el aprendiz como
+    // destinatario principal.
+    const citados = destinatariosReunion({
+      tipo: "EVALUACION",
+      aprendizEmail: evaluacion.user.email,
+      instructorEmail: instructor?.email,
+      coformadorEmail: evaluacion.user.companyProfile?.correoCoformador,
+    });
     await sendDevolucionMomentoEmail({
       aprendizEmail: evaluacion.user.email,
+      copias: citados.filter((c) => c.toLowerCase() !== evaluacion.user.email.trim().toLowerCase()),
       aprendizNombre: `${evaluacion.user.nombres} ${evaluacion.user.apellidos}`,
-      instructorEmail: instructor?.email ?? null,
-      coformadorEmail: evaluacion.user.companyProfile?.correoCoformador ?? null,
-      reunionCancelada: evaluacion.fecha !== null,
+      reunionCancelada: cancelarReunion,
       instructorNombre: instructor ? `${instructor.nombres} ${instructor.apellidos}` : "Tu instructor",
       numero,
       motivo: parsed.data.motivo,

@@ -12,7 +12,6 @@ import {
   componerRecordatorioReunion,
   componerRechazoExtraordinaria,
   componerDevolucionMomento,
-  esCorreoValido,
   componerSolicitudExtraordinaria,
   type HorarioReunion,
 } from "@/lib/citacion-correo";
@@ -449,13 +448,12 @@ export async function sendRechazoExtraordinariaEmail(params: {
   return { info };
 }
 
-// Momento 2 o 3 devuelto por el instructor (9 oct 2026): al aprendiz, con copia al instructor y al
-// coformador, que había sido citado a la reunión.
+// Momento 2 o 3 devuelto por el instructor (9 oct 2026): al aprendiz, con copia a los demás citados
+// a la reunión (instructor y coformador, de `destinatariosReunion`).
 export async function sendDevolucionMomentoEmail(params: {
   aprendizEmail: string;
+  copias: string[];
   aprendizNombre: string;
-  instructorEmail: string | null;
-  coformadorEmail: string | null;
   instructorNombre: string;
   numero: 2 | 3;
   motivo: string;
@@ -468,7 +466,7 @@ export async function sendDevolucionMomentoEmail(params: {
   const info = await transporter.sendMail({
     from,
     to: params.aprendizEmail,
-    cc: [params.instructorEmail, params.coformadorEmail].filter((c): c is string => Boolean(c && esCorreoValido(c))),
+    cc: params.copias,
     ...correo,
   });
   if (usingTestAccount) {

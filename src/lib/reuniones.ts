@@ -1,6 +1,7 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { esCorreoValido } from "@/lib/citacion-correo";
+import { fechaEnColombia, horaEnColombia } from "@/lib/plazos-institucionales";
 
 // Qué evaluaciones ocupan una franja del instructor: los Momentos siempre, y las reuniones
 // extraordinarias mientras no estén rechazadas. Una extraordinaria rechazada libera su horario.
@@ -60,6 +61,19 @@ export function destinatariosReunion(p: {
     resultado.push(limpio);
   }
   return resultado;
+}
+
+// La reunión ya empezó (o ya pasó), en hora de Colombia. Sin hora de inicio, un día de hoy se da por
+// empezado. Sin fecha, no hay reunión que haya empezado.
+export function reunionYaEmpezo(
+  r: { fecha: Date | null; horaInicio: string | null },
+  ahora: Date,
+): boolean {
+  if (!r.fecha) return false;
+  const dia = r.fecha.toISOString().slice(0, 10);
+  const hoy = fechaEnColombia(ahora);
+  if (dia !== hoy) return dia < hoy;
+  return !r.horaInicio || r.horaInicio <= horaEnColombia(ahora);
 }
 
 // Franjas que ya tiene ocupadas un instructor un día dado: los Momentos y extraordinarias de sus

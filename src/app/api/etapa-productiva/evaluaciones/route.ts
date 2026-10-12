@@ -120,8 +120,10 @@ export async function POST(request: Request) {
   const fechaDate = toDateOnly(d.fecha);
 
   // Horario que tenía antes, para avisar el cambio si se está reprogramando (requisito §3.2).
+  // Un momento devuelto no se «reprograma»: su reunión se canceló (o ya pasó), así que la citación
+  // sale como nueva.
   const anterior =
-    existing?.fecha && existing.horaInicio && existing.horaFin
+    existing?.fecha && existing.horaInicio && existing.horaFin && existing.estado !== "RECHAZADA"
       ? {
           fecha: existing.fecha.toISOString().slice(0, 10),
           horaInicio: existing.horaInicio,
@@ -248,7 +250,7 @@ export async function POST(request: Request) {
 
   const actualizada = await prisma.evaluacion.update({
     where: { id: evaluacion.id },
-    data: { videollamadaUrl, googleEventId, estado: "PENDIENTE" },
+    data: { videollamadaUrl, googleEventId },
     select: EVALUACION_SELECT,
   });
 

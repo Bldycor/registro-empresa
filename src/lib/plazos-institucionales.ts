@@ -36,6 +36,16 @@ export function fechaEnColombia(fecha: Date): string {
   }).format(fecha);
 }
 
+// "HH:mm" en Colombia.
+export function horaEnColombia(ahora: Date): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: ZONA_HORARIA_COLOMBIA,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(ahora);
+}
+
 // Días hábiles transcurridos entre dos fechas (lunes a viernes, sin contar el día inicial).
 export function diasHabilesEntre(desde: Date, hasta: Date): number {
   if (hasta <= desde) return 0;

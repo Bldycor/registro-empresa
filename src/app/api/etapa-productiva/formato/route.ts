@@ -300,6 +300,13 @@ export async function PATCH(request: Request) {
       );
     }
 
+    // Un momento devuelto cuya reunión se canceló quedó sin día: para retomarlo desde aquí hay que
+    // escribir el día en que se hizo (o agendarlo arriba). Si no, quedaría pendiente sin reunión,
+    // sin citación ni recordatorio y fuera de la bandeja del instructor.
+    if (evaluacion.estado === "RECHAZADA" && !evaluacion.fecha) {
+      const problema = faltaRegistro(m.momento);
+      if (problema) return problema;
+    }
     // Un momento registrado sin día (raro, pero pasa) toma el que escriba el aprendiz, siempre
     // que no sea futuro. Un día ya registrado no se cambia desde aquí: se reprograma.
     if (!evaluacion.fecha && fechaRealizado) {
