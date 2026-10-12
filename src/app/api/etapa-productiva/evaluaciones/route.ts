@@ -1,5 +1,6 @@
 import { requireApiUser } from "@/lib/auth-guards";
 import { momentoAnteriorEvaluado } from "@/lib/orden-momentos";
+import { REABRIR_DEVUELTO } from "@/lib/momentos";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { EvaluacionAgendaSchema } from "@/lib/validations";
@@ -163,9 +164,7 @@ export async function POST(request: Request) {
           horaFin: d.horaFin,
           modalidad: d.modalidad,
           // Un momento devuelto por el instructor vuelve a quedar pendiente al agendarlo de nuevo.
-          ...(existing.estado === "RECHAZADA"
-            ? { estado: "PENDIENTE" as const, observaciones: null, avaladoPorId: null, fechaAval: null }
-            : {}),
+          ...(existing.estado === "RECHAZADA" ? REABRIR_DEVUELTO : {}),
         },
       })
     : await prisma.evaluacion.create({

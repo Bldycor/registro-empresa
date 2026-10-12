@@ -83,9 +83,10 @@ export async function recordatoriosPendientes(ahora: Date): Promise<Recordatorio
       where: {
         fecha: { in: fechas },
         user: procesoAbierto,
-        // Los Momentos mientras el instructor no los finalice; las extraordinarias, solo aprobadas.
+        // Los Momentos mientras el instructor no los finalice ni los devuelva (9 oct 2026); las
+        // extraordinarias, solo aprobadas.
         OR: [
-          { esExtraordinario: false, numero: { in: [2, 3] }, estado: { not: "APROBADA" } },
+          { esExtraordinario: false, numero: { in: [2, 3] }, estado: "PENDIENTE" },
           { esExtraordinario: true, estado: "APROBADA" },
         ],
       },

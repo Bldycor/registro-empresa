@@ -3,6 +3,7 @@ import { TODAS_LAS_VARIABLES, variableCategoria } from "@/lib/evaluacion-variabl
 import type { ValoracionLeida } from "@/lib/leer-rubrica";
 import { esPdf } from "@/lib/leer-pdf";
 import { momentoAnteriorEvaluado } from "@/lib/orden-momentos";
+import { REABRIR_DEVUELTO } from "@/lib/momentos";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { FormatoEPSchema } from "@/lib/validations";
@@ -80,6 +81,22 @@ export async function PATCH(request: Request) {
   // escribir al aprendiz lo que ya está en el documento firmado. Si el PDF es un escaneo sin texto
   // —o si algo falla al leerlo— no pasa nada: el formato sigue su curso con lo que ya había.
   const archivoNuevo = (m.archivoUrl ?? "").trim();
+
+  // Orden de los momentos (9 oct 2026): no se registra ni se envía el formato de un momento si el
+  // anterior todavía no fue evaluado por el instructor. Va antes de leer el PDF y de guardar nada,
+  // para no descargarlo en vano ni dejar datos a medias de un envío rechazado.
+  const evaluacionPrevia =
+    m.momento === 1
+      ? null
+      : await prisma.evaluacion.findFirst({
+          where: { userId: user.id, numero: m.momento, esExtraordinario: false },
+          select: { id: true, estado: true, fecha: true, modalidad: true },
+        });
+  if (m.momento !== 1 && evaluacionPrevia?.estado !== "APROBADA") {
+    const orden = await momentoAnteriorEvaluado(user.id, m.momento);
+    if (!orden.ok) return NextResponse.json({ error: { _root: [orden.mensaje] } }, { status: 409 });
+  }
+
   let lectura: { leidos: number; sinTexto: boolean; rubrica?: number } | null = null;
   let rubricaLeida: ValoracionLeida[] = [];
   let datosDocumento: Partial<DatosDocumento> | null = null;
@@ -255,16 +272,7 @@ export async function PATCH(request: Request) {
       },
     });
   } else {
-    let evaluacion = await prisma.evaluacion.findFirst({
-      where: { userId: user.id, numero: m.momento, esExtraordinario: false },
-      select: { id: true, estado: true, fecha: true, modalidad: true },
-    });
-    // Orden de los momentos (9 oct 2026): no se registra ni se envía el formato de un momento si
-    // el anterior todavía no fue evaluado por el instructor.
-    if (evaluacion?.estado !== "APROBADA") {
-      const orden = await momentoAnteriorEvaluado(user.id, m.momento);
-      if (!orden.ok) return NextResponse.json({ error: { _root: [orden.mensaje] } }, { status: 409 });
-    }
+    let evaluacion = evaluacionPrevia;
     if (!evaluacion) {
       const problema = faltaRegistro(m.momento);
       if (problema) return problema;
@@ -308,9 +316,7 @@ export async function PATCH(request: Request) {
         archivoUrl: limpiar(m.archivoUrl),
         fecha: !evaluacion.fecha && fechaRealizado ? toDateOnly(fechaRealizado) : undefined,
         // Reenviar el formato de un momento devuelto lo vuelve a dejar pendiente de revisión.
-        ...(evaluacion.estado === "RECHAZADA"
-          ? { estado: "PENDIENTE" as const, observaciones: null, avaladoPorId: null, fechaAval: null }
-          : {}),
+        ...(evaluacion.estado === "RECHAZADA" ? REABRIR_DEVUELTO : {}),
         modalidad: modalidad ?? undefined,
         enlaceGrabacion: limpiar(m.enlaceGrabacion) ?? datosDocumento?.enlaceGrabacion ?? undefined,
         numeroVisitas:

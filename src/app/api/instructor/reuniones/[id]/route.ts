@@ -88,6 +88,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!reunion.esExtraordinario && reunion.estado === "APROBADA") {
     return error(409, "_root", "Ya finalizaste la valoración de este Momento: la reunión no se puede reprogramar.");
   }
+  if (!reunion.esExtraordinario && reunion.estado === "RECHAZADA") {
+    return error(409, "_root", "Devolviste este momento: lo vuelve a agendar el aprendiz cuando corresponda.");
+  }
   if (d.fecha < fechaEnColombia(new Date())) {
     return error(400, "fecha", "La fecha no puede ser en el pasado.");
   }

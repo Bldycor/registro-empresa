@@ -2,6 +2,7 @@
 // separada del envío (`sendCitacionEmail` en src/lib/mailer.ts). No usa variables de entorno ni
 // red, así que se puede probar sin SMTP: en local las variables de correo están enmascaradas.
 import type { EventAttributes } from "ics";
+import { NOMBRE_MOMENTO } from "@/lib/momentos";
 
 // Fecha "YYYY-MM-DD" y horas "HH:mm", tal como las guarda la app.
 export type HorarioReunion = { fecha: string; horaInicio: string; horaFin: string };
@@ -289,26 +290,28 @@ export function componerRechazoExtraordinaria(p: {
 
 // Momento devuelto por el instructor (9 oct 2026): no corresponde al momento que tocaba —por
 // ejemplo, se hizo el Momento 3 sin tener evaluado el 2— o no se puede evaluar. Va al aprendiz
-// con copia al instructor.
+// con copia al instructor y al coformador.
 export function componerDevolucionMomento(p: {
   aprendizNombre: string;
   numero: 2 | 3;
   instructorNombre: string;
   motivo: string;
   anteriorPendiente: boolean;
+  reunionCancelada: boolean;
   appUrl: string;
 }): { subject: string; text: string; html: string } {
-  const momento = p.numero === 2 ? "Momento 2 (Seguimiento)" : "Momento 3 (Cierre)";
-  const anterior = p.numero === 2 ? "Momento 1 (Concertación)" : "Momento 2 (Seguimiento)";
+  const momento = NOMBRE_MOMENTO[p.numero];
+  const anterior = NOMBRE_MOMENTO[(p.numero - 1) as 1 | 2];
   const queHacer = p.anteriorPendiente
     ? `Primero debe quedar evaluado el ${anterior}: agéndalo o completa su formato y, cuando tu instructor lo evalúe, vuelve a agendar el ${momento}.`
     : `Revisa el motivo, corrige lo necesario y vuelve a agendar el ${momento} o a enviar su formato desde SEPA.`;
+  const cancelada = p.reunionCancelada ? "La reunión que estaba agendada para este momento queda cancelada." : "";
   return {
     subject: `SEPA · Tu instructor devolvió el ${momento}`,
     text: [
       `Hola ${p.aprendizNombre},`,
       "",
-      `${p.instructorNombre} devolvió tu ${momento}: no quedó evaluado.`,
+      `${p.instructorNombre} devolvió tu ${momento}: no quedó evaluado.${cancelada ? ` ${cancelada}` : ""}`,
       "",
       `Motivo: ${p.motivo}`,
       "",
@@ -318,7 +321,7 @@ export function componerDevolucionMomento(p: {
     ].join("\n"),
     html: [
       `<p>Hola ${escaparHtml(p.aprendizNombre)},</p>`,
-      `<p><strong>${escaparHtml(p.instructorNombre)}</strong> devolvió tu ${escaparHtml(momento)}: no quedó evaluado.</p>`,
+      `<p><strong>${escaparHtml(p.instructorNombre)}</strong> devolvió tu ${escaparHtml(momento)}: no quedó evaluado.${cancelada ? ` ${escaparHtml(cancelada)}` : ""}</p>`,
       `<p><strong>Motivo:</strong> ${escaparHtml(p.motivo)}</p>`,
       `<p><strong>Qué hacer:</strong> ${escaparHtml(queHacer)}</p>`,
       `<p><a href="${escaparHtml(p.appUrl)}">Abrir mis evaluaciones en SEPA</a></p>`,

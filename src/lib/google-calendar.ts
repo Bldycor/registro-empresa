@@ -102,3 +102,15 @@ export async function updateCalendarMeetEvent({
     eventId: data.id ?? null,
   };
 }
+
+// Cancela el evento (momento devuelto por el instructor, 9 oct 2026): Google avisa a los invitados
+// y lo quita de sus calendarios. Un evento que ya no existe se da por cancelado.
+export async function cancelCalendarMeetEvent(eventId: string) {
+  const calendar = getCalendarClient();
+  try {
+    await calendar.events.delete({ calendarId: "primary", eventId, sendUpdates: "all" });
+  } catch (error) {
+    const codigo = (error as { code?: number }).code;
+    if (codigo !== 404 && codigo !== 410) throw error;
+  }
+}

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { NOMBRE_MOMENTO } from "@/lib/momentos";
 
 // Orden de los momentos (decisión de Coordinación, 9 oct 2026): un momento solo se agenda, se
 // registra o se finaliza si el anterior ya fue evaluado por el instructor. El Momento 2 necesita el
@@ -23,6 +24,5 @@ export async function momentoAnteriorEvaluado(
 }
 
 export function mensajeOrden(numero: 2 | 3): string {
-  const anterior = numero === 2 ? "Momento 1 (Concertación)" : "Momento 2 (Seguimiento)";
-  return `El Momento ${numero} se hace cuando el instructor ya evaluó el ${anterior}. Primero debe quedar evaluado ese momento.`;
+  return `El Momento ${numero} se hace cuando el instructor ya evaluó el ${NOMBRE_MOMENTO[(numero - 1) as 1 | 2]}. Primero debe quedar evaluado ese momento.`;
 }

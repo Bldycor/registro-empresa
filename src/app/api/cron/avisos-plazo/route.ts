@@ -37,7 +37,8 @@ function cargarAprendices() {
       concertacionFuncion: { select: { id: true } },
       bitacoras: { select: { numero: true, estado: true } },
       evaluaciones: {
-        where: { numero: { in: [2, 3] }, esExtraordinario: false },
+        // Un momento devuelto por el instructor (9 oct 2026) no cuenta como agendado.
+        where: { numero: { in: [2, 3] }, esExtraordinario: false, estado: { not: "RECHAZADA" } },
         select: { numero: true },
       },
       avisosPlazo: { select: { clave: true, tipo: true, fechaLimite: true } },

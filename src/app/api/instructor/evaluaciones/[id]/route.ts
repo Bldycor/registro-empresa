@@ -21,6 +21,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       id: true,
       numero: true,
       userId: true,
+      estado: true,
       esExtraordinario: true,
       user: { select: { ficha: { select: { instructorId: true } } } },
     },
@@ -41,6 +42,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           "Las reuniones extraordinarias no llevan rúbrica: se aprueban o rechazan desde «Reuniones extraordinarias».",
       },
       { status: 400 }
+    );
+  }
+
+  // Un momento devuelto (9 oct 2026) no se valora: guardarlo lo dejaría pendiente sin que el
+  // aprendiz lo haya retomado. Vuelve a valorarse cuando él lo agende de nuevo o reenvíe su formato.
+  if (existing.estado === "RECHAZADA") {
+    return NextResponse.json(
+      { error: { _root: ["Devolviste este momento: se valora cuando el aprendiz lo vuelva a agendar o reenvíe su formato."] } },
+      { status: 409 },
     );
   }
 

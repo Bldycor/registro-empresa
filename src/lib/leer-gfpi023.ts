@@ -14,6 +14,7 @@
 
 import { paginasDelPdf, textoDePaginas } from "@/lib/leer-pdf";
 import { leerRubrica, type ValoracionLeida } from "@/lib/leer-rubrica";
+import { NOMBRE_MOMENTO } from "@/lib/momentos";
 
 export type DatosDocumento = {
   regional: string | null;
@@ -325,8 +326,6 @@ export type LecturaDocumento = {
   otroMomento?: 2 | 3;
 };
 
-const NOMBRE_MOMENTO: Record<2 | 3, string> = { 2: "Momento 2 (Seguimiento)", 3: "Momento 3 (Cierre)" };
-
 export function mensajeOtroMomento(adjuntado: 2 | 3, diligenciado: 2 | 3): string {
   return `El PDF que adjuntaste trae diligenciado el ${NOMBRE_MOMENTO[diligenciado]}, no el ${NOMBRE_MOMENTO[adjuntado]}. Adjunta aquí el formato de este momento; ese PDF va en el ${NOMBRE_MOMENTO[diligenciado]}.`;
 }
@@ -358,12 +357,15 @@ export async function leerFormato(
     if (datos[campo]) utiles[campo] = datos[campo];
   }
 
-  const rubrica = momento === 1 ? [] : leerRubrica(paginas, momento).filter((v) => v.valoracion);
+  const filas = momento === 1 ? [] : leerRubrica(paginas, momento);
+  const rubrica = filas.filter((v) => v.valoracion);
   // Un PDF con los dos momentos diligenciados (el formato acumulado) se acepta en cualquiera de
-  // los dos; uno que solo trae el otro, no.
+  // los dos; uno que solo trae el otro, no. Solo se afirma que este momento está en blanco cuando
+  // su tabla se reconoció (al menos 10 de las 13 filas) sin ninguna X: si el lector no la
+  // reconoce —una plantilla distinta—, no se bloquea al aprendiz por una falla de lectura.
+  const enBlanco = filas.length >= 10 && rubrica.length === 0;
   const otro = momento === 2 ? 3 : momento === 3 ? 2 : null;
-  const otroMomento =
-    otro && rubrica.length === 0 && leerRubrica(paginas, otro).some((v) => v.valoracion) ? otro : undefined;
+  const otroMomento = otro && enBlanco && leerRubrica(paginas, otro).some((v) => v.valoracion) ? otro : undefined;
 
   return {
     datos: utiles,
