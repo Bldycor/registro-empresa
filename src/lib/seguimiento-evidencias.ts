@@ -7,8 +7,8 @@
 // Plazos oficiales confirmados con el usuario:
 //   1. Alternativa EP y Formalización: inmediatamente al iniciar la Etapa Productiva.
 //   2. Concertación (Momento 1): 15 días después de iniciar.
-//   3. Bitácoras: 12 en total por defecto, una cada 15 días — o 6, una por mes (ver
-//      User.totalBitacoras; el cálculo de fechas está en src/lib/bitacora-fechas.ts).
+//   3. Bitácoras: 6, una por mes (decisión de Coordinación, 29 sep 2026; el cálculo de fechas
+//      está en src/lib/bitacora-fechas.ts).
 //   4. Evaluaciones: Momento 2 al 50% del tiempo planeado (guía GFPI-G-040 §9.2); Momento 3,
 //      10-15 días antes del cierre.
 //   5. Certificación del empresario: hasta la fecha de fin de la Etapa Productiva.
@@ -21,9 +21,9 @@ import type { EstadoEvidencia } from "@/generated/prisma/enums";
 export const DIAS_ALERTA_PROXIMA = 5;
 const DIAS_CONCERTACION = 15;
 
-// Número de bitácoras avaladas con el que la evidencia se da por cumplida. Los dos totales
-// válidos son 6 y 12 (ver `TotalBitacorasValues`), y cualquiera de los dos basta: llegar a seis
-// ya cumple, aunque al aprendiz se le hayan planeado doce.
+// Número de bitácoras avaladas con el que la evidencia se da por cumplida: seis, el único total
+// válido hoy (`TotalBitacorasValues`). Antes también se podían planear doce; si queda algún dato
+// viejo así, llegar a seis ya cumple.
 export const MIN_BITACORAS_CUMPLIMIENTO = 6;
 const DIAS_MOMENTO3_ANTES_DE_CIERRE = 10;
 
@@ -122,7 +122,7 @@ export function calcularSeguimiento(input: {
   // que tenía las seis evidencias avaladas y aun así aparecía con una evaluación pendiente.
   concertacionAprobada: boolean;
   bitacoras: { numero: number; estado: EstadoEvidencia }[];
-  // 6 o 12 (ver User.totalBitacoras) — varía por aprendiz, no siempre son 12.
+  // User.totalBitacoras: 6 (el único valor que se crea hoy; datos viejos pueden traer otro).
   totalBitacoras: number;
   // Número de bitácora con el que arranca el tramo vigente (1 si nunca interrumpió su EP).
   bitacoraInicioTramo?: number;
@@ -156,7 +156,7 @@ export function calcularSeguimiento(input: {
     completa: input.concertacionAprobada,
   });
 
-  // Bitácoras: no es un único punto — se cuentan cuántas de las 12 ya vencieron sin quedar
+  // Bitácoras: no es un único punto — se cuentan cuántas de las planeadas ya vencieron sin quedar
   // aprobadas (incluye las rechazadas sin reenviar, porque siguen sin estar al día).
   let bitacoras: ChecklistItem;
   if (!fechaInicioEP) {
@@ -193,10 +193,9 @@ export function calcularSeguimiento(input: {
       if (dias > 0) atrasadas++;
       else if (dias >= -DIAS_ALERTA_PROXIMA) proxima = true;
     });
-    // Cumplimiento de bitácoras: se alcanza con 6 o con 12 (regla institucional), no con el total
-    // exacto planeado. 12 es el estándar de una Etapa Productiva de seis meses y 6 el de una
-    // corta, pero seis bitácoras avaladas ya dan por cumplida la evidencia — por eso el umbral es
-    // el menor entre lo planeado y ese mínimo.
+    // Cumplimiento de bitácoras: seis avaladas dan por cumplida la evidencia (hoy toda Etapa
+    // Productiva planea seis). El umbral es el menor entre lo planeado y ese mínimo, por si queda
+    // algún dato viejo con otro total.
     //
     // Antes la condición era `aprobadas === totalBitacoras`, igualdad estricta. Eso tenía dos
     // efectos malos: un aprendiz que llegaba al mínimo pero no al total seguía sin poder

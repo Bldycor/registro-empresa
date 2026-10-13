@@ -514,11 +514,9 @@ const fechaEtapaProductivaOpcional = z
 // Etapa Productiva son por aprendiz (no por ficha) — se pueden fijar o corregir aquí uno a uno,
 // además de sincronizarse desde la evidencia "Selección de Alternativa" cuando el aprendiz la
 // diligencia (la última aprobada gana).
-// Cuántas bitácoras le corresponden al aprendiz. La Etapa Productiva SIEMPRE dura 6 meses; lo
-// que cambia es la frecuencia de entrega: 12 (una cada 15 días) o 6 (una por mes). Afecta las
-// fechas límite calculadas y las alertas de seguimiento (ver src/lib/bitacora-fechas.ts y
-// src/lib/seguimiento-evidencias.ts).
-// Ya no hay nada que elegir: toda etapa productiva son seis bitácoras, una por mes.
+// Cuántas bitácoras le corresponden al aprendiz: toda Etapa Productiva son seis, una por mes. Antes
+// también se podían elegir doce, una cada 15 días; esa opción se eliminó. Define las fechas límite
+// y las alertas de seguimiento (ver src/lib/bitacora-fechas.ts y src/lib/seguimiento-evidencias.ts).
 export const TotalBitacorasValues = [6] as const;
 export type TotalBitacorasValue = (typeof TotalBitacorasValues)[number];
 // Toda etapa productiva son seis bitácoras, una por mes (decisión de Coordinación, 29 sep 2026).
@@ -822,8 +820,8 @@ export type BitacoraActividadInput = z.infer<typeof BitacoraActividadSchema>;
 
 // Evidencia (c): Bitácora del aprendiz. `numero` identifica cuál de las bitácoras se
 // está diligenciando; la fecha límite se calcula en el servidor, no se recibe acá. El tope real
-// (6 o 12, ver `User.totalBitacoras`) varía por aprendiz, así que se valida en el route handler,
-// no acá — el límite de 12 es solo un techo razonable contra datos claramente inválidos.
+// (`User.totalBitacoras`, hoy siempre 6) se valida en el route handler, no acá — el límite de 12
+// es solo un techo contra datos inválidos que deja pasar las bitácoras viejas por encima de la sexta.
 export const BitacoraSchema = z.object({
   numero: z.number().int().min(1).max(12),
   periodoDesde: z.string().trim().nullable().optional(),

@@ -242,7 +242,7 @@ export function BitacoraForm({
   const usandoPrefill = !initial && Boolean(prefillPrevio);
 
   function cancelar() {
-    // Cuando el formulario está anidado en un acordeón (lista de las 12 bitácoras en una sola
+    // Cuando el formulario está anidado en un acordeón (lista de las bitácoras en una sola
     // página), "Cancelar" solo debe cerrar esa fila — router.back() sacaría al aprendiz de toda
     // la página. Fuera de ese contexto (sin onCancel), sí navega atrás como el resto de evidencias.
     if (onCancel) {

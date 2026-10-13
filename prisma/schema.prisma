@@ -892,7 +892,7 @@ model Bitacora {
   numero       Int // Secuencia 1-12
   periodoDesde DateTime?
   periodoHasta DateTime?
-  fechaLimite  DateTime // Calculada desde User.fechaInicioEtapaProductiva + 15 días * numero
+  fechaLimite  DateTime // Calculada desde User.fechaInicioEtapaProductiva + ~30 días * numero
   fechaEntrega DateTime?
   archivoUrl   String? // Plantilla diligenciada subida por el aprendiz (o generada con firma en la app)
 
