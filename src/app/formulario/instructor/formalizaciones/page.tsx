@@ -3,8 +3,14 @@ import { FormalizacionesPanel } from "@/components/formalizaciones-panel";
 
 export const dynamic = "force-dynamic";
 
-export default async function InstructorFormalizacionesPage() {
+export default async function InstructorFormalizacionesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ aprendiz?: string }>;
+}) {
   await requireUser(["INSTRUCTOR"]);
+  // Desde un chip de Seguimiento llega el aprendiz, para centrar la pantalla en él.
+  const { aprendiz } = await searchParams;
 
   return (
     <div className="flex flex-1 flex-col px-4 py-10 sm:px-8">
@@ -15,7 +21,7 @@ export default async function InstructorFormalizacionesPage() {
         <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
           Revisa y avala los documentos certificadores de los aprendices de tus fichas asignadas.
         </p>
-        <FormalizacionesPanel />
+        <FormalizacionesPanel key={aprendiz ?? ""} aprendizId={aprendiz ?? null} />
       </div>
     </div>
   );

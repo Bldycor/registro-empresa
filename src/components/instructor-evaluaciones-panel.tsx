@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { StatBadge } from "@/components/stat-badge";
+import { AvisoAprendiz, type LineaEntrega } from "@/components/aviso-aprendiz";
+import { fechaEnColombia } from "@/lib/plazos-institucionales";
 import { ReprogramarReunion } from "@/components/reprogramar-reunion";
 import {
   ValoracionVariableValues,
@@ -74,9 +76,40 @@ function formatoFecha(iso: string): string {
   return new Date(iso).toLocaleDateString("es-CO", { timeZone: "UTC" });
 }
 
-export function InstructorEvaluacionesPanel() {
+// Qué pasa con cada Momento del aprendiz, para el aviso con el que se llega desde Seguimiento.
+// Lo atrasado puede ser un Momento que no ha agendado (no aparece en la lista) o uno que ya se
+// hizo y espera la valoración del instructor.
+function entregasMomentos(registros: Evaluacion[]): LineaEntrega[] {
+  const hoy = fechaEnColombia(new Date());
+  return [1, 2, 3].map((n): LineaEntrega => {
+    const ev = registros.find((e) => e.numero === n);
+    const nombre = momentoLabel[n];
+    if (!ev) {
+      // Orden de los momentos: el 2 se agenda con el 1 avalado y el 3 con el 2 evaluado.
+      const anterior = n > 1 ? registros.find((e) => e.numero === n - 1) : null;
+      if (n > 1 && anterior?.estado !== "APROBADA")
+        return { texto: `${nombre}: se agenda cuando el Momento ${n - 1} quede evaluado.`, tono: "neutro" };
+      return { texto: `${nombre}: todavía no lo ha agendado.`, tono: "ambar" };
+    }
+    if (ev.estado === "APROBADA") return { texto: `${nombre}: evaluado.`, tono: "verde" };
+    if (ev.estado === "RECHAZADA")
+      return { texto: `${nombre}: lo devolviste; debe agendarlo de nuevo o reenviar su formato.`, tono: "rojo" };
+    const dia = ev.fecha ? ev.fecha.slice(0, 10) : null;
+    if (dia && dia > hoy) return { texto: `${nombre}: agendado para el ${formatoFecha(ev.fecha!)}.`, tono: "neutro" };
+    return {
+      texto: `${nombre}: ${dia ? `la reunión fue el ${formatoFecha(ev.fecha!)}` : "registrado"}; espera tu valoración (abajo).`,
+      tono: "ambar",
+    };
+  });
+}
+
+// `aprendizId` llega de los chips de Concertación y Evaluaciones en Seguimiento: la pantalla se
+// centra en ese aprendiz y dice arriba qué pasa con cada Momento.
+export function InstructorEvaluacionesPanel({ aprendizId = null }: { aprendizId?: string | null }) {
   const [items, setItems] = useState<Evaluacion[] | null>(null);
-  const [filtro, setFiltro] = useState<"PENDIENTES" | "EVALUADAS" | "TODAS">("PENDIENTES");
+  const [filtro, setFiltro] = useState<"PENDIENTES" | "EVALUADAS" | "TODAS">(
+    aprendizId ? "TODAS" : "PENDIENTES"
+  );
   const [filtroTexto, setFiltroTexto] = useState("");
   const [filtroPrograma, setFiltroPrograma] = useState("");
   const [expandidoId, setExpandidoId] = useState<string | null>(null);
@@ -93,14 +126,15 @@ export function InstructorEvaluacionesPanel() {
     return <p className="text-sm text-zinc-500 dark:text-zinc-400">Cargando…</p>;
   }
 
-  const pendientes = items.filter((e) => e.estado === "PENDIENTE").length;
-  const evaluadas = items.filter((e) => e.estado === "APROBADA").length;
+  const base = aprendizId ? items.filter((e) => e.user.id === aprendizId) : items;
+  const pendientes = base.filter((e) => e.estado === "PENDIENTE").length;
+  const evaluadas = base.filter((e) => e.estado === "APROBADA").length;
 
   const programasDisponibles = Array.from(
     new Set(items.map((e) => e.user.ficha?.programa).filter((p): p is string => Boolean(p)))
   ).sort((a, b) => a.localeCompare(b));
 
-  const visibles = items.filter((e) => {
+  const visibles = base.filter((e) => {
     if (filtro === "PENDIENTES" && e.estado !== "PENDIENTE") return false;
     if (filtro === "EVALUADAS" && e.estado !== "APROBADA") return false;
     if (filtroPrograma && e.user.ficha?.programa !== filtroPrograma) return false;
@@ -114,6 +148,14 @@ export function InstructorEvaluacionesPanel() {
 
   return (
     <div className="space-y-4">
+      {aprendizId && (
+        <AvisoAprendiz
+          aprendizId={aprendizId}
+          claves={["concertacion", "evaluaciones"]}
+          entregas={entregasMomentos(base)}
+          verTodos="/formulario/instructor/evaluaciones"
+        />
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <StatBadge tono="ambar" etiqueta="pendientes" cantidad={pendientes} />
         <StatBadge tono="verde" etiqueta="evaluadas" cantidad={evaluadas} />

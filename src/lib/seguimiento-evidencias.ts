@@ -34,9 +34,8 @@ export type ChecklistItem = {
   etiqueta: string;
   estado: EstadoSeguimiento;
   detalle: string;
-  // null cuando todavía no existe un panel dedicado para esa evidencia (Concertación no tiene
-  // página de revisión propia para el instructor aún) — el chip se muestra igual, solo que no
-  // es clicable.
+  // Pantalla del instructor donde se revisa esa evidencia (Seguimiento le agrega
+  // `?aprendiz=<id>`). null deja el chip sin enlace.
   href: string | null;
   // Cuántas piezas concretas están atrasadas dentro de este chip — 0 o 1 para los de un solo
   // punto (Alternativa, Formalización, Concertación, Certificación), la cuenta real de bitácoras
@@ -87,6 +86,67 @@ function fechaLimiteMomento3(fechaFinEP: Date | null): Date | null {
 
 function umbralCumplimientoBitacoras(totalBitacoras: number): number {
   return Math.min(totalBitacoras, MIN_BITACORAS_CUMPLIMIENTO);
+}
+
+// Estado de cada bitácora del tramo vigente, una por una. Lo usan el semáforo (que solo cuenta) y
+// la pantalla de Bitácoras del instructor, que muestra cuál falta: una atrasada es una bitácora
+// que el aprendiz NO ha enviado, así que no aparece entre las entregadas y hay que decir su número.
+//   aprobada    — avalada.
+//   por_revisar — enviada, espera al instructor (no es un atraso del aprendiz).
+//   atrasada    — venció sin enviarse, o se rechazó y no se ha reenviado.
+//   proxima     — vence dentro de los próximos DIAS_ALERTA_PROXIMA días.
+//   por_venir   — todavía no le toca.
+export type EstadoCupoBitacora = "aprobada" | "por_revisar" | "atrasada" | "proxima" | "por_venir";
+
+export type CupoBitacora = {
+  numero: number;
+  fechaLimite: Date;
+  estado: EstadoCupoBitacora;
+  // Se rechazó y espera que el aprendiz la corrija y la reenvíe.
+  rechazada: boolean;
+  // Días desde la fecha límite: positivo si ya pasó, negativo si falta, 0 si vence hoy.
+  dias: number;
+};
+
+export function planBitacoras(input: {
+  hoy: Date;
+  fechaInicioEP: Date;
+  bitacoras: { numero: number; estado: EstadoEvidencia }[];
+  totalBitacoras: number;
+  bitacoraInicioTramo?: number;
+}): { cupos: CupoBitacora[]; aprobadas: number; cumple: boolean } {
+  const inicioTramo = input.bitacoraInicioTramo ?? 1;
+  const porNumero = new Map(input.bitacoras.map((b) => [b.numero, b]));
+  const cupos = calcularSlotsBitacoras(input.fechaInicioEP, input.totalBitacoras, inicioTramo).map(
+    ({ numero, fechaLimite }): CupoBitacora => {
+      const b = porNumero.get(numero);
+      const dias = diasDesdeLimite(fechaLimite, input.hoy);
+      const rechazada = b?.estado === "RECHAZADA";
+      const estado: EstadoCupoBitacora =
+        b?.estado === "APROBADA"
+          ? "aprobada"
+          : b?.estado === "PENDIENTE"
+            ? "por_revisar"
+            : dias > 0
+              ? "atrasada"
+              : dias >= -DIAS_ALERTA_PROXIMA
+                ? "proxima"
+                : "por_venir";
+      return { numero, fechaLimite, estado, rechazada, dias };
+    },
+  );
+  // Las de tramos anteriores ya entregadas cuentan como cumplidas para el total del programa.
+  const aprobadas =
+    input.bitacoras.filter((b) => b.numero < inicioTramo && b.estado === "APROBADA").length +
+    cupos.filter((c) => c.estado === "aprobada").length;
+  return { cupos, aprobadas, cumple: aprobadas >= umbralCumplimientoBitacoras(input.totalBitacoras) };
+}
+
+// "3", "3 y 4", "2, 3 y 4".
+function listaNumeros(numeros: number[]): string {
+  return numeros.length === 1
+    ? String(numeros[0])
+    : `${numeros.slice(0, -1).join(", ")} y ${numeros[numeros.length - 1]}`;
 }
 
 // Un solo punto con fecha límite (Alternativa, Formalización, Concertación, Certificación):
@@ -169,40 +229,24 @@ export function calcularSeguimiento(input: {
       cantidadAtrasada: 0,
     };
   } else {
-    const slots = calcularSlotsBitacoras(
-      fechaInicioEP,
-      input.totalBitacoras,
-      input.bitacoraInicioTramo ?? 1,
-    );
-    const porNumero = new Map(input.bitacoras.map((b) => [b.numero, b]));
-    let atrasadas = 0;
-    let proxima = false;
-    // Las de tramos anteriores ya entregadas cuentan como cumplidas para el total del programa.
-    let aprobadas = input.bitacoras.filter(
-      (b) => b.numero < (input.bitacoraInicioTramo ?? 1) && b.estado === "APROBADA",
-    ).length;
-    slots.forEach(({ numero, fechaLimite: limite }) => {
-      const b = porNumero.get(numero);
-      if (b?.estado === "APROBADA") {
-        aprobadas++;
-        return;
-      }
-      const alDia = b?.estado === "PENDIENTE";
-      if (alDia) return;
-      const dias = diasDesdeLimite(limite, hoy);
-      if (dias > 0) atrasadas++;
-      else if (dias >= -DIAS_ALERTA_PROXIMA) proxima = true;
-    });
-    // Cumplimiento de bitácoras: seis avaladas dan por cumplida la evidencia (hoy toda Etapa
-    // Productiva planea seis). El umbral es el menor entre lo planeado y ese mínimo, por si queda
-    // algún dato viejo con otro total.
+    // Cumplimiento de bitácoras (`cumple`): seis avaladas dan por cumplida la evidencia (hoy toda
+    // Etapa Productiva planea seis). El umbral es el menor entre lo planeado y ese mínimo, por si
+    // queda algún dato viejo con otro total.
     //
     // Antes la condición era `aprobadas === totalBitacoras`, igualdad estricta. Eso tenía dos
     // efectos malos: un aprendiz que llegaba al mínimo pero no al total seguía sin poder
     // certificarse, y uno con MÁS bitácoras aprobadas que las planeadas (por ejemplo al corregirle
     // el total de 12 a 6) tampoco contaba como completo, porque nunca daba la igualdad exacta.
-    const umbralCumplimiento = umbralCumplimientoBitacoras(input.totalBitacoras);
-    const todasAprobadas = aprobadas >= umbralCumplimiento;
+    const { cupos, aprobadas, cumple: todasAprobadas } = planBitacoras({
+      hoy,
+      fechaInicioEP,
+      bitacoras: input.bitacoras,
+      totalBitacoras: input.totalBitacoras,
+      bitacoraInicioTramo: input.bitacoraInicioTramo,
+    });
+    const vencidas = cupos.filter((c) => c.estado === "atrasada");
+    const atrasadas = vencidas.length;
+    const proxima = cupos.find((c) => c.estado === "proxima");
     const estado: EstadoSeguimiento = todasAprobadas
       ? "completa"
       : atrasadas > 0
@@ -212,15 +256,20 @@ export function calcularSeguimiento(input: {
           : "pendiente";
     // Cuando cumple con menos de las planeadas se dice explícitamente cuántas lleva: "Al día" a
     // secas haría pensar que entregó las doce, y el instructor necesita ver la diferencia.
+    // Con atraso o vencimiento cercano se nombra la bitácora, como el Momento en Evaluaciones:
+    // "1 bitácora atrasada" obligaba a buscar cuál era, y la que falta no aparece entre las
+    // entregadas.
     const detalle = todasAprobadas
       ? aprobadas < input.totalBitacoras
         ? `${aprobadas} de ${input.totalBitacoras} — cumple el mínimo`
         : "Al día"
-      : atrasadas > 0
-        ? `${atrasadas} bitácora${atrasadas === 1 ? "" : "s"} atrasada${atrasadas === 1 ? "" : "s"}`
-        : proxima
-          ? "Una bitácora vence pronto"
-          : "Al día";
+      : atrasadas === 1
+        ? `Bitácora ${vencidas[0].numero} atrasada ${vencidas[0].dias}d`
+        : atrasadas > 1
+          ? `Bitácoras ${listaNumeros(vencidas.map((c) => c.numero))} atrasadas ${vencidas[0].dias}d`
+          : proxima
+            ? `Bitácora ${proxima.numero} ${proxima.dias === 0 ? "vence hoy" : `vence en ${-proxima.dias}d`}`
+            : "Al día";
     bitacoras = {
       clave: "bitacoras",
       etiqueta: "Bitácoras",
@@ -243,6 +292,9 @@ export function calcularSeguimiento(input: {
   const peorEvaluacion = [momento2, momento3].sort(
     (a, b) => rango.indexOf(a.estado) - rango.indexOf(b.estado)
   )[0];
+  // Con los dos Momentos vencidos se nombran ambos; antes solo salía el 2 y el 3 quedaba oculto
+  // hasta cerrar el primero. Los días son los del más antiguo (el 2).
+  const ambosAtrasados = momento2.estado === "atrasada" && momento3.estado === "atrasada";
   const evaluaciones: ChecklistItem = {
     clave: "evaluaciones",
     etiqueta: "Evaluaciones",
@@ -252,13 +304,15 @@ export function calcularSeguimiento(input: {
         ? "Momentos 2 y 3 al día"
         : peorEvaluacion.sinReferencia
           ? "Aún no inicia su EP"
-          : `Momento ${momento2.estado !== "completa" ? 2 : 3}${
-              peorEvaluacion.estado === "atrasada"
-                ? ` atrasado ${peorEvaluacion.dias}d`
-                : peorEvaluacion.dias === 0
-                  ? " vence hoy"
-                  : ` vence en ${peorEvaluacion.dias}d`
-            }`,
+          : ambosAtrasados
+            ? `Momentos 2 y 3 atrasados ${momento2.dias}d`
+            : `Momento ${momento2.estado !== "completa" ? 2 : 3}${
+                peorEvaluacion.estado === "atrasada"
+                  ? ` atrasado ${peorEvaluacion.dias}d`
+                  : peorEvaluacion.dias === 0
+                    ? " vence hoy"
+                    : ` vence en ${peorEvaluacion.dias}d`
+              }`,
     href: "/formulario/instructor/evaluaciones",
     cantidadAtrasada:
       (momento2.estado === "atrasada" ? 1 : 0) + (momento3.estado === "atrasada" ? 1 : 0),
@@ -313,8 +367,15 @@ export function calcularSeguimiento(input: {
       clave: "concertacion",
       etiqueta: "Concertación",
       estado: concertacion.estado,
-      detalle: detalleFecha(concertacion, "Aún no inicia su EP"),
-      href: null,
+      // La Concertación es el Momento 1: se nombra igual que los Momentos 2 y 3 de Evaluaciones.
+      detalle:
+        concertacion.estado === "atrasada"
+          ? `Momento 1 atrasado ${concertacion.dias}d`
+          : concertacion.estado === "proxima"
+            ? `Momento 1 ${concertacion.dias === 0 ? "vence hoy" : `vence en ${concertacion.dias}d`}`
+            : detalleFecha(concertacion, "Aún no inicia su EP"),
+      // El Momento 1 se revisa en Evaluaciones, junto con los Momentos 2 y 3.
+      href: "/formulario/instructor/evaluaciones",
       cantidadAtrasada: concertacion.estado === "atrasada" ? 1 : 0,
     },
     bitacoras,

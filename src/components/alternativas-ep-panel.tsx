@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AvisoAprendiz, entregaDocumento } from "@/components/aviso-aprendiz";
 import { StatBadge } from "@/components/stat-badge";
 import { PlazoBadge } from "@/components/plazo-badge";
 import {
@@ -63,14 +64,18 @@ export function AlternativasEPPanel({
   // El registro en SofiaPlus (guía GFPI-G-040 §9.1.2) lo hace Coordinación. El instructor usa este
   // mismo panel para revisar, pero no ve ni anota esa constancia.
   permiteRegistroSofiaPlus = false,
+  // Llega del chip de Alternativa EP en Seguimiento (solo el instructor): la pantalla se centra en
+  // ese aprendiz y dice arriba qué le falta.
+  aprendizId = null,
 }: {
   listUrl?: string;
   patchUrlBase?: string;
   permiteRegistroSofiaPlus?: boolean;
+  aprendizId?: string | null;
 } = {}) {
   const [selecciones, setSelecciones] = useState<Seleccion[] | null>(null);
   const [filtro, setFiltro] = useState<"TODAS" | "PENDIENTE" | "APROBADA" | "RECHAZADA" | "SIN_SOFIAPLUS">(
-    "PENDIENTE",
+    aprendizId ? "TODAS" : "PENDIENTE",
   );
   const [filtroTexto, setFiltroTexto] = useState("");
   const [filtroPrograma, setFiltroPrograma] = useState("");
@@ -156,11 +161,13 @@ export function AlternativasEPPanel({
     return <p className="text-sm text-zinc-500 dark:text-zinc-400">Cargando…</p>;
   }
 
+  const base = aprendizId ? selecciones.filter((s) => s.user.id === aprendizId) : selecciones;
+
   const contadores = {
-    PENDIENTE: selecciones.filter((s) => s.estado === "PENDIENTE").length,
-    APROBADA: selecciones.filter((s) => s.estado === "APROBADA").length,
-    RECHAZADA: selecciones.filter((s) => s.estado === "RECHAZADA").length,
-    SIN_SOFIAPLUS: selecciones.filter((s) => s.estado === "APROBADA" && !s.registroSofiaPlus)
+    PENDIENTE: base.filter((s) => s.estado === "PENDIENTE").length,
+    APROBADA: base.filter((s) => s.estado === "APROBADA").length,
+    RECHAZADA: base.filter((s) => s.estado === "RECHAZADA").length,
+    SIN_SOFIAPLUS: base.filter((s) => s.estado === "APROBADA" && !s.registroSofiaPlus)
       .length,
   };
 
@@ -168,7 +175,7 @@ export function AlternativasEPPanel({
     new Set(selecciones.map((s) => s.user.ficha?.programa).filter((p): p is string => Boolean(p)))
   ).sort((a, b) => a.localeCompare(b));
 
-  const visibles = selecciones.filter((s) => {
+  const visibles = base.filter((s) => {
     if (filtro === "SIN_SOFIAPLUS") {
       if (s.estado !== "APROBADA" || s.registroSofiaPlus) return false;
     } else if (filtro !== "TODAS" && s.estado !== filtro) return false;
@@ -183,6 +190,15 @@ export function AlternativasEPPanel({
 
   return (
     <div className="space-y-4">
+      {aprendizId && (
+        <AvisoAprendiz
+          aprendizId={aprendizId}
+          claves={["alternativa"]}
+          // La lista viene de la más reciente a la más antigua; el semáforo mira solo la última.
+          entregas={[entregaDocumento(base.slice(0, 1), "la solicitud de alternativa (GFPI-F-165)")]}
+          verTodos="/formulario/instructor/alternativas"
+        />
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <StatBadge tono="ambar" etiqueta="pendientes" cantidad={contadores.PENDIENTE} />
         <StatBadge tono="verde" etiqueta="aprobadas" cantidad={contadores.APROBADA} />

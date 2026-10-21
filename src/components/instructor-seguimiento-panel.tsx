@@ -286,7 +286,13 @@ export function InstructorSeguimientoPanel() {
 
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
                   {a.checklist.map((item) => (
-                    <Chip key={item.clave} item={item} />
+                    <Chip
+                      key={item.clave}
+                      // Cada chip abre su pantalla centrada en este aprendiz, con lo que le falta
+                      // arriba: lo atrasado suele ser justo lo que no ha enviado, y la lista de
+                      // entregas, sola, no lo muestra.
+                      item={item.href ? { ...item, href: `${item.href}?aprendiz=${a.id}` } : item}
+                    />
                   ))}
                 </div>
 

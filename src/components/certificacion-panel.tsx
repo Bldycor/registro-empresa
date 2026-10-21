@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { StatBadge } from "@/components/stat-badge";
 import { PlazoBadge } from "@/components/plazo-badge";
+import { AvisoAprendiz, entregaDocumento } from "@/components/aviso-aprendiz";
 
 type Certificacion = {
   id: string;
@@ -24,10 +25,12 @@ type Certificacion = {
 const inputClass =
   "rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950";
 
-export function CertificacionPanel() {
+// `aprendizId` llega del chip de Certificación en Seguimiento: la pantalla se centra en ese
+// aprendiz y dice arriba qué le falta.
+export function CertificacionPanel({ aprendizId = null }: { aprendizId?: string | null }) {
   const [items, setItems] = useState<Certificacion[] | null>(null);
   const [filtro, setFiltro] = useState<"TODAS" | "PENDIENTE" | "APROBADA" | "RECHAZADA">(
-    "PENDIENTE",
+    aprendizId ? "TODAS" : "PENDIENTE",
   );
   const [filtroTexto, setFiltroTexto] = useState("");
   const [filtroPrograma, setFiltroPrograma] = useState("");
@@ -57,17 +60,19 @@ export function CertificacionPanel() {
     return <p className="text-sm text-zinc-500 dark:text-zinc-400">Cargando…</p>;
   }
 
+  const base = aprendizId ? items.filter((s) => s.user.id === aprendizId) : items;
+
   const contadores = {
-    PENDIENTE: items.filter((s) => s.estado === "PENDIENTE").length,
-    APROBADA: items.filter((s) => s.estado === "APROBADA").length,
-    RECHAZADA: items.filter((s) => s.estado === "RECHAZADA").length,
+    PENDIENTE: base.filter((s) => s.estado === "PENDIENTE").length,
+    APROBADA: base.filter((s) => s.estado === "APROBADA").length,
+    RECHAZADA: base.filter((s) => s.estado === "RECHAZADA").length,
   };
 
   const programasDisponibles = Array.from(
     new Set(items.map((s) => s.user.ficha?.programa).filter((p): p is string => Boolean(p)))
   ).sort((a, b) => a.localeCompare(b));
 
-  const visibles = items.filter((s) => {
+  const visibles = base.filter((s) => {
     if (filtro !== "TODAS" && s.estado !== filtro) return false;
     if (filtroPrograma && s.user.ficha?.programa !== filtroPrograma) return false;
     const texto = filtroTexto.trim().toLowerCase();
@@ -80,6 +85,14 @@ export function CertificacionPanel() {
 
   return (
     <div className="space-y-4">
+      {aprendizId && (
+        <AvisoAprendiz
+          aprendizId={aprendizId}
+          claves={["certificacion"]}
+          entregas={[entregaDocumento(base, "la carta de certificación del empresario")]}
+          verTodos="/formulario/instructor/certificacion"
+        />
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <StatBadge tono="ambar" etiqueta="pendientes" cantidad={contadores.PENDIENTE} />
         <StatBadge tono="verde" etiqueta="aprobadas" cantidad={contadores.APROBADA} />

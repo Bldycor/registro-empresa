@@ -4,8 +4,14 @@ import { PlantillaEnlace, PLANTILLA_BITACORA } from "@/components/plantilla-enla
 
 export const dynamic = "force-dynamic";
 
-export default async function InstructorBitacorasPage() {
+export default async function InstructorBitacorasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ aprendiz?: string }>;
+}) {
   await requireUser(["INSTRUCTOR"]);
+  // Desde el chip de Bitácoras de Seguimiento llega el aprendiz, para abrir su plan.
+  const { aprendiz } = await searchParams;
 
   return (
     <div className="flex flex-1 flex-col px-4 py-10 sm:px-8">
@@ -19,7 +25,7 @@ export default async function InstructorBitacorasPage() {
         <div className="-mt-4 mb-6">
           <PlantillaEnlace plantilla={PLANTILLA_BITACORA} />
         </div>
-        <BitacorasPanel />
+        <BitacorasPanel key={aprendiz ?? ""} aprendizId={aprendiz ?? null} />
       </div>
     </div>
   );

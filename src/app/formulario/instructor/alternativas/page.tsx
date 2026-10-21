@@ -3,8 +3,14 @@ import { AlternativasEPPanel } from "@/components/alternativas-ep-panel";
 
 export const dynamic = "force-dynamic";
 
-export default async function InstructorAlternativasPage() {
+export default async function InstructorAlternativasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ aprendiz?: string }>;
+}) {
   await requireUser(["INSTRUCTOR"]);
+  // Desde un chip de Seguimiento llega el aprendiz, para centrar la pantalla en él.
+  const { aprendiz } = await searchParams;
 
   return (
     <div className="flex flex-1 flex-col px-4 py-10 sm:px-8">
@@ -17,6 +23,8 @@ export default async function InstructorAlternativasPage() {
           los aprendices de tus fichas asignadas.
         </p>
         <AlternativasEPPanel
+          key={aprendiz ?? ""}
+          aprendizId={aprendiz ?? null}
           listUrl="/api/instructor/alternativas"
           patchUrlBase="/api/instructor/alternativas"
         />

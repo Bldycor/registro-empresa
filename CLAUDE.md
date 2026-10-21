@@ -82,6 +82,8 @@ docs/                             # requisitos y plan
 
 `calcularSeguimiento` alimenta a la vez el panel de Seguimiento del instructor, la insignia roja del nav del aprendiz y la validación de "Por certificar". Cualquier regla de plazos se cambia ahí, una sola vez.
 
+**Chips de Seguimiento que dicen cuál falta** (21 oct 2026): cada chip atrasado nombra la pieza —«Bitácora 3 atrasada 13d», «Bitácoras 2 y 3 atrasadas», «Momento 1 atrasado 8d», «Momentos 2 y 3 atrasados»—. Al hacer clic, la pantalla de esa evidencia se abre **centrada en el aprendiz** (`?aprendiz=<id>`): filtro en «Todas», solo sus registros y arriba el aviso `AvisoAprendiz` (`src/components/aviso-aprendiz.tsx`) con su chip y qué dice lo enviado (no lo ha enviado / espera tu revisión / no se aprobó; en Evaluaciones, cada Momento). Bitácoras muestra además el **plan de bitácoras**: las seis, incluidas las que no ha enviado (`planBitacoras` en `seguimiento-evidencias.ts`, que también usa el semáforo). El semáforo de un aprendiz sale de `src/lib/seguimiento-aprendiz.ts` (`GET /api/instructor/seguimiento/[id]`, solo aprendices de las fichas del instructor). La Concertación enlaza a Evaluaciones, donde se revisa el Momento 1.
+
 ## Modelo de datos (resumen — la fuente es `prisma/schema.prisma`)
 
 - **`User`** — todos los roles (`Role`: `APRENDIZ`, `INSTRUCTOR`, `COORDINADOR`, `ADMIN`). En el aprendiz: ficha, estado, fechas de EP propias (`fechaInicio/FinEtapaProductiva`, se sincronizan al avalar la alternativa), `totalBitacoras` (siempre 6), `diasEjecutadosPrevios` y `bitacoraInicioTramo` (retoma tras interrumpir), requisitos de aval y constancia de deserción.

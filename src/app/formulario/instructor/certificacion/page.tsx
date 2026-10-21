@@ -3,8 +3,14 @@ import { CertificacionPanel } from "@/components/certificacion-panel";
 
 export const dynamic = "force-dynamic";
 
-export default async function InstructorCertificacionPage() {
+export default async function InstructorCertificacionPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ aprendiz?: string }>;
+}) {
   await requireUser(["INSTRUCTOR"]);
+  // Desde un chip de Seguimiento llega el aprendiz, para centrar la pantalla en él.
+  const { aprendiz } = await searchParams;
 
   return (
     <div className="flex flex-1 flex-col px-4 py-10 sm:px-8">
@@ -15,7 +21,7 @@ export default async function InstructorCertificacionPage() {
         <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
           Revisa y avala las cartas de certificación de los aprendices de tus fichas asignadas.
         </p>
-        <CertificacionPanel />
+        <CertificacionPanel key={aprendiz ?? ""} aprendizId={aprendiz ?? null} />
       </div>
     </div>
   );

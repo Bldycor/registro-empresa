@@ -5,8 +5,34 @@ import { requireApiUser } from "@/lib/auth-guards";
 import { calcularSeguimiento } from "@/lib/seguimiento-evidencias";
 import { sendPorCertificarEmail } from "@/lib/mailer";
 import { advertenciasPlanMejoramiento } from "@/lib/plan-mejoramiento";
+import { SEGUIMIENTO_SELECT, checklistDeAprendiz } from "@/lib/seguimiento-aprendiz";
 
 const BodySchema = z.object({ porCertificar: z.boolean() });
+
+// Semáforo de un aprendiz de las fichas del instructor: lo usa el aviso con el que se abre cada
+// pantalla de evidencias desde un chip de Seguimiento (`?aprendiz=<id>`), para decir qué le falta.
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { user, response } = await requireApiUser(["INSTRUCTOR"]);
+  if (!user) return response;
+
+  const { id } = await params;
+  const aprendiz = await prisma.user.findFirst({
+    where: { id, role: "APRENDIZ", ficha: { instructorId: user.id } },
+    select: SEGUIMIENTO_SELECT,
+  });
+  if (!aprendiz) {
+    return NextResponse.json({ error: "Ese aprendiz no es de tus fichas." }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    aprendiz: {
+      id: aprendiz.id,
+      nombres: aprendiz.nombres,
+      apellidos: aprendiz.apellidos,
+      checklist: checklistDeAprendiz(aprendiz, new Date()),
+    },
+  });
+}
 
 // Marca (o revierte) a un aprendiz como "Por certificar" — casilla de verificación del panel de
 // Seguimiento del instructor. Solo puede marcarlo el instructor asignado a la ficha del
