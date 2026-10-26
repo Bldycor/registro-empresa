@@ -256,6 +256,17 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
 
       <form method="get" className="flex flex-wrap items-end gap-2 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 print:hidden">
         <label className="flex flex-col gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+          Programa
+          <select name="programa" defaultValue={f.programa} className={`${campo} max-w-56`}>
+            <option value="">Todos</option>
+            {r.opciones.programas.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-zinc-500 dark:text-zinc-400">
           Ficha
           <select name="ficha" defaultValue={f.ficha} className={campo}>
             <option value="">Todas</option>

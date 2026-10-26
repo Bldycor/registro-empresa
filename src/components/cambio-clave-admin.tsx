@@ -11,7 +11,7 @@ type Usuario = {
   apellidos: string;
   cedula: string;
   email: string;
-  role: "APRENDIZ" | "INSTRUCTOR" | "COORDINADOR" | "ADMIN";
+  role: "APRENDIZ" | "INSTRUCTOR" | "COORDINADOR" | "ADMIN" | "COORDINADOR_FORMACION";
   bloqueado: boolean;
 };
 
@@ -20,6 +20,7 @@ const ROL: Record<Usuario["role"], string> = {
   INSTRUCTOR: "Instructor",
   COORDINADOR: "Coordinación",
   ADMIN: "Administrador",
+  COORDINADOR_FORMACION: "Coordinación de Formación",
 };
 
 const inputClass =

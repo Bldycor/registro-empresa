@@ -21,6 +21,8 @@ import { estadoAprendizLabel } from "@/lib/validations";
 
 export type FiltrosReporte = {
   ficha: string;
+  // Programa de formación de la ficha (lo usa sobre todo el tablero de Coordinación de Formación).
+  programa: string;
   instructor: string;
   empresa: string;
   estado: string;
@@ -43,6 +45,7 @@ export function leerFiltros(
   const hasta = valor("hasta");
   return {
     ficha: valor("ficha"),
+    programa: valor("programa"),
     instructor: valor("instructor"),
     empresa: valor("empresa"),
     estado: estado in estadoAprendizLabel ? estado : "",
@@ -84,6 +87,7 @@ const estadoCertificacion: Record<string, string> = {
 export async function construirReporte(f: FiltrosReporte) {
   const ficha: Prisma.FichaWhereInput = {
     ...(f.ficha ? { codigo: f.ficha } : {}),
+    ...(f.programa ? { programa: f.programa } : {}),
     ...(f.instructor ? { instructorId: f.instructor } : {}),
   };
   const where: Prisma.UserWhereInput = {
@@ -147,7 +151,7 @@ export async function construirReporte(f: FiltrosReporte) {
     }),
     prisma.ficha.findMany({
       where: { aprendices: { some: {} } },
-      select: { codigo: true },
+      select: { codigo: true, programa: true },
       orderBy: { codigo: "asc" },
     }),
     prisma.user.findMany({
@@ -418,6 +422,9 @@ export async function construirReporte(f: FiltrosReporte) {
     filtros: f,
     opciones: {
       fichas: fichas.map((x) => x.codigo),
+      programas: [...new Set(fichas.map((x) => x.programa).filter((p): p is string => Boolean(p)))].sort((a, b) =>
+        a.localeCompare(b),
+      ),
       instructores: instructores.map((i) => ({ id: i.id, nombre: `${i.nombres} ${i.apellidos}` })),
       empresas: empresas.map((e) => e.empresaPatrocinadora),
     },
@@ -452,6 +459,7 @@ export function describirFiltros(r: Reporte): string {
   const f = r.filtros;
   const partes = [
     f.ficha && `Ficha ${f.ficha}`,
+    f.programa && `Programa: ${f.programa}`,
     f.instructor && `Instructor: ${r.opciones.instructores.find((i) => i.id === f.instructor)?.nombre ?? "—"}`,
     f.empresa && `Empresa: ${f.empresa}`,
     f.estado && `Estado: ${estadoAprendizLabel[f.estado as keyof typeof estadoAprendizLabel]}`,

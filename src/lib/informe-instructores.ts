@@ -76,7 +76,7 @@ export async function construirInformeInstructores() {
       },
       orderBy: [{ nombres: "asc" }, { apellidos: "asc" }],
     }),
-    construirReporte({ ficha: "", instructor: "", empresa: "", estado: "", desde: "", hasta: "" }),
+    construirReporte({ ficha: "", programa: "", instructor: "", empresa: "", estado: "", desde: "", hasta: "" }),
   ]);
 
   const grupoDe = new Map(reporte.listado.map((l) => [l.id, l.grupo]));

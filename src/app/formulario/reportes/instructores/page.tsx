@@ -59,7 +59,7 @@ function GruposBarra({ g, total }: { g: GestionInstructor["grupos"]; total: numb
 }
 
 export default async function GestionInstructoresPage() {
-  await requireUser(["COORDINADOR", "ADMIN"]);
+  await requireUser(["COORDINADOR", "ADMIN", "COORDINADOR_FORMACION"]);
   const r = await construirInformeInstructores();
   const conFichas = r.instructores.filter((i) => i.aprendices > 0);
   const sinFichas = r.instructores.filter((i) => i.aprendices === 0);

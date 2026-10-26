@@ -654,6 +654,11 @@ export type CreateAprendizInput = z.infer<typeof CreateAprendizSchema>;
 export const CreateCoordinadorSchema = CreateInstructorSchema;
 export type CreateCoordinadorInput = CreateInstructorInput;
 
+// Cuenta de Coordinación de Formación (26 oct 2026): solo consulta y sin área asignada —ve todo el
+// centro—, así que lleva los datos personales sin «coordinación». La crea únicamente el ADMIN.
+export const CreateCoordinacionFormacionSchema = z.object(datosPersonalesBase);
+export type CreateCoordinacionFormacionInput = z.infer<typeof CreateCoordinacionFormacionSchema>;
+
 export const ProfileSchema = z.object({
   // La empresa se elige por NIT del catálogo que administra el ADMIN (decisión de Coordinación,
   // 2 oct 2026): nombre y dirección salen de ahí, el aprendiz no los escribe. El NIT se valida con

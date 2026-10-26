@@ -10,6 +10,7 @@ const roleLabel: Record<string, string> = {
   INSTRUCTOR: "Instructor",
   COORDINADOR: "Coordinador de Etapa Productiva",
   ADMIN: "Administrador",
+  COORDINADOR_FORMACION: "Coordinación de Formación",
 };
 
 type Grupo = { titulo: string; icono: string; items: { href: string; label: string }[] };
@@ -37,6 +38,7 @@ const gruposCoordinacion = (estructuraExtra: Grupo["items"] = []): Grupo[] => [
     titulo: "Consultas",
     icono: "📊",
     items: [
+      { href: "/formulario/formacion", label: "Tablero de indicadores" },
       { href: "/formulario/reportes", label: "Reportes" },
       { href: "/formulario/reportes/instructores", label: "Gestión de instructores" },
       { href: "/formulario/reportes/funciones", label: "Funciones en la empresa" },
@@ -111,8 +113,35 @@ const roleNav: Record<string, Grupo[]> = {
   COORDINADOR: gruposCoordinacion(),
   ADMIN: gruposCoordinacion([
     { href: "/formulario/admin/coordinadores", label: "Coordinadores" },
+    { href: "/formulario/admin/coordinacion-formacion", label: "Coordinación de Formación" },
     { href: "/formulario/admin/claves", label: "Contraseñas" },
   ]),
+  // Coordinación de Formación solo consulta (decisión del 26 oct 2026): su tablero de indicadores,
+  // los reportes que ya existen y la ayuda. Nada que avalar ni modificar.
+  COORDINADOR_FORMACION: [
+    {
+      titulo: "Indicadores",
+      icono: "🎯",
+      items: [{ href: "/formulario/formacion", label: "Tablero de indicadores" }],
+    },
+    {
+      titulo: "Consultas",
+      icono: "📊",
+      items: [
+        { href: "/formulario/reportes", label: "Reportes" },
+        { href: "/formulario/reportes/instructores", label: "Gestión de instructores" },
+        { href: "/formulario/reportes/funciones", label: "Funciones en la empresa" },
+      ],
+    },
+    {
+      titulo: "Ayuda y cuenta",
+      icono: "❓",
+      items: [
+        { href: "/formulario/ayuda", label: "Guía de uso" },
+        { href: "/formulario/coordinador/perfil", label: "Mi perfil" },
+      ],
+    },
+  ],
 };
 
 function Contador({ n, suave = false }: { n: number; suave?: boolean }) {

@@ -10,10 +10,14 @@ export const dynamic = "force-dynamic";
 // puede ver el de cualquier aprendiz, igual que en su lista de Aprendices, aunque solo evalúa a
 // los de sus fichas.
 export default async function ExpedientePage({ params }: { params: Promise<{ id: string }> }) {
-  const user = await requireUser(["INSTRUCTOR", "COORDINADOR", "ADMIN"]);
+  const user = await requireUser(["INSTRUCTOR", "COORDINADOR", "ADMIN", "COORDINADOR_FORMACION"]);
   // Sin historial (enlace directo), «Volver» lleva a la lista de aprendices de cada rol.
   const listaAprendices =
-    user.role === "INSTRUCTOR" ? "/formulario/instructor/aprendices" : "/formulario/coordinador/aprendices";
+    user.role === "INSTRUCTOR"
+      ? "/formulario/instructor/aprendices"
+      : user.role === "COORDINADOR_FORMACION"
+        ? "/formulario/formacion"
+        : "/formulario/coordinador/aprendices";
   const { id } = await params;
   const expediente = await cargarExpediente(id);
   if (!expediente) notFound();

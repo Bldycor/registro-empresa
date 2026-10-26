@@ -65,6 +65,7 @@ const ROLES: Record<string, string> = {
   INSTRUCTOR: "Instructor",
   COORDINADOR: "Coordinación",
   ADMIN: "Administrador",
+  COORDINADOR_FORMACION: "Coordinación de Formación",
 };
 
 function fechaColombia(d: Date) {

@@ -34,6 +34,10 @@ export default async function FormularioPage() {
   if (user.role === "ADMIN") {
     redirect("/formulario/admin/coordinadores");
   }
+  // Coordinación de Formación solo consulta: entra directo a su tablero de indicadores.
+  if (user.role === "COORDINADOR_FORMACION") {
+    redirect("/formulario/formacion");
+  }
 
   const profile = await prisma.companyProfile.findUnique({
     where: { userId: session.user.id },

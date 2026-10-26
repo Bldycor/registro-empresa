@@ -20,6 +20,10 @@ enum Role {
   INSTRUCTOR
   COORDINADOR
   ADMIN
+  // Coordinación de Formación (Coordinador del Grupo de Formación Integral, procedimiento
+  // GFPI-P-006): vela por que la formación se ejecute dentro de las directrices. Solo consulta los
+  // indicadores y reportes de la Etapa Productiva; no avala ni modifica nada. La crea el ADMIN.
+  COORDINADOR_FORMACION
 }
 
 enum EstadoAprendiz {

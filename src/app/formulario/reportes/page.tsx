@@ -11,7 +11,7 @@ export default async function ReportesPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireUser(["INSTRUCTOR", "COORDINADOR", "ADMIN"]);
+  await requireUser(["INSTRUCTOR", "COORDINADOR", "ADMIN", "COORDINADOR_FORMACION"]);
   const filtros = leerFiltros(await searchParams);
   const reporte = await construirReporte(filtros);
   const query = filtrosAQuery(filtros);

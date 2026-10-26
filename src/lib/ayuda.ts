@@ -124,6 +124,10 @@ const INSTRUCTOR: GuiaRol = {
       titulo: "Consultas",
       opciones: [
         {
+          opcion: "Tablero de indicadores",
+          que: "La ejecución de la etapa productiva en una sola pantalla, de manera resumida: cómo van los aprendices, el recorrido de las seis evidencias, la calidad de la formación (rúbrica, juicio del Momento 3, planes de mejoramiento), la oportunidad (bitácoras a tiempo, novedades en plazo), el acompañamiento de los instructores y el consolidado por programa, con quiénes requieren atención. Cada indicador dice qué mide y cómo leerlo. Filtras por programa, ficha o fecha de inicio y lo guardas en PDF.",
+        },
+        {
           opcion: "Reportes",
           que: "Métricas, cumplimiento por evidencia con la lista de aprendices en riesgo, y el listado por aprendiz. Filtras por ficha, instructor, empresa, estado y fechas, y descargas en Excel o en PDF.",
         },
@@ -226,10 +230,67 @@ const COORDINADOR: GuiaRol = {
   ],
 };
 
+// Coordinación de Formación (Coordinador del Grupo de Formación Integral, GFPI-P-006): vela por que
+// la formación se ejecute dentro de las directrices. Solo consulta (decisión del 26 oct 2026).
+const COORDINACION_FORMACION: GuiaRol = {
+  rol: "Coordinación de Formación",
+  resumen:
+    "Vigilas que la etapa productiva se ejecute dentro de los lineamientos institucionales y de la guía GFPI-G-040. En SEPA consultas, de manera gerencial, los indicadores de todo el proceso y quiénes requieren atención; no avalas ni modificas evidencias: eso lo hacen los instructores y Coordinación de Etapa Productiva.",
+  secciones: [
+    {
+      titulo: "Indicadores",
+      opciones: [
+        {
+          opcion: "Tablero de indicadores",
+          que: "La ejecución de la etapa productiva en una sola pantalla, de manera resumida: cómo van los aprendices, el recorrido de las seis evidencias, la calidad de la formación (rúbrica, juicio del Momento 3, planes de mejoramiento), la oportunidad (bitácoras a tiempo, novedades en plazo), el acompañamiento de los instructores y el consolidado por programa, con quiénes requieren atención. Cada indicador dice qué mide y cómo leerlo. Filtras por programa, ficha o fecha de inicio y lo guardas en PDF.",
+        },
+      ],
+    },
+    {
+      titulo: "Consultas",
+      opciones: [
+        {
+          opcion: "Reportes",
+          que: "El detalle detrás del tablero: panorama, métricas explicadas, cumplimiento por evidencia, consolidados por ficha y programa y el listado por aprendiz, con los mismos filtros. Se descarga en Excel o en PDF.",
+        },
+        {
+          opcion: "Gestión de instructores",
+          que: "Cómo va el acompañamiento de cada instructor: aprendices al día, entregas que esperan su revisión y cuáles pasan de 8 días hábiles, tiempo de respuesta y momentos valorados. Sirve para apoyar, no para sancionar.",
+        },
+        {
+          opcion: "Funciones en la empresa",
+          que: "Las funciones que los aprendices hacen en la empresa frente a las competencias del programa, por ficha y por programa, con recomendaciones para mejorar el programa de formación.",
+        },
+        {
+          opcion: "Expediente",
+          que: "Desde la lista de quienes requieren atención abres el expediente de un aprendiz: todo su proceso en una página, de solo lectura.",
+        },
+      ],
+    },
+    {
+      titulo: "Ayuda y cuenta",
+      opciones: [
+        { opcion: "Guía de uso", que: "Esta guía." },
+        { opcion: "Mi perfil", que: "Actualizas tus datos de contacto." },
+      ],
+    },
+  ],
+  consejos: [
+    "Empieza por la frase de arriba del tablero y por «Quiénes requieren atención»: es lo más accionable.",
+    "Los umbrales de cada lectura (bien, revisar, pide acción) son referencias para interpretar, no reglas de la guía.",
+    "Para actuar sobre un caso, coordina con el instructor de la ficha o con Coordinación de Etapa Productiva: tu cuenta es de consulta.",
+  ],
+};
+
 // El administrador ve lo mismo que Coordinación, más la gestión de cuentas de coordinación.
 const OPCION_COORDINADORES: OpcionAyuda = {
   opcion: "Coordinadores",
   que: "Creas y administras las cuentas de coordinación. Junto con «Contraseñas», son las opciones exclusivas del administrador; el resto del menú es igual al de Coordinación.",
+};
+
+const OPCION_COORDINACION_FORMACION: OpcionAyuda = {
+  opcion: "Coordinación de Formación",
+  que: "Creas las cuentas de Coordinación de Formación: un rol de solo consulta que ve el tablero de indicadores, los reportes, la gestión de instructores y las funciones en la empresa. Su contraseña inicial es su cédula, como el resto de cuentas que crea otro rol.",
 };
 
 const OPCION_CLAVES: OpcionAyuda = {
@@ -245,13 +306,14 @@ const OPCION_EMPRESAS: OpcionAyuda = {
 export function guiaDelRol(role: string): GuiaRol {
   if (role === "APRENDIZ") return APRENDIZ;
   if (role === "INSTRUCTOR") return INSTRUCTOR;
+  if (role === "COORDINADOR_FORMACION") return COORDINACION_FORMACION;
   if (role === "ADMIN") {
     return {
       ...COORDINADOR,
       rol: "Administrador",
       resumen: `${COORDINADOR.resumen} Además administras las cuentas de coordinación.`,
       secciones: COORDINADOR.secciones.map((s) =>
-        s.titulo === "Estructura" ? { ...s, opciones: [OPCION_COORDINADORES, OPCION_CLAVES, OPCION_EMPRESAS, ...s.opciones] } : s,
+        s.titulo === "Estructura" ? { ...s, opciones: [OPCION_COORDINADORES, OPCION_COORDINACION_FORMACION, OPCION_CLAVES, OPCION_EMPRESAS, ...s.opciones] } : s,
       ),
     };
   }
@@ -377,6 +439,14 @@ export const ayudaMenu: Record<string, { icono: string; resumen: string }> = {
     icono: "🏢",
     resumen: "Empresas por NIT, con el RUES, y sus sedes o sucursales.",
   },
+  "/formulario/formacion": {
+    icono: "🎯",
+    resumen: "Los indicadores de toda la etapa productiva, resumidos, y quién requiere atención.",
+  },
+  "/formulario/admin/coordinacion-formacion": {
+    icono: "🧭",
+    resumen: "Crea las cuentas de Coordinación de Formación (solo consulta).",
+  },
   "/formulario/reportes/instructores": {
     icono: "🧑‍🏫",
     resumen: "Cómo acompaña cada instructor: al día, revisión a tiempo y momentos valorados.",
@@ -413,4 +483,5 @@ export const bienvenidaRol: Record<string, string> = {
   INSTRUCTOR: "Aquí revisas las evidencias de tus aprendices, valoras los Momentos y llevas su seguimiento.",
   COORDINADOR: "Aquí administras fichas e instructores, autorizas alternativas y resuelves novedades.",
   ADMIN: "Aquí administras todo el proceso: cuentas, fichas, alternativas, novedades y reportes.",
+  COORDINADOR_FORMACION: "Aquí consultas cómo va la etapa productiva: sus indicadores y quién requiere atención.",
 };

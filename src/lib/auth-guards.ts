@@ -10,6 +10,7 @@ const NOMBRE_ROL: Record<Role, string> = {
   INSTRUCTOR: "instructor",
   COORDINADOR: "Coordinación",
   ADMIN: "administrador",
+  COORDINADOR_FORMACION: "Coordinación de Formación",
 };
 
 // Usuario de la sesión actual, con su rol ya resuelto desde la base de datos. La sesión (JWT)

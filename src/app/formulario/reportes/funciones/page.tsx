@@ -133,7 +133,7 @@ export default async function InformeFuncionesPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireUser(["COORDINADOR", "ADMIN"]);
+  await requireUser(["COORDINADOR", "ADMIN", "COORDINADOR_FORMACION"]);
   const sp = await searchParams;
   const texto = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string).trim() : "");
   const r: InformeFunciones = await construirInformeFunciones({ programa: texto("programa"), ficha: texto("ficha") });

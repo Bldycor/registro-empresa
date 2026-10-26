@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 // (fichas, instructores, aprendices, alternativas, competencias), reutilizadas tal cual para
 // Admin en vez de duplicarlas.
 export default async function CoordinadorPerfilPage() {
-  const currentUser = await requireUser(["COORDINADOR", "ADMIN"]);
+  const currentUser = await requireUser(["COORDINADOR", "ADMIN", "COORDINADOR_FORMACION"]);
 
   const user = await prisma.user.findUnique({
     where: { id: currentUser.id },
@@ -26,13 +26,16 @@ export default async function CoordinadorPerfilPage() {
   });
 
   if (!user) redirect("/login");
+  const formacion = currentUser.role === "COORDINADOR_FORMACION";
 
   return (
     <div className="flex flex-1 flex-col items-center gap-8 px-4 py-10">
       <div className="w-full max-w-2xl">
         <h1 className="mb-1 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Mi perfil</h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Tus datos de contacto — el administrador gestiona tu coordinación asignada.
+          {formacion
+            ? "Tus datos de contacto — tu cuenta de Coordinación de Formación la gestiona el administrador."
+            : "Tus datos de contacto — el administrador gestiona tu coordinación asignada."}
         </p>
       </div>
 
@@ -44,7 +47,12 @@ export default async function CoordinadorPerfilPage() {
           email: user.email,
           celular: user.celular,
           direccionResidencia: user.direccionResidencia,
-          codigoFicha: user.coordinacion ? coordinacionLabel[user.coordinacion] : "Sin asignar",
+          // Coordinación de Formación no tiene un área asignada: consulta todo el centro.
+          codigoFicha: formacion
+            ? "Coordinación de Formación"
+            : user.coordinacion
+              ? coordinacionLabel[user.coordinacion]
+              : "Sin asignar",
         }}
         codigoFichaLabel="Coordinación"
       />

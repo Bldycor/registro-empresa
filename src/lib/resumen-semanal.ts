@@ -12,7 +12,7 @@ export async function datosResumenSemanal(hoy: Date): Promise<DatosResumenSemana
     prisma.interrupcionEtapaProductiva.count({ where: { estado: "PENDIENTE" } }),
     prisma.aplazamientoEtapaProductiva.count({ where: { estado: "PENDIENTE" } }),
     prisma.planMejoramiento.count({ where: { estado: "POR_AUTORIZAR" } }),
-    construirReporte({ ficha: "", instructor: "", empresa: "", estado: "", desde: "", hasta: "" }),
+    construirReporte({ ficha: "", programa: "", instructor: "", empresa: "", estado: "", desde: "", hasta: "" }),
   ]);
   return {
     // Plazo institucional de 8 días hábiles para el aval (guía GFPI-G-040).

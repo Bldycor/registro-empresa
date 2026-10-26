@@ -14,7 +14,7 @@ const fecha = (value: Date | null) => (value ? { value, type: Date, format: "dd/
 // Los mismos reportes de /formulario/reportes, con los mismos filtros, en un .xlsx: una hoja por
 // reporte, y el de Cumplimiento abierto en dos (el conjunto y la lista de riesgo). Solo consulta.
 export async function GET(request: Request) {
-  const { user, response } = await requireApiUser(["INSTRUCTOR", "COORDINADOR", "ADMIN"]);
+  const { user, response } = await requireApiUser(["INSTRUCTOR", "COORDINADOR", "ADMIN", "COORDINADOR_FORMACION"]);
   if (!user) return response;
 
   const r = await construirReporte(leerFiltros(new URL(request.url).searchParams));

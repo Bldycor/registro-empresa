@@ -69,6 +69,7 @@ const roleLabel: Record<string, string> = {
   APRENDIZ: "Aprendiz",
   INSTRUCTOR: "Instructor",
   COORDINADOR: "Coordinador de Etapa Productiva",
+  COORDINADOR_FORMACION: "Coordinación de Formación",
 };
 
 // Notificación de bienvenida al registrarse: confirma la creación de la cuenta y
