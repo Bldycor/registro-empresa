@@ -39,6 +39,7 @@ function GruposBarra({ g, total }: { g: GestionInstructor["grupos"]; total: numb
     { n: g.alDia, clase: "bg-[#0ca30c]", etiqueta: "Al día" },
     { n: g.enRiesgo, clase: "bg-[#d03b3b]", etiqueta: "Necesitan atención" },
     { n: g.porCertificar + g.certificados, clase: "bg-sky-500", etiqueta: "Por certificar o certificados" },
+    { n: g.sinIniciar, clase: "bg-zinc-200 dark:bg-zinc-700", etiqueta: "Sin iniciar la etapa productiva" },
     { n: g.enPausa, clase: "bg-zinc-300 dark:bg-zinc-600", etiqueta: "En pausa o retirados" },
   ];
   if (!total) return <span className="text-xs text-zinc-400">Sin aprendices</span>;

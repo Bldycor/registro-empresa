@@ -10,6 +10,8 @@ import { aprendicesActivosPorInstructor } from "@/lib/carga-instructor";
 import { superaTope } from "@/lib/tope-instructor";
 import { fechaEnColombia } from "@/lib/plazos-institucionales";
 import { estadoAprendizLabel } from "@/lib/validations";
+import { calcularSlotsBitacoras } from "@/lib/bitacora-fechas";
+import { TODAS_LAS_VARIABLES, variableLabel } from "@/lib/evaluacion-variables";
 
 // Consultas y reportes (requisitos §3.5). Una sola consulta alimenta los tres reportes, que se
 // reparten la información para no repetirla:
@@ -105,7 +107,7 @@ export async function construirReporte(f: FiltrosReporte) {
       : {}),
   };
 
-  const [aprendices, fichas, instructores, empresas] = await Promise.all([
+  const [aprendices, fichas, instructores, empresas, primeraBitacora] = await Promise.all([
     prisma.user.findMany({
       where,
       select: {
@@ -134,10 +136,10 @@ export async function construirReporte(f: FiltrosReporte) {
         seleccionesAlternativa: { select: { estado: true }, orderBy: { createdAt: "desc" }, take: 1 },
         formalizacionEtapaProductiva: { select: { estado: true } },
         concertacionFuncion: { select: { estado: true, fecha: true } },
-        bitacoras: { select: { numero: true, estado: true, fechaLimite: true, fechaEntrega: true } },
+        bitacoras: { select: { numero: true, estado: true, fechaLimite: true, fechaEntrega: true, fechaAval: true } },
         evaluaciones: {
           where: { numero: { in: [2, 3] }, esExtraordinario: false },
-          select: { numero: true, estado: true, juicioFinal: true, variables: { select: { valoracion: true } } },
+          select: { numero: true, estado: true, juicioFinal: true, variables: { select: { variable: true, valoracion: true } } },
         },
         certificacionEmpresario: { select: { estado: true } },
         // Novedades de la guía §9.2, con sus dos plazos (ver src/lib/novedades.ts).
@@ -165,12 +167,19 @@ export async function construirReporte(f: FiltrosReporte) {
       select: { empresaPatrocinadora: true },
       orderBy: { empresaPatrocinadora: "asc" },
     }),
+    // Desde cuándo SEPA recibe bitácoras: la primera que se registró en el sistema.
+    prisma.bitacora.aggregate({ _min: { createdAt: true } }),
   ]);
 
   const hoy = new Date();
 
   const porEstado = Object.fromEntries(Object.keys(estadoAprendizLabel).map((k) => [k, 0])) as Record<string, number>;
-  const bitacoras = { entregadas: 0, aTiempo: 0, conAtraso: 0, aprobadas: 0 };
+  // Puntualidad de bitácoras: solo cuentan las que vencían cuando SEPA ya las recibía. Las de antes
+  // (`cargaInicial`) se subieron después porque la plataforma llegó más tarde que la práctica, y
+  // medirlas como «tarde» reflejaría la llegada de SEPA, no al aprendiz (verificado el 26 oct 2026:
+  // 23 de 46 vencían antes de la primera bitácora registrada, el 31 ago 2026).
+  const inicioRegistro = primeraBitacora._min.createdAt;
+  const bitacoras = { entregadas: 0, aTiempo: 0, conAtraso: 0, aprobadas: 0, cargaInicial: 0, inicioRegistro };
   const momento3 = { aprobados: 0, noAprobados: 0 };
   const novedades = { total: 0, fueraDePlazo: 0, sinAnotarEnBitacora: 0 };
   const planesMejoramiento = { total: 0, abiertos: 0, vencidos: 0, noCumplidos: 0 };
@@ -178,14 +187,27 @@ export async function construirReporte(f: FiltrosReporte) {
   // Cada aprendiz en UN solo grupo, para que los indicadores sumen siempre el total y se lean de
   // un vistazo (pedido de Coordinación, 9 oct 2026): primero lo que dice su estado, y entre los
   // activos, si tiene algo vencido o no.
-  const semaforo = { alDia: 0, enRiesgo: 0, porCertificar: 0, certificados: 0, enPausa: 0 };
+  const semaforo = { alDia: 0, enRiesgo: 0, porCertificar: 0, certificados: 0, enPausa: 0, sinIniciar: 0 };
   const rubrica = { valoradas: 0, satisfactorio: 0 };
+  // La rúbrica criterio por criterio, para ver qué hay que reforzar en la formación.
+  const porCriterio = new Map(TODAS_LAS_VARIABLES.map((v) => [v, { satisfactorio: 0, porMejorar: 0 }]));
+  // Curva de avance de bitácoras: cada una con su fecha límite (lo esperado), su entrega y su aval.
+  const curva: { limite: Date; entrega: Date | null; aval: Date | null }[] = [];
   const matriz = Object.fromEntries(
     (Object.keys(ETIQUETA_EVIDENCIA) as ChecklistItem["clave"][]).map((clave) => [
       clave,
       { clave, etiqueta: ETIQUETA_EVIDENCIA[clave], completa: 0, atrasada: 0, proxima: 0, pendiente: 0 },
     ]),
   ) as Record<ChecklistItem["clave"], { clave: string; etiqueta: string; completa: number; atrasada: number; proxima: number; pendiente: number }>;
+  // Avance de cada evidencia en piezas: hechas (avaladas) sobre previstas. El semáforo solo dice si
+  // la evidencia está completa entera, y en las de varias piezas eso engaña: con la mitad de las
+  // bitácoras avaladas, «completa» solo cuenta a quien ya tiene las seis (reportado el 26 oct
+  // 2026). Bitácoras cuenta cada bitácora (hasta el total del aprendiz) y Evaluaciones los
+  // Momentos 2 y 3; las demás, un documento por aprendiz. Solo suman quienes ya iniciaron la etapa
+  // productiva (sin fecha de inicio aún no hay nada previsto) y no desertaron.
+  const avance = Object.fromEntries(
+    (Object.keys(ETIQUETA_EVIDENCIA) as ChecklistItem["clave"][]).map((clave) => [clave, { hechas: 0, previstas: 0 }]),
+  ) as Record<ChecklistItem["clave"], { hechas: number; previstas: number }>;
   const enRiesgo: {
     id: string;
     nombre: string;
@@ -270,6 +292,10 @@ export async function construirReporte(f: FiltrosReporte) {
       if (b.estado === "APROBADA") bitacoras.aprobadas++;
       if (!b.fechaEntrega) continue;
       bitacoras.entregadas++;
+      if (inicioRegistro && b.fechaLimite < inicioRegistro) {
+        bitacoras.cargaInicial++;
+        continue;
+      }
       // A tiempo = entregada a más tardar el día límite, contado en Colombia.
       if (fechaEnColombia(b.fechaEntrega) <= b.fechaLimite.toISOString().slice(0, 10)) bitacoras.aTiempo++;
       else bitacoras.conAtraso++;
@@ -281,6 +307,8 @@ export async function construirReporte(f: FiltrosReporte) {
         if (!v.valoracion) continue;
         rubrica.valoradas++;
         if (v.valoracion === "SATISFACTORIO") rubrica.satisfactorio++;
+        const c = porCriterio.get(v.variable);
+        if (c) c[v.valoracion === "SATISFACTORIO" ? "satisfactorio" : "porMejorar"]++;
       }
     }
 
@@ -332,11 +360,44 @@ export async function construirReporte(f: FiltrosReporte) {
 
     // Cumplimiento.
     for (const c of checklist) matriz[c.clave][c.estado]++;
+    if (a.estado !== "DESERTADO" && a.fechaInicioEtapaProductiva) {
+      // Lo esperado de cada bitácora: las del tramo vigente con su fecha según el inicio, y las de
+      // tramos anteriores con la fecha límite que quedó guardada.
+      const porNumero = new Map(a.bitacoras.map((b) => [b.numero, b]));
+      const inicioTramo = a.bitacoraInicioTramo ?? 1;
+      for (const b of a.bitacoras.filter((x) => x.numero < inicioTramo))
+        curva.push({ limite: b.fechaLimite, entrega: b.fechaEntrega, aval: b.estado === "APROBADA" ? b.fechaAval : null });
+      for (const slot of calcularSlotsBitacoras(a.fechaInicioEtapaProductiva, a.totalBitacoras, inicioTramo)) {
+        const b = porNumero.get(slot.numero);
+        curva.push({
+          limite: slot.fechaLimite,
+          entrega: b?.fechaEntrega ?? null,
+          aval: b?.estado === "APROBADA" ? (b.fechaAval ?? b.fechaEntrega) : null,
+        });
+      }
+      const sumar = (clave: ChecklistItem["clave"], hechas: number, previstas: number) => {
+        avance[clave].hechas += hechas;
+        avance[clave].previstas += previstas;
+      };
+      sumar("alternativa", a.seleccionesAlternativa[0]?.estado === "APROBADA" ? 1 : 0, 1);
+      sumar("formalizacion", a.formalizacionEtapaProductiva?.estado === "APROBADA" ? 1 : 0, 1);
+      sumar("concertacion", a.concertacionFuncion?.estado === "APROBADA" ? 1 : 0, 1);
+      sumar(
+        "bitacoras",
+        Math.min(a.bitacoras.filter((b) => b.estado === "APROBADA").length, a.totalBitacoras),
+        a.totalBitacoras,
+      );
+      sumar("evaluaciones", (m2?.estado === "APROBADA" ? 1 : 0) + (m3?.estado === "APROBADA" ? 1 : 0), 2);
+      sumar("certificacion", a.certificacionEmpresario?.estado === "APROBADA" ? 1 : 0, 1);
+    }
     const atrasadas = checklist.filter((c) => c.estado === "atrasada").map((c) => `${ETIQUETA_EVIDENCIA[c.clave]}: ${c.detalle}`);
     const necesitaAtencion = atrasadas.length > 0 || riesgo.enRiesgo;
     if (necesitaAtencion) {
       enRiesgo.push({ id: a.id, nombre, ficha: a.ficha?.codigo ?? null, instructor, atrasadas, causaDesercion: riesgo.causa });
     }
+    // «Sin iniciar»: activo, sin nada vencido y todavía sin fecha de inicio de etapa productiva.
+    // Antes contaba como «al día» y en práctica (26 oct 2026: 9 de 24 aprendices sin ficha ni
+    // fecha se leían como 9 aprendices al día).
     const grupo: keyof typeof semaforo =
       a.estado === "CERTIFICADO"
         ? "certificados"
@@ -346,7 +407,9 @@ export async function construirReporte(f: FiltrosReporte) {
             ? "enPausa"
             : necesitaAtencion
               ? "enRiesgo"
-              : "alDia";
+              : !a.fechaInicioEtapaProductiva
+                ? "sinIniciar"
+                : "alDia";
     semaforo[grupo]++;
 
     // Consolidado por ficha y por programa.
@@ -438,12 +501,19 @@ export async function construirReporte(f: FiltrosReporte) {
       })),
       bitacoras,
       momento3,
-      rubrica,
+      rubrica: {
+        ...rubrica,
+        porCriterio: TODAS_LAS_VARIABLES.map((v) => ({ variable: v, etiqueta: variableLabel[v], ...porCriterio.get(v)! })),
+      },
+      curvaBitacoras: curvaMensual(curva, hoy),
       novedades,
       planesMejoramiento,
       alertas: { plazo24Meses: conAdvertenciaPlazo, instructoresSobreTope },
     },
-    cumplimiento: { porEvidencia: Object.values(matriz), enRiesgo },
+    cumplimiento: {
+      porEvidencia: Object.values(matriz).map((e) => ({ ...e, avance: avance[e.clave as ChecklistItem["clave"]] })),
+      enRiesgo,
+    },
     consolidado: {
       porFicha: [...porFicha.values()].sort((x, y) => x.etiqueta.localeCompare(y.etiqueta)),
       porPrograma: [...porPrograma.values()].sort((x, y) => x.etiqueta.localeCompare(y.etiqueta)),
@@ -453,6 +523,34 @@ export async function construirReporte(f: FiltrosReporte) {
 }
 
 export type Reporte = Awaited<ReturnType<typeof construirReporte>>;
+
+// Curva de avance de bitácoras, mes a mes: al cierre de cada mes (el actual, hasta hoy), cuántas
+// debían estar entregadas según el plan de cada aprendiz, cuántas lo estaban y cuántas ya tenían
+// aval. Las fechas se guardan a medianoche de Colombia (05:00 UTC), y el corte de cada mes es el
+// último instante antes del día 1 siguiente en Colombia.
+export type PuntoCurva = { mes: string; etiqueta: string; esperadas: number; entregadas: number; avaladas: number; enCurso: boolean };
+
+function curvaMensual(curva: { limite: Date; entrega: Date | null; aval: Date | null }[], hoy: Date): PuntoCurva[] {
+  if (curva.length === 0) return [];
+  const primera = curva.reduce((m, c) => (c.limite < m ? c.limite : m), curva[0].limite);
+  const [yh, mh] = fechaEnColombia(hoy).split("-").map(Number);
+  const puntos: PuntoCurva[] = [];
+  for (let y = primera.getUTCFullYear(), m = primera.getUTCMonth(); y < yh || (y === yh && m <= mh - 1); m === 11 ? (y++, (m = 0)) : m++) {
+    const finMes = new Date(Date.UTC(y, m + 1, 1, 5) - 1);
+    const enCurso = y === yh && m === mh - 1;
+    const corte = enCurso ? hoy : finMes;
+    const hasta = (d: Date | null) => d !== null && d <= corte;
+    puntos.push({
+      mes: `${y}-${String(m + 1).padStart(2, "0")}`,
+      etiqueta: new Date(Date.UTC(y, m, 15)).toLocaleDateString("es-CO", { month: "short", year: "2-digit", timeZone: "UTC" }),
+      esperadas: curva.filter((c) => c.limite <= corte).length,
+      entregadas: curva.filter((c) => hasta(c.entrega)).length,
+      avaladas: curva.filter((c) => hasta(c.aval)).length,
+      enCurso,
+    });
+  }
+  return puntos;
+}
 
 // Los filtros activos en palabras, para el encabezado de la pantalla y la hoja de Métricas.
 export function describirFiltros(r: Reporte): string {

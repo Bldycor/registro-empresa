@@ -88,7 +88,7 @@ function BarrasEstado({ filas, total }: { filas: { etiqueta: string; cantidad: n
 }
 
 // Una barra 100 % apilada por evidencia, con el hueco del fondo entre tramos.
-function BarraCumplimiento({ fila }: { fila: Record<string, number | string> }) {
+function BarraCumplimiento({ fila }: { fila: Record<string, unknown> }) {
   const total = ESTADOS_CUMPLIMIENTO.reduce((s, e) => s + Number(fila[e.clave] ?? 0), 0);
   if (total === 0) return <span className="text-xs text-zinc-400">Sin aprendices</span>;
   return (
@@ -369,10 +369,14 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <IndicadorExplicado
             etiqueta="Bitácoras a tiempo"
-            valor={porcentaje(m.bitacoras.aTiempo, m.bitacoras.entregadas)}
-            detalle={`${m.bitacoras.aTiempo} de ${m.bitacoras.entregadas} entregadas · ${m.bitacoras.conAtraso} con atraso`}
-            significado="De las bitácoras entregadas, cuántas llegaron a más tardar en su fecha límite."
-            lectura={lecturaBitacorasATiempo(m.bitacoras.aTiempo, m.bitacoras.entregadas)}
+            valor={porcentaje(m.bitacoras.aTiempo, m.bitacoras.aTiempo + m.bitacoras.conAtraso)}
+            detalle={`${m.bitacoras.aTiempo} de ${m.bitacoras.aTiempo + m.bitacoras.conAtraso} · ${m.bitacoras.conAtraso} con atraso`}
+            significado={`De las bitácoras entregadas, cuántas llegaron a más tardar en su fecha límite.${
+              m.bitacoras.cargaInicial
+                ? ` Sin contar ${m.bitacoras.cargaInicial} de la carga inicial, que vencían antes de que SEPA empezara a recibirlas.`
+                : ""
+            }`}
+            lectura={lecturaBitacorasATiempo(m.bitacoras.aTiempo, m.bitacoras.aTiempo + m.bitacoras.conAtraso)}
           />
           <IndicadorExplicado
             etiqueta="Bitácoras avaladas"

@@ -17,6 +17,8 @@ import {
 } from "@/lib/lectura-indicadores";
 import { LecturaLinea } from "@/components/panorama-aprendices";
 import { ImprimirBoton } from "@/components/imprimir-boton";
+import { CurvaBitacoras } from "@/components/curva-bitacoras";
+import { fechaEnColombia } from "@/lib/plazos-institucionales";
 
 // Tablero de Coordinación de Formación (26 oct 2026): la ejecución de la etapa productiva de un
 // vistazo y de manera gerencial. No calcula nada propio: todo sale de `construirReporte` (los mismos
@@ -33,15 +35,9 @@ const GRUPOS = [
   { clave: "enRiesgo", etiqueta: "Requieren atención", ayuda: "Algo vencido o señal de deserción", color: "bg-[#d03b3b]" },
   { clave: "porCertificar", etiqueta: "Por certificar", ayuda: "Seis evidencias completas", color: "bg-sky-500" },
   { clave: "certificados", etiqueta: "Certificados", ayuda: "Terminaron el proceso", color: "bg-azul dark:bg-sky-300" },
-  { clave: "enPausa", etiqueta: "En pausa o retirados", ayuda: "Interrumpida, aplazada o desertó", color: "bg-zinc-300 dark:bg-zinc-600" },
+  { clave: "sinIniciar", etiqueta: "Sin iniciar", ayuda: "Aún sin fecha de inicio de etapa productiva", color: "bg-zinc-300 dark:bg-zinc-600" },
+  { clave: "enPausa", etiqueta: "En pausa o retirados", ayuda: "Interrumpida, aplazada o desertó", color: "bg-zinc-500 dark:bg-zinc-400" },
 ] as const;
-
-const TRAMO = {
-  completa: { etiqueta: "Completa", color: "bg-[#0ca30c]" },
-  proxima: { etiqueta: "Vence pronto", color: "bg-[#fab219]" },
-  atrasada: { etiqueta: "Atrasada", color: "bg-[#d03b3b]" },
-  pendiente: { etiqueta: "Aún no le toca", color: "bg-zinc-300 dark:bg-zinc-600" },
-} as const;
 
 export function TableroFormacion({ r, informe }: { r: Reporte; informe: Informe }) {
   const m = r.metricas;
@@ -65,6 +61,7 @@ export function TableroFormacion({ r, informe }: { r: Reporte; informe: Informe 
         <>
           <Pulso s={s} total={total} enPractica={enPractica} terminaron={terminaron} />
           <Recorrido r={r} total={total} />
+          <Ritmo r={r} />
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <Calidad r={r} />
             <Oportunidad r={r} />
@@ -209,10 +206,15 @@ function Pulso({
   enPractica: number;
   terminaron: number;
 }) {
-  const frase =
+  const frase = [
     enPractica > 0
-      ? `De ${total} aprendices acompañados, ${enPractica} están en práctica: ${s.alDia} van al día y ${s.enRiesgo} requieren atención.${terminaron ? ` ${terminaron} ya ${terminaron === 1 ? "completó" : "completaron"} sus seis evidencias.` : ""}`
-      : `${total} aprendices acompañados; ninguno en práctica activa en este momento.`;
+      ? `De ${total} aprendices acompañados, ${enPractica} están en práctica: ${s.alDia} ${s.alDia === 1 ? "va" : "van"} al día y ${s.enRiesgo} ${s.enRiesgo === 1 ? "requiere" : "requieren"} atención.`
+      : `${total} aprendices acompañados; ninguno en práctica activa en este momento.`,
+    terminaron ? `${terminaron} ya ${terminaron === 1 ? "completó" : "completaron"} sus seis evidencias.` : null,
+    s.sinIniciar ? `${s.sinIniciar} todavía no ${s.sinIniciar === 1 ? "inicia" : "inician"} la etapa productiva.` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
     <Bloque pregunta="¿Cómo van los aprendices?" titulo="El pulso de la etapa productiva">
       <p className="max-w-3xl text-lg leading-snug text-zinc-800 [text-wrap:pretty] dark:text-zinc-100">{frase}</p>
@@ -221,7 +223,7 @@ function Pulso({
         <div
           role="img"
           aria-label={GRUPOS.map((g) => `${g.etiqueta}: ${s[g.clave]}`).join(", ")}
-          className="flex h-5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800"
+          className="flex h-5 w-full gap-[2px] overflow-hidden rounded-[4px]"
         >
           {GRUPOS.map((g) =>
             s[g.clave] ? (
@@ -237,7 +239,7 @@ function Pulso({
         <p className="text-xs text-zinc-500 dark:text-zinc-400">Cada aprendiz está en un solo grupo: la franja suma el 100 %.</p>
       </div>
 
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {GRUPOS.map((g) => (
           <div key={g.clave} className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-3 dark:border-zinc-800">
             <dt className="flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
@@ -261,18 +263,32 @@ function Pulso({
   );
 }
 
-// 2. ¿Dónde se atasca el proceso? Las seis evidencias en su orden, con la que más atrasos acumula.
+// 2. ¿Dónde se atasca el proceso? Las seis evidencias en su orden. Cada estación responde dos
+// preguntas: cuánto se ha avanzado (piezas avaladas sobre previstas: en Bitácoras cada bitácora, en
+// Evaluaciones cada Momento) y cómo van los aprendices frente a sus fechas. Antes el número grande
+// era «aprendices con la evidencia completa entera», y con la mitad de las bitácoras avaladas
+// marcaba 4 % (corregido el 26 oct 2026).
+const PIEZA: Record<string, (hechas: number, previstas: number) => string> = {
+  alternativa: (h, p) => `${h} de ${p} alternativas avaladas`,
+  formalizacion: (h, p) => `${h} de ${p} formalizaciones avaladas`,
+  concertacion: (h, p) => `${h} de ${p} concertaciones valoradas`,
+  bitacoras: (h, p) => `${h} de ${p} bitácoras avaladas`,
+  evaluaciones: (h, p) => `${h} de ${p} momentos valorados`,
+  certificacion: (h, p) => `${h} de ${p} cartas avaladas`,
+};
+
 function Recorrido({ r, total }: { r: Reporte; total: number }) {
   const evidencias = r.cumplimiento.porEvidencia;
   const peor = evidencias.reduce((a, b) => (b.atrasada > a.atrasada ? b : a), evidencias[0]);
   const cuello = peor && peor.atrasada > 0 ? peor.clave : null;
   return (
-    <Bloque pregunta="¿Dónde se atasca el proceso?" titulo="Recorrido de las seis evidencias">
+    <Bloque pregunta="¿Cuánto se ha avanzado y dónde se atasca?" titulo="Recorrido de las seis evidencias">
       <ol className="relative grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
         {/* La línea que une las seis estaciones, solo cuando caben en una fila. */}
         <span aria-hidden className="absolute left-0 right-0 top-[18px] hidden h-0.5 bg-zinc-200 dark:bg-zinc-700 lg:block" />
         {evidencias.map((e, i) => {
-          const completa = pct(e.completa, total) ?? 0;
+          const avance = pct(e.avance.hechas, e.avance.previstas) ?? 0;
+          const alDia = total - e.atrasada;
           const esCuello = e.clave === cuello;
           return (
             <li key={e.clave} className="relative flex flex-col gap-2">
@@ -280,61 +296,141 @@ function Recorrido({ r, total }: { r: Reporte; total: number }) {
                 className={`relative z-10 grid h-9 w-9 place-items-center rounded-full border-2 text-sm font-bold tabular-nums ${
                   esCuello
                     ? "border-[#d03b3b] bg-[#d03b3b] text-white"
-                    : "border-emerald-600 bg-white text-emerald-700 dark:bg-zinc-900 dark:text-emerald-400"
+                    : avance === 100
+                      ? "border-emerald-600 bg-emerald-600 text-white"
+                      : "border-emerald-600 bg-white text-emerald-700 dark:bg-zinc-900 dark:text-emerald-400"
                 } print:[print-color-adjust:exact]`}
               >
-                {i + 1}
+                {avance === 100 && !esCuello ? "✓" : i + 1}
               </span>
               <div
                 className={`flex flex-1 flex-col gap-2 rounded-xl border p-3 ${
                   esCuello ? "border-red-300 dark:border-red-900/70" : "border-zinc-200 dark:border-zinc-800"
                 }`}
               >
-                <p className="text-sm font-medium leading-tight text-zinc-800 dark:text-zinc-100">{e.etiqueta}</p>
-                <p className="flex items-baseline gap-1">
-                  <span className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">{completa} %</span>
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400">completa</span>
+                <p className="min-h-[2.5rem] text-sm font-medium leading-tight text-zinc-800 dark:text-zinc-100">{e.etiqueta}</p>
+
+                {/* Cuánto se ha avanzado. */}
+                <p className="flex flex-col">
+                  <span className="whitespace-nowrap text-3xl font-semibold text-zinc-900 dark:text-zinc-50">{avance} %</span>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">de avance</span>
                 </p>
-                <div aria-hidden className="flex h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                  {(Object.keys(TRAMO) as (keyof typeof TRAMO)[]).map((k) =>
-                    e[k] ? (
-                      <span
-                        key={k}
-                        className={`h-full print:[print-color-adjust:exact] ${TRAMO[k].color}`}
-                        style={{ width: `${(e[k] * 100) / total}%` }}
-                      />
-                    ) : null,
+                <span aria-hidden className="block h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                  <span
+                    className="block h-full rounded-full bg-[#0ca30c] print:[print-color-adjust:exact]"
+                    style={{ width: `${avance}%` }}
+                  />
+                </span>
+                <p className="text-xs leading-snug text-zinc-600 dark:text-zinc-300">
+                  {PIEZA[e.clave]?.(e.avance.hechas, e.avance.previstas)}
+                </p>
+
+                {/* Cómo van los aprendices frente a sus fechas. */}
+                <div className="mt-auto flex flex-col gap-1 border-t border-zinc-100 pt-2 dark:border-zinc-800">
+                  {e.atrasada > 0 ? (
+                    <p className="text-xs font-semibold text-red-700 dark:text-red-400">
+                      {e.atrasada} {e.atrasada === 1 ? "aprendiz atrasado" : "aprendices atrasados"}
+                    </p>
+                  ) : (
+                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                      {alDia === total ? "Todos al día" : `${alDia} al día`}
+                    </p>
+                  )}
+                  {e.proxima > 0 && (
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      {e.proxima} {e.proxima === 1 ? "vence" : "vencen"} en los próximos 5 días
+                    </p>
+                  )}
+                  {esCuello && (
+                    <span className="w-fit rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                      Donde más se atrasa
+                    </span>
                   )}
                 </div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {e.atrasada > 0 ? (
-                    <span className="font-semibold text-red-700 dark:text-red-400">
-                      {e.atrasada} atrasada{e.atrasada === 1 ? "" : "s"}
-                    </span>
-                  ) : (
-                    "Sin atrasos"
-                  )}
-                  {e.proxima > 0 && ` · ${e.proxima} vence${e.proxima === 1 ? "" : "n"} pronto`}
-                </p>
-                {esCuello && (
-                  <span className="w-fit rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-800 dark:bg-red-900/40 dark:text-red-300">
-                    Donde más se atrasa
-                  </span>
-                )}
               </div>
             </li>
           );
         })}
       </ol>
-      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
-        {(Object.keys(TRAMO) as (keyof typeof TRAMO)[]).map((k) => (
-          <li key={k} className="flex items-center gap-1.5">
-            <span aria-hidden className={`h-2 w-2 rounded-full print:[print-color-adjust:exact] ${TRAMO[k].color}`} />
-            {TRAMO[k].etiqueta}
+      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+        <strong className="font-medium text-zinc-600 dark:text-zinc-300">Avance:</strong> lo avalado sobre lo previsto para
+        toda la etapa productiva (seis bitácoras y dos momentos de evaluación por aprendiz) de los{" "}
+        {r.metricas.semaforo.sinIniciar
+          ? `${total - r.metricas.semaforo.sinIniciar} aprendices que ya la iniciaron; los ${r.metricas.semaforo.sinIniciar} sin iniciar no cuentan.`
+          : "aprendices que ya la iniciaron."}{" "}
+        <strong className="font-medium text-zinc-600 dark:text-zinc-300">Al día:</strong> sin nada vencido a la fecha,
+        aunque todavía le falten piezas que aún no le tocan.
+      </p>
+    </Bloque>
+  );
+}
+
+// 3. ¿Vamos al ritmo esperado? La curva de bitácoras: el plan frente a lo entregado y lo avalado.
+function Ritmo({ r }: { r: Reporte }) {
+  const puntos = r.metricas.curvaBitacoras;
+  const ultimo = puntos[puntos.length - 1];
+  const inicio = r.metricas.bitacoras.inicioRegistro;
+  const lectura: Lectura = !ultimo?.esperadas
+    ? { texto: "Todavía no vence ninguna bitácora.", tono: "neutro" }
+    : (() => {
+        const p = Math.round((ultimo.entregadas * 100) / ultimo.esperadas);
+        const texto = `De ${ultimo.esperadas} bitácoras que ya debían estar entregadas, llegaron ${ultimo.entregadas} (${p} %) y ${ultimo.avaladas} tienen aval.`;
+        return {
+          texto: p >= 90 ? `${texto} Van al ritmo del plan.` : p >= 70 ? `${texto} Hay un rezago que conviene acompañar.` : `${texto} El rezago es grande: conviene recordar fechas y revisar casos con los instructores.`,
+          tono: p >= 90 ? "bien" : p >= 70 ? "regular" : "atencion",
+        };
+      })();
+  return (
+    <Bloque pregunta="¿Vamos al ritmo esperado?" titulo="Curva de avance de las bitácoras">
+      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+        Al cierre de cada mes: cuántas bitácoras debían estar entregadas según el plan de cada aprendiz (una por mes desde su
+        inicio), cuántas se entregaron y cuántas tienen aval. Pasa el puntero o usa las flechas para ver cada mes.
+      </p>
+      <CurvaBitacoras puntos={puntos} mesInicioSepa={inicio ? fechaEnColombia(inicio).slice(0, 7) : null} />
+      <LecturaLinea lectura={lectura} />
+    </Bloque>
+  );
+}
+
+// Los 13 criterios de la rúbrica del GFPI-F-023, del más bajo al más alto en «Satisfactorio»:
+// arriba lo que conviene reforzar en la formación. Una sola serie, un solo tono.
+function RubricaPorCriterio({ criterios }: { criterios: Reporte["metricas"]["rubrica"]["porCriterio"] }) {
+  const filas = criterios
+    .map((c) => ({ ...c, valoradas: c.satisfactorio + c.porMejorar }))
+    .filter((c) => c.valoradas > 0)
+    .map((c) => ({ ...c, pct: Math.round((c.satisfactorio * 100) / c.valoradas) }))
+    .sort((a, b) => a.pct - b.pct || b.porMejorar - a.porMejorar);
+  if (filas.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+      <p className="text-sm font-medium text-zinc-700 dark:text-zinc-200">¿En qué criterios reforzar?</p>
+      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+        Porcentaje en «Satisfactorio» por criterio; arriba los más bajos.
+      </p>
+      <ul className="flex flex-col gap-2.5">
+        {filas.map((c) => (
+          <li
+            key={c.variable}
+            title={`${c.etiqueta}: ${c.pct} % en «Satisfactorio» (${c.satisfactorio} de ${c.valoradas}); ${c.porMejorar} «Por mejorar»`}
+            className="flex flex-col gap-1 text-xs"
+          >
+            <span className="flex items-baseline justify-between gap-3">
+              <span className="text-zinc-700 dark:text-zinc-200">{c.etiqueta}</span>
+              <span className="shrink-0 whitespace-nowrap tabular-nums text-zinc-600 dark:text-zinc-300">
+                <strong className="font-semibold text-zinc-900 dark:text-zinc-50">{c.pct} %</strong>
+                {c.porMejorar ? ` · ${c.porMejorar} por mejorar` : ""}
+              </span>
+            </span>
+            <span aria-hidden className="block h-2.5 overflow-hidden rounded-r-[4px] bg-zinc-100 dark:bg-zinc-800">
+              <span
+                className="block h-full rounded-r-[4px] bg-[#2f8a00] dark:bg-[#39a900] print:[print-color-adjust:exact]"
+                style={{ width: `${c.pct}%` }}
+              />
+            </span>
           </li>
         ))}
       </ul>
-    </Bloque>
+    </div>
   );
 }
 
@@ -377,7 +473,7 @@ function Indicador({
   );
 }
 
-// 3. ¿Qué tan bien se están formando? Rúbrica, juicio del cierre y planes de mejoramiento.
+// 4. ¿Qué tan bien se están formando? Rúbrica, juicio del cierre y planes de mejoramiento.
 function Calidad({ r }: { r: Reporte }) {
   const { rubrica, momento3, planesMejoramiento: pm } = r.metricas;
   const satisfactorio = pct(rubrica.satisfactorio, rubrica.valoradas);
@@ -391,6 +487,7 @@ function Calidad({ r }: { r: Reporte }) {
         mide="De los 13 criterios que el instructor valora en los Momentos 2 y 3 (formato GFPI-F-023)."
         lectura={lecturaRubrica(rubrica.satisfactorio, rubrica.valoradas)}
       />
+      <RubricaPorCriterio criterios={rubrica.porCriterio} />
       <Indicador
         nombre="Juicio del cierre (Momento 3)"
         valor={`${momento3.aprobados}`}
@@ -409,20 +506,28 @@ function Calidad({ r }: { r: Reporte }) {
   );
 }
 
-// 4. ¿Se cumple a tiempo? Bitácoras y novedades frente a sus plazos.
+// 5. ¿Se cumple a tiempo? Bitácoras y novedades frente a sus plazos.
 function Oportunidad({ r }: { r: Reporte }) {
   const { bitacoras: b, novedades: n } = r.metricas;
-  const aTiempo = pct(b.aTiempo, b.entregadas);
+  // La puntualidad se mide sin la carga inicial (ver `cargaInicial` en src/lib/reportes.ts).
+  const medidas = b.aTiempo + b.conAtraso;
+  const aTiempo = pct(b.aTiempo, medidas);
   const enPlazo = pct(n.total - n.fueraDePlazo, n.total);
   return (
     <Bloque pregunta="¿Se cumple a tiempo?" titulo="Oportunidad y cumplimiento">
       <Indicador
         nombre="Bitácoras entregadas a tiempo"
         valor={fmtPct(aTiempo)}
-        detalle={b.entregadas ? `${b.aTiempo} de ${b.entregadas}` : undefined}
+        detalle={medidas ? `${b.aTiempo} de ${medidas}` : undefined}
         porcentaje={aTiempo}
-        mide="Entregadas a más tardar en su fecha límite (una por mes, formato GFPI-F-147)."
-        lectura={lecturaBitacorasATiempo(b.aTiempo, b.entregadas)}
+        mide={`Entregadas a más tardar en su fecha límite (una por mes, formato GFPI-F-147).${
+          b.cargaInicial
+            ? ` Sin contar ${b.cargaInicial === 1 ? "1 bitácora" : `${b.cargaInicial} bitácoras`} de la carga inicial: vencían antes de que SEPA empezara a recibirlas${
+                b.inicioRegistro ? ` (${b.inicioRegistro.toLocaleDateString("es-CO", { timeZone: "America/Bogota" })})` : ""
+              } y se subieron después.`
+            : ""
+        }`}
+        lectura={lecturaBitacorasATiempo(b.aTiempo, medidas)}
       />
       <Indicador
         nombre="Bitácoras avaladas"
@@ -450,7 +555,7 @@ function Oportunidad({ r }: { r: Reporte }) {
   );
 }
 
-// 5. ¿Cómo acompañan los instructores? Siempre de todo el centro: es la capacidad institucional.
+// 6. ¿Cómo acompañan los instructores? Siempre de todo el centro: es la capacidad institucional.
 function Acompanamiento({ r, informe, filtrado }: { r: Reporte; informe: Informe; filtrado: boolean }) {
   const c = informe.centro;
   const revisadas = informe.instructores.reduce((s, i) => s + i.respuesta.revisadas, 0);
@@ -524,7 +629,7 @@ function Acompanamiento({ r, informe, filtrado }: { r: Reporte; informe: Informe
   );
 }
 
-// 6. ¿Dónde hay que poner el foco? Por programa (o por ficha, cuando ya se eligió un programa).
+// 7. ¿Dónde hay que poner el foco? Por programa (o por ficha, cuando ya se eligió un programa).
 function PorGrupo({ r }: { r: Reporte }) {
   const porFicha = Boolean(r.filtros.programa || r.filtros.ficha);
   const grupos = [...(porFicha ? r.consolidado.porFicha : r.consolidado.porPrograma)].sort(
@@ -592,7 +697,7 @@ function Barra({ porcentaje, color, texto }: { porcentaje: number; color: string
   );
 }
 
-// 7. ¿Quiénes requieren atención? Los primeros de la lista, con lo que les falta y su expediente.
+// 8. ¿Quiénes requieren atención? Los primeros de la lista, con lo que les falta y su expediente.
 const MAXIMO_ATENCION = 8;
 
 function Atencion({ r, query }: { r: Reporte; query: string }) {

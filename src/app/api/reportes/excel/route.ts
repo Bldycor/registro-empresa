@@ -30,8 +30,11 @@ export async function GET(request: Request) {
     ...m.porEstado.map((e) => [texto(`Aprendices en estado «${e.etiqueta}»`), numero(e.cantidad), null]),
     [
       texto("Bitácoras entregadas a tiempo"),
-      texto(porcentaje(m.bitacoras.aTiempo, m.bitacoras.entregadas)),
-      texto(`${m.bitacoras.aTiempo} de ${m.bitacoras.entregadas} entregadas; ${m.bitacoras.conAtraso} con atraso`),
+      texto(porcentaje(m.bitacoras.aTiempo, m.bitacoras.aTiempo + m.bitacoras.conAtraso)),
+      texto(
+        `${m.bitacoras.aTiempo} de ${m.bitacoras.aTiempo + m.bitacoras.conAtraso}; ${m.bitacoras.conAtraso} con atraso` +
+          (m.bitacoras.cargaInicial ? `; sin contar ${m.bitacoras.cargaInicial} de la carga inicial` : ""),
+      ),
     ],
     [texto("Bitácoras aprobadas"), numero(m.bitacoras.aprobadas), null],
     [

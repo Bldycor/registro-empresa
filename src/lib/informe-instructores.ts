@@ -29,7 +29,7 @@ export type GestionInstructor = {
   aprendices: number;
   activos: number;
   sobreTope: boolean;
-  grupos: { alDia: number; enRiesgo: number; porCertificar: number; certificados: number; enPausa: number };
+  grupos: { alDia: number; enRiesgo: number; porCertificar: number; certificados: number; enPausa: number; sinIniciar: number };
   pendientes: Pendiente[];
   demoradas: number;
   respuesta: { promedioDias: number | null; revisadas: number };
@@ -83,7 +83,7 @@ export async function construirInformeInstructores() {
 
   const resultado: GestionInstructor[] = instructores.map((ins) => {
     const aprendices = ins.fichasAsignadas.flatMap((f) => f.aprendices);
-    const grupos = { alDia: 0, enRiesgo: 0, porCertificar: 0, certificados: 0, enPausa: 0 };
+    const grupos = { alDia: 0, enRiesgo: 0, porCertificar: 0, certificados: 0, enPausa: 0, sinIniciar: 0 };
     for (const a of aprendices) {
       const g = grupoDe.get(a.id);
       if (g) grupos[g]++;

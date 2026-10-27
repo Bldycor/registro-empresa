@@ -12,7 +12,7 @@ import {
 // va, y cuatro tarjetas que dicen qué significa cada número y cómo leerlo. Cada aprendiz cae en
 // UN solo grupo, así que los números siempre suman el total.
 
-export type Semaforo = { alDia: number; enRiesgo: number; porCertificar: number; certificados: number; enPausa: number };
+export type Semaforo = { alDia: number; enRiesgo: number; porCertificar: number; certificados: number; enPausa: number; sinIniciar: number };
 
 const TONO: Record<Tono, { icono: string; clase: string }> = {
   bien: { icono: "✓", clase: "text-emerald-800 dark:text-emerald-300" },
@@ -49,6 +49,7 @@ const GRUPOS = [
   { clave: "porCertificar", etiqueta: "Por certificar", ayuda: "Completaron las seis evidencias.", clase: "bg-sky-500", marca: "" },
   { clave: "alDia", etiqueta: "Al día", ayuda: "Sin ninguna entrega vencida.", clase: "bg-[#0ca30c]", marca: "" },
   { clave: "enRiesgo", etiqueta: "Necesitan atención", ayuda: "Algo vencido o señal de deserción.", clase: "bg-[#d03b3b]", marca: "!" },
+  { clave: "sinIniciar", etiqueta: "Sin iniciar", ayuda: "Aún sin fecha de inicio de etapa productiva.", clase: "bg-zinc-200 dark:bg-zinc-700", marca: "" },
   { clave: "enPausa", etiqueta: "En pausa o retirados", ayuda: "Interrumpida, aplazada o desertó.", clase: "bg-zinc-300 dark:bg-zinc-600", marca: "" },
 ] as const;
 
@@ -144,6 +145,7 @@ export function PanoramaAprendices({ s, total }: { s: Semaforo; total: number })
           s.enRiesgo ? `${s.enRiesgo} ${s.enRiesgo === 1 ? "necesita" : "necesitan"} atención` : null,
           s.porCertificar ? `${s.porCertificar} ${s.porCertificar === 1 ? "espera" : "esperan"} certificación` : null,
           s.certificados ? `${s.certificados} ${s.certificados === 1 ? "terminó" : "terminaron"}` : null,
+          s.sinIniciar ? `${s.sinIniciar} sin iniciar su etapa productiva` : null,
           s.enPausa ? `${s.enPausa} en pausa o retirados` : null,
         ]
           .filter(Boolean)
@@ -192,7 +194,7 @@ export function PanoramaAprendices({ s, total }: { s: Semaforo; total: number })
           deCuantos={total === 1 ? "aprendiz" : "aprendices"}
           significado="Todos los aprendices en etapa productiva que cumplen los filtros, estén como estén."
           lectura={{
-            texto: `${enPractica} en práctica activa${s.porCertificar + s.certificados ? `, ${s.porCertificar + s.certificados} ya cumplieron sus evidencias` : ""}${s.enPausa ? ` y ${s.enPausa} en pausa o retirados` : ""}.`,
+            texto: `${enPractica} en práctica activa${s.porCertificar + s.certificados ? `, ${s.porCertificar + s.certificados} ya ${s.porCertificar + s.certificados === 1 ? "cumplió" : "cumplieron"} sus evidencias` : ""}${s.sinIniciar ? `, ${s.sinIniciar} sin iniciar` : ""}${s.enPausa ? ` y ${s.enPausa} en pausa o retirados` : ""}.`,
             tono: "neutro",
           }}
         />
