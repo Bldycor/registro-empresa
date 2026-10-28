@@ -1,4 +1,4 @@
-import type { TextoPosicionado } from "@/lib/leer-pdf";
+import { unirTextos, type TextoPosicionado } from "@/lib/leer-pdf";
 import type { VariableEvaluacion } from "@/generated/prisma/enums";
 
 // Rúbrica de los Momentos 2 y 3 leída del GFPI-F-023 firmado (pedido de Coordinación, 9 oct 2026).
@@ -50,7 +50,8 @@ const encabezadoMomento: Record<2 | 3, RegExp> = {
 function paginaDelMomento(paginas: TextoPosicionado[][], momento: 2 | 3): TextoPosicionado[] | null {
   for (const p of paginas) {
     // El título del momento va arriba de la página: basta con el texto de la parte alta.
-    const arriba = [...p].sort((a, b) => b.y - a.y || a.x - b.x).slice(0, 40).map((i) => i.s).join(" ").replace(/\s+/g, " ");
+    const enOrden = [...p].sort((a, b) => b.y - a.y || a.x - b.x).slice(0, 40);
+    const arriba = unirTextos(enOrden).replace(/\s+/g, " ");
     if (encabezadoMomento[momento].test(arriba)) return p;
   }
   return null;
@@ -116,7 +117,7 @@ export function leerRubrica(paginas: TextoPosicionado[][], momento: 2 | 3): Valo
     const enPor = marcas.some((m) => m.x >= corte);
     const valoracion = enSat && !enPor ? "SATISFACTORIO" : enPor && !enSat ? "POR_MEJORAR" : null;
 
-    const observaciones = pagina
+    const enObservaciones = pagina
       .filter(
         (i) =>
           i.x >= fila.tabla.obsX &&
@@ -124,9 +125,8 @@ export function leerRubrica(paginas: TextoPosicionado[][], momento: 2 | 3): Valo
           !/^(observaciones|\/|compromisos|de|mejora)$/i.test(i.s.trim()) &&
           !/^observaciones\s*\/\s*compromisos/i.test(i.s.trim()),
       )
-      .sort((a, b) => b.y - a.y || a.x - b.x)
-      .map((i) => i.s.trim())
-      .join(" ")
+      .sort((a, b) => b.y - a.y || a.x - b.x);
+    const observaciones = unirTextos(enObservaciones)
       .replace(/\s+/g, " ")
       // Algunos PDF parten las vocales con tilde en piezas sueltas: «m á s» → «más».
       .replace(/(\p{L}) ([áéíóúÁÉÍÓÚñÑ]) (?=\p{L})/gu, "$1$2")

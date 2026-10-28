@@ -184,8 +184,9 @@ function limpiarValor(valor: string): string | null {
   let v = valor;
   for (const patron of RELLENO_PLANTILLA) v = v.replace(patron, " ");
   v = v.replace(/\s+/g, " ").replace(/^[\s:;.,\-]+|[\s:;.,\-]+$/g, "").trim();
-  // Lo que queda demasiado corto o demasiado largo no es un valor: es ruido de la tabla.
-  return v.length >= 2 && v.length < 2000 ? v : null;
+  // Lo que queda demasiado corto o demasiado largo no es un valor: es ruido de la tabla. Un solo
+  // dígito sí lo es: el número de visitas suele ser «3».
+  return (v.length >= 2 || /^\d$/.test(v)) && v.length < 2000 ? v : null;
 }
 
 // Cada campo se valida según lo que debe ser. Si lo leído no tiene esa forma, se descarta: vale
@@ -343,6 +344,9 @@ export async function leerFormato(
   const datos: Partial<DatosDocumento> = recorrer(texto, SECUENCIA);
 
   if (momento !== 1) {
+    // El enlace de grabación de los Momentos 2 y 3 sale solo de su propia sección: el del
+    // Momento 1 no es el de esta reunión.
+    delete datos.enlaceGrabacion;
     const secuencia = momento === 2 ? SECUENCIA_SEGUIMIENTO : SECUENCIA_CIERRE;
     Object.assign(datos, recorrer(texto, secuencia));
   }

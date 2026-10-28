@@ -9,8 +9,9 @@ export function esPdf(archivo: ArrayBuffer): boolean {
   return new TextDecoder("latin1").decode(inicio).includes("%PDF");
 }
 
-// Un texto del PDF con su posición (en puntos, origen abajo a la izquierda, como lo da pdfjs).
-export type TextoPosicionado = { s: string; x: number; y: number; w: number };
+// Un texto del PDF con su posición (en puntos, origen abajo a la izquierda, como lo da pdfjs) y
+// el alto de su letra.
+export type TextoPosicionado = { s: string; x: number; y: number; w: number; h: number };
 
 // Cada página como lista de textos con posición. La necesita la lectura de las casillas marcadas
 // con «X» (la rúbrica de los Momentos 2 y 3), donde importa en qué columna cae cada marca.
@@ -32,7 +33,15 @@ export async function paginasDelPdf(archivo: ArrayBuffer): Promise<TextoPosicion
     paginas.push(
       contenido.items.flatMap((item) =>
         "str" in item && item.str.trim()
-          ? [{ s: item.str.replace(/\u00a0/g, " "), x: item.transform[4], y: item.transform[5], w: item.width }]
+          ? [
+              {
+                s: item.str.replace(/\u00a0/g, " "),
+                x: item.transform[4],
+                y: item.transform[5],
+                w: item.width,
+                h: item.height || Math.abs(item.transform[3]),
+              },
+            ]
           : [],
       ),
     );
@@ -40,12 +49,63 @@ export async function paginasDelPdf(archivo: ArrayBuffer): Promise<TextoPosicion
   return paginas;
 }
 
+// Une los textos en el orden dado. Word y Excel para Mac parten las palabras en trozos pegados
+// uno al otro («f» + «ormación:», «GFPI» + «-» + «F»), y unirlos con un espacio dejaba
+// «f ormación», así que ninguna etiqueta coincidía (28 oct 2026). Un trozo que empieza justo donde
+// termina el anterior, en la misma línea, va pegado; si hay un hueco del ancho de un espacio o
+// más, o cambia de línea, va separado. Los PDF que traen las palabras enteras quedan igual.
+export function unirTextos(items: TextoPosicionado[]): string {
+  let texto = "";
+  let previo: TextoPosicionado | null = null;
+  for (const i of items) {
+    if (previo) {
+      const alto = Math.max(previo.h, i.h, 1);
+      const hueco = i.x - (previo.x + previo.w);
+      const pegado = Math.abs(i.y - previo.y) < alto * 0.5 && hueco > -alto * 0.1 && hueco < alto * 0.12;
+      if (!pegado) texto += " ";
+    }
+    texto += i.s;
+    previo = i;
+  }
+  return texto;
+}
+
+// Algunas fuentes guardan la ligadura «ti» como otra letra: «AcRvidades», «ProducEva»,
+// «Sa5sfactorio», «conRnua». Se repara solo en las palabras de las plantillas, para no tocar lo
+// que escribió el aprendiz.
+function repararLigaduraTi(texto: string): string {
+  return texto.replace(/\b(Ac|ac|Produc|produc|Con|con|Sa|sa)[A-Z0-9](vidad|tud|va|vo|nua|sfactori)/g, "$1ti$2");
+}
+
 export function textoDePaginas(paginas: TextoPosicionado[][]): string {
-  return paginas
-    .map((p) => p.map((i) => i.s).join(" ") + "\n")
-    .join("")
-    .replace(/\u00a0/g, " ")
-    .replace(/[ \t]+/g, " ");
+  return repararLigaduraTi(
+    paginas
+      .map((p) => unirTextos(p) + "\n")
+      .join("")
+      .replace(/\u00a0/g, " ")
+      .replace(/[ \t]+/g, " "),
+  );
+}
+
+// Los textos de una página agrupados en renglones, de arriba abajo y cada uno de izquierda a
+// derecha: el orden en que se lee la hoja, sin importar el orden en que el archivo los guardó.
+export function renglones(pagina: TextoPosicionado[]): TextoPosicionado[][] {
+  const lineas: TextoPosicionado[][] = [];
+  for (const i of [...pagina].sort((a, b) => b.y - a.y || a.x - b.x)) {
+    const linea = lineas.at(-1);
+    if (linea && Math.abs(linea[0].y - i.y) < Math.max(linea[0].h, i.h, 1) * 0.5) linea.push(i);
+    else lineas.push([i]);
+  }
+  return lineas.map((l) => l.sort((a, b) => a.x - b.x));
+}
+
+export function textoEnOrdenDeLectura(paginas: TextoPosicionado[][]): string {
+  return repararLigaduraTi(
+    paginas
+      .flatMap((p) => renglones(p).map(unirTextos))
+      .join("\n")
+      .replace(/[ \t]+/g, " "),
+  );
 }
 
 export async function textoDelPdf(archivo: ArrayBuffer): Promise<string> {
