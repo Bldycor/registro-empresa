@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CampoFechaFiltro } from "@/components/campo-fecha-filtro";
 import { requireUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
@@ -203,14 +204,8 @@ export default async function AuditoriaPage({
               ))}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-xs text-zinc-500 dark:text-zinc-400">
-            Desde
-            <input type="date" name="desde" defaultValue={filtros.desde} className={campo} />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-zinc-500 dark:text-zinc-400">
-            Hasta
-            <input type="date" name="hasta" defaultValue={filtros.hasta} className={campo} />
-          </label>
+          <CampoFechaFiltro label="Desde" name="desde" inicial={filtros.desde} />
+          <CampoFechaFiltro label="Hasta" name="hasta" inicial={filtros.hasta} />
           <button type="submit" className="rounded-md bg-sena px-4 py-1.5 text-sm font-medium text-white hover:bg-sena-oscuro">
             Buscar
           </button>

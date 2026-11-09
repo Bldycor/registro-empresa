@@ -200,6 +200,12 @@ export function BitacorasPanel({ aprendizId = null }: { aprendizId?: string | nu
                       Fecha límite: {formatoFecha(b.fechaLimite)}
                       {b.fechaEntrega && ` · Enviada: ${formatoMomento(b.fechaEntrega)}`}
                     </p>
+                    {(b.periodoDesde || b.periodoHasta) && (
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                        Período reportado: {b.periodoDesde ? formatoFecha(b.periodoDesde) : "?"} a{" "}
+                        {b.periodoHasta ? formatoFecha(b.periodoHasta) : "?"}
+                      </p>
+                    )}
                     {b.archivoUrl && (
                       <a
                         href={b.archivoUrl}
@@ -224,7 +230,7 @@ export function BitacorasPanel({ aprendizId = null }: { aprendizId?: string | nu
                   onClick={() => setExpandidoId(expandido ? null : b.id)}
                   className="mt-2 text-xs font-medium text-zinc-600 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
                 >
-                  {expandido ? "Ocultar detalle" : `Ver detalle (${b.actividades.length} actividad(es), ARL)`}
+                  {expandido ? "Ocultar detalle" : "Ver detalle: actividades del documento y ARL"}
                 </button>
 
                 {expandido && (
@@ -238,17 +244,7 @@ export function BitacorasPanel({ aprendizId = null }: { aprendizId?: string | nu
                       <p>Riesgo corresponde: {siNo(b.arlRiesgoCorresponde)}</p>
                       <p>Tiene EPP: {siNo(b.arlTieneEPP)}</p>
                     </div>
-                    <div>
-                      <p className="font-medium text-zinc-700 dark:text-zinc-300">Actividades:</p>
-                      <ul className="mt-1 list-disc space-y-1 pl-4">
-                        {b.actividades.map((a, i) => (
-                          <li key={i}>
-                            {a.descripcion}
-                            {a.competencias && ` — ${a.competencias}`}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                    <ActividadesDelAdjunto bitacoraId={b.id} archivoUrl={b.archivoUrl} registradas={b.actividades} />
                   </div>
                 )}
 
@@ -474,5 +470,155 @@ function EstadoBadge({ estado }: { estado: string }) {
     <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[estado] ?? ""}`}>
       {text[estado] ?? estado}
     </span>
+  );
+}
+
+type ActividadLeida = {
+  descripcion: string;
+  competencias: string | null;
+  fechaInicio: string | null;
+  fechaFin: string | null;
+  evidenciaCumplimiento: string | null;
+  observaciones: string | null;
+};
+type LecturaAdjunto = {
+  fuente: "pdf" | "no-reconocida" | "sin-texto" | "foto" | "sin-archivo" | "error";
+  actividades: ActividadLeida[];
+};
+
+// Lo que se lee del adjunto, por bitácora y archivo: al plegar y desplegar no se vuelve a leer.
+const lecturasAdjunto = new Map<string, Promise<LecturaAdjunto>>();
+
+const AVISO_SIN_LECTURA: Record<Exclude<LecturaAdjunto["fuente"], "pdf">, string> = {
+  "no-reconocida": "No se reconoció la tabla de actividades del PDF adjunto.",
+  "sin-texto": "El PDF adjunto no tiene texto (parece un escaneo).",
+  foto: "El adjunto es una foto: SEPA no la lee.",
+  "sin-archivo": "Esta bitácora no tiene documento adjunto.",
+  error: "No se pudo abrir el documento adjunto.",
+};
+
+const normalizar = (t: string) =>
+  t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+
+// Las actividades que el instructor evalúa son las del documento firmado de ESTA bitácora (9 nov
+// 2026): el formulario copiaba las de la bitácora anterior y se evaluaba el mes equivocado. Si el
+// adjunto no se puede leer, se muestran las registradas en el formulario con el aviso.
+function ActividadesDelAdjunto({
+  bitacoraId,
+  archivoUrl,
+  registradas,
+}: {
+  bitacoraId: string;
+  archivoUrl: string | null;
+  registradas: Bitacora["actividades"];
+}) {
+  const clave = `${bitacoraId}|${archivoUrl ?? ""}`;
+  const [lectura, setLectura] = useState<LecturaAdjunto | null>(null);
+  const [verRegistradas, setVerRegistradas] = useState(false);
+
+  useEffect(() => {
+    let vigente = true;
+    if (!lecturasAdjunto.has(clave)) {
+      lecturasAdjunto.set(
+        clave,
+        fetch(`/api/instructor/bitacoras/${bitacoraId}`)
+          .then((r) => r.json())
+          .catch(() => ({ fuente: "error", actividades: [] }) as LecturaAdjunto),
+      );
+    }
+    lecturasAdjunto.get(clave)!.then((l) => vigente && setLectura(l));
+    return () => {
+      vigente = false;
+    };
+  }, [clave, bitacoraId]);
+
+  if (!lectura) {
+    return <p className="animate-pulse text-zinc-500">Leyendo las actividades del documento adjunto…</p>;
+  }
+
+  const delPdf = lectura.fuente === "pdf" ? lectura.actividades : [];
+  // ¿Lo registrado en el formulario dice lo mismo que el documento? Se compara la descripción.
+  const coinciden =
+    delPdf.length === registradas.length &&
+    delPdf.every((a, i) => normalizar(a.descripcion) === normalizar(registradas[i]?.descripcion ?? ""));
+
+  const listaRegistradas = (
+    <ul className="mt-1 list-disc space-y-1 pl-4">
+      {registradas.map((a, i) => (
+        <li key={i}>
+          {a.descripcion}
+          {a.competencias && ` — ${a.competencias}`}
+        </li>
+      ))}
+    </ul>
+  );
+
+  if (!delPdf.length) {
+    return (
+      <div>
+        <p className="font-medium text-zinc-700 dark:text-zinc-300">Actividades registradas en el formulario:</p>
+        <p className="mt-1 text-amber-700 dark:text-amber-400">
+          {AVISO_SIN_LECTURA[lectura.fuente as Exclude<LecturaAdjunto["fuente"], "pdf">]} Revisa el documento con «Ver
+          bitácora adjunta» antes de avalar.
+        </p>
+        {listaRegistradas}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="font-medium text-zinc-700 dark:text-zinc-300">
+        Actividades del documento adjunto ({delPdf.length}) <span className="font-normal text-zinc-500">· leídas del PDF</span>
+      </p>
+      <ol className="space-y-2">
+        {delPdf.map((a, i) => (
+          <li key={i} className="rounded-md border border-zinc-200 p-2 dark:border-zinc-800">
+            <p className="text-zinc-800 dark:text-zinc-200">
+              <span className="font-semibold">{i + 1}.</span> {a.descripcion}
+            </p>
+            <dl className="mt-1 grid gap-x-4 gap-y-0.5 sm:grid-cols-2">
+              {a.competencias && (
+                <div>
+                  <dt className="inline text-zinc-500">Competencia: </dt>
+                  <dd className="inline">{a.competencias}</dd>
+                </div>
+              )}
+              {(a.fechaInicio || a.fechaFin) && (
+                <div>
+                  <dt className="inline text-zinc-500">Fechas: </dt>
+                  <dd className="inline">
+                    {a.fechaInicio ?? "?"} a {a.fechaFin ?? "?"}
+                  </dd>
+                </div>
+              )}
+              {a.evidenciaCumplimiento && (
+                <div className="sm:col-span-2">
+                  <dt className="inline text-zinc-500">Evidencia: </dt>
+                  <dd className="inline">{a.evidenciaCumplimiento}</dd>
+                </div>
+              )}
+              {a.observaciones && (
+                <div className="sm:col-span-2">
+                  <dt className="inline text-zinc-500">Observaciones: </dt>
+                  <dd className="inline">{a.observaciones}</dd>
+                </div>
+              )}
+            </dl>
+          </li>
+        ))}
+      </ol>
+      {!coinciden && registradas.length > 0 && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+          <p>
+            Lo que el aprendiz registró en el formulario no coincide con el documento.{" "}
+            <button type="button" onClick={() => setVerRegistradas((v) => !v)} className="font-medium underline">
+              {verRegistradas ? "Ocultar lo registrado" : "Ver lo registrado"}
+            </button>
+          </p>
+          {verRegistradas && listaRegistradas}
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { CampoFechaFiltro } from "@/components/campo-fecha-filtro";
+import { SelectorCoordinacion } from "@/components/selector-coordinacion";
 import { describirFiltros, porcentaje, type Reporte } from "@/lib/reportes";
 import { formatoMomento } from "@/lib/plazos-institucionales";
 import { estadoAprendizLabel } from "@/lib/validations";
@@ -277,6 +279,7 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
             ))}
           </select>
         </label>
+        <SelectorCoordinacion valor={f.coordinacion} className={campo} />
         <label className="flex flex-col gap-1 text-xs text-zinc-500 dark:text-zinc-400">
           Instructor
           <select name="instructor" defaultValue={f.instructor} className={campo}>
@@ -310,14 +313,8 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-xs text-zinc-500 dark:text-zinc-400">
-          Inicio de EP desde
-          <input type="date" name="desde" defaultValue={f.desde} className={campo} />
-        </label>
-        <label className="flex flex-col gap-1 text-xs text-zinc-500 dark:text-zinc-400">
-          hasta
-          <input type="date" name="hasta" defaultValue={f.hasta} className={campo} />
-        </label>
+        <CampoFechaFiltro label="Inicio de EP desde" name="desde" inicial={f.desde} />
+        <CampoFechaFiltro label="hasta" name="hasta" inicial={f.hasta} />
         <button
           type="submit"
           className="rounded-md bg-sena px-4 py-1.5 text-sm font-medium text-white hover:bg-sena-oscuro dark:bg-sena dark:text-white"

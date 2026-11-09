@@ -17,12 +17,15 @@ import {
   type NivelFormacionValue,
   type JornadaValue,
   type EstadoAprendizValue,
+  CoordinacionValues,
+  coordinacionLabel,
+  type CoordinacionValue,
 } from "@/lib/validations";
 import { StatBadge } from "@/components/stat-badge";
 import { DatePickerField } from "@/components/date-picker-field";
 import { plazoMaximoCulminacion } from "@/lib/plazo-culminacion";
 
-type Instructor = { id: string; nombres: string; apellidos: string; email: string };
+type Instructor = { id: string; nombres: string; apellidos: string; email: string; coordinacion?: CoordinacionValue | null };
 
 type Aprendiz = {
   id: string;
@@ -132,6 +135,8 @@ export function CoordinadorFichasPanel({
 
   const [filtroTexto, setFiltroTexto] = useState("");
   const [soloSinInstructor, setSoloSinInstructor] = useState(false);
+  // Coordinación del instructor de la ficha (9 nov 2026); "SIN" = sin instructor o sin coordinación.
+  const [filtroCoordinacion, setFiltroCoordinacion] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkAssignInstructorId, setBulkAssignInstructorId] = useState("");
   const [bulkAssignLoading, setBulkAssignLoading] = useState(false);
@@ -142,6 +147,10 @@ export function CoordinadorFichasPanel({
   const fichasFiltradas = fichas.filter((ficha) => {
     if (soloSinInstructor && ficha.instructorId) return false;
     if (filtroTexto.trim() && !ficha.codigo.includes(filtroTexto.trim())) return false;
+    if (filtroCoordinacion) {
+      const coordinacion = instructores.find((i) => i.id === ficha.instructorId)?.coordinacion ?? null;
+      if (filtroCoordinacion === "SIN" ? coordinacion !== null : coordinacion !== filtroCoordinacion) return false;
+    }
     return true;
   });
 
@@ -529,6 +538,20 @@ export function CoordinadorFichasPanel({
                 placeholder="Buscar por código"
                 className={`${inputClass} w-40`}
               />
+              <select
+                value={filtroCoordinacion}
+                onChange={(e) => setFiltroCoordinacion(e.target.value)}
+                aria-label="Coordinación"
+                className={inputClass}
+              >
+                <option value="">Todas las coordinaciones</option>
+                {CoordinacionValues.map((c) => (
+                  <option key={c} value={c}>
+                    {coordinacionLabel[c]}
+                  </option>
+                ))}
+                <option value="SIN">Sin coordinación</option>
+              </select>
               <label className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400">
                 <input
                   type="checkbox"

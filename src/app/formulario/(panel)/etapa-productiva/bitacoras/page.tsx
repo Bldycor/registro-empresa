@@ -139,12 +139,6 @@ async function BitacorasPanelServer({
             arlNivelRiesgo: previa.arlNivelRiesgo,
             arlRiesgoCorresponde: previa.arlRiesgoCorresponde,
             arlTieneEPP: previa.arlTieneEPP,
-            actividades: previa.actividades.map((a) => ({
-              descripcion: a.descripcion,
-              competencias: a.competencias,
-              evidenciaCumplimiento: a.evidenciaCumplimiento,
-              observaciones: a.observaciones,
-            })),
           }
         : null,
     };

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth-guards";
+import { etiquetaCoordinacion, leerFiltros } from "@/lib/reportes";
+import { SelectorCoordinacion } from "@/components/selector-coordinacion";
 import { construirInformeInstructores, type GestionInstructor } from "@/lib/informe-instructores";
 import { IndicadorExplicado, LecturaLinea } from "@/components/panorama-aprendices";
 import { ImprimirBoton } from "@/components/imprimir-boton";
@@ -59,9 +61,14 @@ function GruposBarra({ g, total }: { g: GestionInstructor["grupos"]; total: numb
   );
 }
 
-export default async function GestionInstructoresPage() {
+export default async function GestionInstructoresPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await requireUser(["COORDINADOR", "ADMIN", "COORDINADOR_FORMACION"]);
-  const r = await construirInformeInstructores();
+  const { coordinacion } = leerFiltros(await searchParams);
+  const r = await construirInformeInstructores({ coordinacion });
   const conFichas = r.instructores.filter((i) => i.aprendices > 0);
   const sinFichas = r.instructores.filter((i) => i.aprendices === 0);
 
@@ -88,6 +95,28 @@ export default async function GestionInstructoresPage() {
             <ImprimirBoton />
           </div>
         </div>
+
+        <form method="get" className="flex flex-wrap items-end gap-2 print:hidden">
+          <SelectorCoordinacion
+            valor={coordinacion}
+            className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+          />
+          <button type="submit" className="rounded-md bg-sena px-4 py-1.5 text-sm font-medium text-white hover:bg-sena-oscuro">
+            Ver
+          </button>
+          {coordinacion && (
+            <Link href="/formulario/reportes/instructores" className="px-2 py-1.5 text-sm text-zinc-600 underline dark:text-zinc-400">
+              Todas las coordinaciones
+            </Link>
+          )}
+          {coordinacion && (
+            <p className="basis-full text-sm text-zinc-600 dark:text-zinc-400">
+              {coordinacion === "SIN"
+                ? "Instructores sin coordinación registrada."
+                : `Instructores de la coordinación ${etiquetaCoordinacion(coordinacion)}.`}
+            </p>
+          )}
+        </form>
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <IndicadorExplicado

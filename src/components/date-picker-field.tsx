@@ -33,6 +33,8 @@ export function DatePickerField({
   min,
   max,
   labelClassName,
+  name,
+  placeholder = "Selecciona una fecha",
 }: {
   label: string;
   value: string;
@@ -42,6 +44,9 @@ export function DatePickerField({
   min?: string;
   max?: string;
   labelClassName?: string;
+  // Para formularios GET (filtros de consulta): la fecha viaja en un campo oculto con este nombre.
+  name?: string;
+  placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
   const selected = toDateOnly(value);
@@ -107,12 +112,14 @@ export function DatePickerField({
         <span className={selected ? "text-zinc-900 dark:text-zinc-50" : "text-zinc-400 dark:text-zinc-500"}>
           {selected
             ? selected.toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })
-            : "Selecciona una fecha"}
+            : placeholder}
         </span>
         <span aria-hidden className="text-zinc-400">
           📅
         </span>
       </button>
+
+      {name && <input type="hidden" name={name} value={value} />}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

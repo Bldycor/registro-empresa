@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { construirReporte } from "@/lib/reportes";
+import { construirReporte, SIN_FILTROS, type Reporte } from "@/lib/reportes";
+import type { CoordinacionValue } from "@/lib/validations";
 import { diasHabilesEntre } from "@/lib/plazos-institucionales";
 import { superaTope } from "@/lib/tope-instructor";
 import { lecturaAlDia, type Lectura } from "@/lib/lectura-indicadores";
@@ -41,11 +42,20 @@ export type GestionInstructor = {
 
 const nombreDe = (u: { nombres: string; apellidos: string }) => `${u.nombres} ${u.apellidos}`;
 
-export async function construirInformeInstructores() {
+// `coordinacion` limita el informe a los instructores de una coordinación ("SIN" = sin coordinación).
+// `reporte` evita volver a construir el reporte cuando quien llama ya tiene uno que incluye a todos
+// los aprendices de esos instructores (el tablero sin otros filtros): era la consulta más pesada y
+// se hacía dos veces.
+export async function construirInformeInstructores(
+  { coordinacion = "", reporte: dado }: { coordinacion?: string; reporte?: Reporte } = {},
+) {
   const hoy = new Date();
   const [instructores, reporte] = await Promise.all([
     prisma.user.findMany({
-      where: { role: "INSTRUCTOR" },
+      where: {
+        role: "INSTRUCTOR",
+        ...(coordinacion === "SIN" ? { coordinacion: null } : coordinacion ? { coordinacion: coordinacion as CoordinacionValue } : {}),
+      },
       select: {
         id: true,
         nombres: true,
@@ -76,7 +86,7 @@ export async function construirInformeInstructores() {
       },
       orderBy: [{ nombres: "asc" }, { apellidos: "asc" }],
     }),
-    construirReporte({ ficha: "", programa: "", instructor: "", empresa: "", estado: "", desde: "", hasta: "" }),
+    dado ?? construirReporte({ ...SIN_FILTROS, coordinacion }),
   ]);
 
   const grupoDe = new Map(reporte.listado.map((l) => [l.id, l.grupo]));

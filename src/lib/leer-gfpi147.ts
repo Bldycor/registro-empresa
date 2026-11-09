@@ -41,10 +41,23 @@ export type DatosBitacora = {
   observaciones: string | null;
 };
 
+// Una fila de la tabla «Descripción de las actividades realizadas».
+export type ActividadLeida = {
+  descripcion: string;
+  competencias: string | null;
+  fechaInicio: string | null;
+  fechaFin: string | null;
+  evidenciaCumplimiento: string | null;
+  observaciones: string | null;
+};
+
 export type LecturaBitacora = {
   datos: Partial<DatosBitacora>;
   leidos: number;
   sinTexto: boolean;
+  // Todas las filas de la tabla de actividades, leídas por posición (9 nov 2026). Vacío si la
+  // tabla no se reconoce entera.
+  actividades?: ActividadLeida[];
 };
 
 // Texto fijo de la plantilla dentro de la zona de actividades: son títulos de columna y
@@ -100,11 +113,12 @@ export async function leerBitacora(archivo: ArrayBuffer): Promise<LecturaBitacor
   for (const clave of Object.keys(porPosicion) as (keyof DatosBitacora)[]) {
     if (datos[clave] === null || datos[clave] === undefined) Object.assign(datos, { [clave]: porPosicion[clave] });
   }
-  const actividad = primeraActividad(paginas);
-  if (actividad) Object.assign(datos, actividad);
+  const actividades = actividadesDelDocumento(paginas);
+  // La primera fila llena los campos sueltos de actividad, que el formulario usaba antes.
+  if (actividades[0]) Object.assign(datos, actividades[0]);
 
   const leidos = Object.values(datos).filter((v) => v !== null && v !== undefined).length;
-  return { datos, leidos, sinTexto: false };
+  return { datos, leidos, sinTexto: false, ...(actividades.length ? { actividades } : {}) };
 }
 
 function leerEnOrdenDelArchivo(texto: string): Partial<DatosBitacora> {
@@ -229,11 +243,12 @@ function leerPorPosicion(paginas: TextoPosicionado[][]): Partial<DatosBitacora> 
   return datos;
 }
 
-// La primera fila de la tabla de actividades, columna por columna. Las columnas salen de los
-// títulos de la tabla (el límite entre dos es el punto medio de sus títulos) y cada fila, de su
-// fecha de inicio. Si la tabla no se reconoce entera, no se devuelve nada.
-function primeraActividad(paginas: TextoPosicionado[][]): Partial<DatosBitacora> | null {
-  const titulos: [keyof DatosBitacora, RegExp][] = [
+// Las filas de la tabla de actividades, columna por columna. Las columnas salen de los títulos
+// de la tabla (el límite entre dos es el punto medio de sus títulos) y cada fila, de su fecha de
+// inicio: una fila va desde la mitad del camino a la fila de arriba hasta la mitad del camino a la
+// de abajo. Si la tabla no se reconoce entera, no se devuelve nada.
+function actividadesDelDocumento(paginas: TextoPosicionado[][]): ActividadLeida[] {
+  const titulos: [keyof ActividadLeida, RegExp][] = [
     ["descripcion", /^Descripci[óo]n de la actividad/i],
     ["competencias", /^Competencias del programa de formaci[óo]n/i],
     ["fechaInicio", /^Fecha de inicio/i],
@@ -247,7 +262,7 @@ function primeraActividad(paginas: TextoPosicionado[][]): Partial<DatosBitacora>
       return t ? { clave, centro: t.x + t.w / 2, y: t.y } : null;
     });
     if (columnas.some((c) => !c)) continue;
-    const cols = (columnas as { clave: keyof DatosBitacora; centro: number; y: number }[]).sort((a, b) => a.centro - b.centro);
+    const cols = (columnas as { clave: keyof ActividadLeida; centro: number; y: number }[]).sort((a, b) => a.centro - b.centro);
     if (cols[0].clave !== "descripcion" || cols[2].clave !== "fechaInicio") continue;
     const techo = Math.min(...cols.map((c) => c.y));
     // Los títulos de la tabla ocupan varios renglones: se mira desde el último renglón que los
@@ -265,21 +280,31 @@ function primeraActividad(paginas: TextoPosicionado[][]): Partial<DatosBitacora>
 
     const cuerpo = pagina.filter((i) => i.y < finTitulos - 1 && i.y > piso + 1);
     const inicios = cuerpo.filter((i) => columnaDe(i) === "fechaInicio" && FECHA.test(i.s.trim())).sort((a, b) => b.y - a.y);
-    if (!inicios.length) return null;
-    const fila = inicios[0].y;
-    const abajo = inicios[1] ? (fila + inicios[1].y) / 2 : piso;
-    const enFila = cuerpo.filter((i) => i.y > abajo && i.y < finTitulos - 1);
+    if (!inicios.length) return [];
 
-    const datos: Partial<DatosBitacora> = {};
-    for (const { clave } of cols) {
-      const piezas = renglones(enFila.filter((i) => columnaDe(i) === clave)).map(unirTextos);
-      const valor = piezas.join(" ").replace(/\s+/g, " ").trim();
-      if (valor) (datos as Record<string, string>)[clave] = valor;
-    }
-    if (datos.fechaInicio && !FECHA.test(datos.fechaInicio)) delete datos.fechaInicio;
-    if (datos.fechaFin && !FECHA.test(datos.fechaFin)) delete datos.fechaFin;
-    return datos.descripcion ? datos : null;
+    const filas: ActividadLeida[] = [];
+    inicios.forEach((inicio, k) => {
+      const arriba = k === 0 ? finTitulos - 1 : (inicios[k - 1].y + inicio.y) / 2;
+      const abajo = inicios[k + 1] ? (inicio.y + inicios[k + 1].y) / 2 : piso;
+      const enFila = cuerpo.filter((i) => i.y > abajo && i.y <= arriba);
+      const valor = (clave: keyof ActividadLeida) =>
+        renglones(enFila.filter((i) => columnaDe(i) === clave)).map(unirTextos).join(" ").replace(/\s+/g, " ").trim() || null;
+      const fecha = (clave: keyof ActividadLeida) => {
+        const v = valor(clave);
+        return v && FECHA.test(v) ? v : null;
+      };
+      const descripcion = valor("descripcion");
+      if (!descripcion) return;
+      filas.push({
+        descripcion,
+        competencias: valor("competencias"),
+        fechaInicio: fecha("fechaInicio"),
+        fechaFin: fecha("fechaFin"),
+        evidenciaCumplimiento: valor("evidenciaCumplimiento"),
+        observaciones: valor("observaciones"),
+      });
+    });
+    return filas;
   }
-  return null;
+  return [];
 }
-

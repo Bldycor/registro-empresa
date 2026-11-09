@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { CampoFechaFiltro } from "@/components/campo-fecha-filtro";
+import { SelectorCoordinacion } from "@/components/selector-coordinacion";
 import type { Reporte } from "@/lib/reportes";
-import { filtrosAQuery, describirFiltros } from "@/lib/reportes";
+import { filtrosAQuery, describirFiltros, etiquetaCoordinacion } from "@/lib/reportes";
 import type { construirInformeInstructores } from "@/lib/informe-instructores";
 import {
   lecturaAlDia,
@@ -129,6 +131,7 @@ function Filtros({ r, filtrado }: { r: Reporte; filtrado: boolean }) {
           ))}
         </select>
       </label>
+      <SelectorCoordinacion valor={f.coordinacion} className={campo} />
       <label className="flex flex-col gap-1 text-xs text-zinc-500 dark:text-zinc-400">
         Ficha
         <select name="ficha" defaultValue={f.ficha} className={campo}>
@@ -140,14 +143,8 @@ function Filtros({ r, filtrado }: { r: Reporte; filtrado: boolean }) {
           ))}
         </select>
       </label>
-      <label className="flex flex-col gap-1 text-xs text-zinc-500 dark:text-zinc-400">
-        Inicio de EP desde
-        <input type="date" name="desde" defaultValue={f.desde} className={campo} />
-      </label>
-      <label className="flex flex-col gap-1 text-xs text-zinc-500 dark:text-zinc-400">
-        hasta
-        <input type="date" name="hasta" defaultValue={f.hasta} className={campo} />
-      </label>
+      <CampoFechaFiltro label="Inicio de EP desde" name="desde" inicial={f.desde} />
+      <CampoFechaFiltro label="hasta" name="hasta" inicial={f.hasta} />
       <button
         type="submit"
         className="rounded-md bg-sena px-4 py-1.5 text-sm font-medium text-white hover:bg-sena-oscuro dark:bg-sena dark:text-white"
@@ -590,7 +587,9 @@ function Acompanamiento({ r, informe, filtrado }: { r: Reporte; informe: Informe
   return (
     <Bloque
       pregunta="¿Cómo acompañan los instructores?"
-      titulo={`Acompañamiento de los instructores${filtrado ? " · todo el centro" : ""}`}
+      titulo={`Acompañamiento de los instructores${
+        r.filtros.coordinacion ? ` · ${etiquetaCoordinacion(r.filtros.coordinacion)}` : filtrado ? " · todo el centro" : ""
+      }`}
       accion={{ href: "/formulario/reportes/instructores", texto: "Ver por instructor" }}
     >
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">

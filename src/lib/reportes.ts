@@ -9,7 +9,7 @@ import { advertenciaPlazoCulminacion, plazoMaximoCulminacion } from "@/lib/plazo
 import { aprendicesActivosPorInstructor } from "@/lib/carga-instructor";
 import { superaTope } from "@/lib/tope-instructor";
 import { fechaEnColombia } from "@/lib/plazos-institucionales";
-import { estadoAprendizLabel } from "@/lib/validations";
+import { CoordinacionValues, coordinacionLabel, estadoAprendizLabel, type CoordinacionValue } from "@/lib/validations";
 import { calcularSlotsBitacoras } from "@/lib/bitacora-fechas";
 import { TODAS_LAS_VARIABLES, variableLabel } from "@/lib/evaluacion-variables";
 
@@ -26,6 +26,9 @@ export type FiltrosReporte = {
   // Programa de formación de la ficha (lo usa sobre todo el tablero de Coordinación de Formación).
   programa: string;
   instructor: string;
+  // Coordinación del instructor de la ficha (9 nov 2026): un aprendiz pertenece a la coordinación
+  // del instructor que lo acompaña. "SIN" = fichas sin instructor o instructor sin coordinación.
+  coordinacion: string;
   empresa: string;
   estado: string;
   // Rango sobre la fecha de inicio de la Etapa Productiva, "YYYY-MM-DD".
@@ -49,12 +52,25 @@ export function leerFiltros(
     ficha: valor("ficha"),
     programa: valor("programa"),
     instructor: valor("instructor"),
+    coordinacion: (CoordinacionValues as readonly string[]).includes(valor("coordinacion")) || valor("coordinacion") === "SIN" ? valor("coordinacion") : "",
     empresa: valor("empresa"),
     estado: estado in estadoAprendizLabel ? estado : "",
     desde: FECHA.test(desde) ? desde : "",
     hasta: FECHA.test(hasta) ? hasta : "",
   };
 }
+
+// Sin ningún filtro: todo el centro.
+export const SIN_FILTROS: FiltrosReporte = {
+  ficha: "",
+  programa: "",
+  instructor: "",
+  coordinacion: "",
+  empresa: "",
+  estado: "",
+  desde: "",
+  hasta: "",
+};
 
 // Los filtros activos como query string, para el enlace del Excel.
 export function filtrosAQuery(f: FiltrosReporte): string {
@@ -86,6 +102,26 @@ const estadoCertificacion: Record<string, string> = {
   RECHAZADA: "Rechazada",
 };
 
+// Aprendices de una coordinación: la del instructor de su ficha. Se suma a `ficha` con AND para no
+// pisar los demás filtros de la ficha.
+export function filtroCoordinacion(coordinacion: string): Prisma.UserWhereInput {
+  if (!coordinacion) return {};
+  if (coordinacion === "SIN") {
+    return { AND: [{ OR: [{ ficha: null }, { ficha: { instructor: null } }, { ficha: { instructor: { coordinacion: null } } }] }] };
+  }
+  return { AND: [{ ficha: { instructor: { coordinacion: coordinacion as CoordinacionValue } } }] };
+}
+
+// Las coordinaciones para los selectores, con «Sin coordinación» al final.
+export const OPCIONES_COORDINACION = [
+  ...CoordinacionValues.map((c) => ({ valor: c as string, etiqueta: coordinacionLabel[c] })),
+  { valor: "SIN", etiqueta: "Sin coordinación" },
+];
+
+export function etiquetaCoordinacion(valor: string): string {
+  return OPCIONES_COORDINACION.find((o) => o.valor === valor)?.etiqueta ?? valor;
+}
+
 export async function construirReporte(f: FiltrosReporte) {
   const ficha: Prisma.FichaWhereInput = {
     ...(f.ficha ? { codigo: f.ficha } : {}),
@@ -95,6 +131,7 @@ export async function construirReporte(f: FiltrosReporte) {
   const where: Prisma.UserWhereInput = {
     role: "APRENDIZ",
     ...(Object.keys(ficha).length ? { ficha } : {}),
+    ...filtroCoordinacion(f.coordinacion),
     ...(f.estado ? { estado: f.estado as EstadoAprendiz } : {}),
     ...(f.empresa ? { companyProfile: { empresaPatrocinadora: f.empresa } } : {}),
     ...(f.desde || f.hasta
@@ -129,7 +166,7 @@ export async function construirReporte(f: FiltrosReporte) {
             fechaFinFormacion: true,
             fechaInicioProductiva: true,
             reglamento: true,
-            instructor: { select: { id: true, nombres: true, apellidos: true } },
+            instructor: { select: { id: true, nombres: true, apellidos: true, coordinacion: true } },
           },
         },
         companyProfile: { select: { empresaPatrocinadora: true, nitEmpresa: true, sucursal: { select: { nombre: true } } } },
@@ -450,6 +487,8 @@ export async function construirReporte(f: FiltrosReporte) {
       sede: a.companyProfile?.empresaPatrocinadora ? (a.companyProfile.sucursal?.nombre ?? "Sede principal") : null,
       instructor,
       instructorId: a.ficha?.instructor?.id ?? null,
+      // La coordinación del instructor de la ficha (9 nov 2026).
+      coordinacion: a.ficha?.instructor?.coordinacion ? coordinacionLabel[a.ficha.instructor.coordinacion] : null,
       // El grupo del panorama (al día, necesita atención…), el mismo para todos los informes.
       grupo,
       estado: estadoAprendizLabel[a.estado],
@@ -559,6 +598,7 @@ export function describirFiltros(r: Reporte): string {
     f.ficha && `Ficha ${f.ficha}`,
     f.programa && `Programa: ${f.programa}`,
     f.instructor && `Instructor: ${r.opciones.instructores.find((i) => i.id === f.instructor)?.nombre ?? "—"}`,
+    f.coordinacion && `Coordinación: ${etiquetaCoordinacion(f.coordinacion)}`,
     f.empresa && `Empresa: ${f.empresa}`,
     f.estado && `Estado: ${estadoAprendizLabel[f.estado as keyof typeof estadoAprendizLabel]}`,
     (f.desde || f.hasta) &&

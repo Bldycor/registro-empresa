@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { construirReporte } from "@/lib/reportes";
+import { SIN_FILTROS, construirReporte } from "@/lib/reportes";
 import { diasHabilesEntre } from "@/lib/plazos-institucionales";
 import type { DatosResumenSemanal } from "@/lib/resumen-semanal-correo";
 
@@ -12,7 +12,7 @@ export async function datosResumenSemanal(hoy: Date): Promise<DatosResumenSemana
     prisma.interrupcionEtapaProductiva.count({ where: { estado: "PENDIENTE" } }),
     prisma.aplazamientoEtapaProductiva.count({ where: { estado: "PENDIENTE" } }),
     prisma.planMejoramiento.count({ where: { estado: "POR_AUTORIZAR" } }),
-    construirReporte({ ficha: "", programa: "", instructor: "", empresa: "", estado: "", desde: "", hasta: "" }),
+    construirReporte(SIN_FILTROS),
   ]);
   return {
     // Plazo institucional de 8 días hábiles para el aval (guía GFPI-G-040).

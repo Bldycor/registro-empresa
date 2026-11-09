@@ -11,6 +11,7 @@ import { RastroNavegacion } from "@/components/rastro-navegacion";
 import { bienvenidaRol } from "@/lib/ayuda";
 import { calcularSeguimiento } from "@/lib/seguimiento-evidencias";
 import { pendientesMenu } from "@/lib/pendientes-menu";
+import { getSessionUser } from "@/lib/auth-guards";
 
 export default async function FormularioLayout({
   children,
@@ -22,6 +23,13 @@ export default async function FormularioLayout({
   if (!session?.user?.id) {
     redirect("/login");
   }
+
+  // Los contadores del menú arrancan en paralelo con la consulta del encabezado (9 nov 2026): antes
+  // iban después, uno tras otro. `getSessionUser` queda en caché para la página, que lo pide de nuevo
+  // con requireUser y ya no vuelve a la base.
+  const pendientesEnCurso = getSessionUser()
+    .then((u) => (u && u.role !== "APRENDIZ" ? pendientesMenu(u.id, u.role) : null))
+    .catch(() => null);
 
   // Una sola consulta trae lo del encabezado y, si es aprendiz, todo lo que necesita su insignia
   // roja (antes eran cuatro viajes seguidos a la base en cada pantalla).
@@ -147,7 +155,7 @@ export default async function FormularioLayout({
     );
   }
 
-  const pendientes = await pendientesMenu(session.user.id, user.role);
+  const pendientes = (await pendientesEnCurso) ?? (await pendientesMenu(session.user.id, user.role));
 
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">

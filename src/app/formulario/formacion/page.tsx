@@ -15,7 +15,14 @@ export default async function TableroFormacionPage({
 }) {
   await requireUser(["COORDINADOR_FORMACION", "COORDINADOR", "ADMIN"]);
   const filtros = leerFiltros(await searchParams);
-  const [reporte, informe] = await Promise.all([construirReporte(filtros), construirInformeInstructores()]);
+  // El acompañamiento de los instructores es de todo el centro (o de la coordinación elegida). Si no
+  // hay otros filtros, el reporte ya cubre a esos aprendices y se reutiliza en vez de recalcularlo.
+  const soloCoordinacion = Object.entries(filtros).every(([k, v]) => k === "coordinacion" || !v);
+  const [reporte, informe] = soloCoordinacion
+    ? await construirReporte(filtros).then(
+        async (r) => [r, await construirInformeInstructores({ coordinacion: filtros.coordinacion, reporte: r })] as const,
+      )
+    : await Promise.all([construirReporte(filtros), construirInformeInstructores({ coordinacion: filtros.coordinacion })]);
 
   return (
     <div className="flex flex-1 flex-col px-4 py-8 sm:px-8 print:p-0">

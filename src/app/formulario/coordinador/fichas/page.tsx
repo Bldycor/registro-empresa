@@ -33,7 +33,7 @@ export default async function CoordinadorFichasPage() {
     }),
     prisma.user.findMany({
       where: { role: "INSTRUCTOR" },
-      select: { id: true, nombres: true, apellidos: true, email: true },
+      select: { id: true, nombres: true, apellidos: true, email: true, coordinacion: true },
       orderBy: [{ nombres: "asc" }, { apellidos: "asc" }],
     }),
   ]);

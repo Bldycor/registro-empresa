@@ -56,20 +56,14 @@ export type BitacoraFormInitial = {
   }[];
 } | null;
 
-// Datos de la bitácora anterior más reciente que ya se envió — se usan solo para prellenar una
-// bitácora nueva (ARL y actividades suelen repetirse quincena a quincena), nunca para pisar algo
-// que el aprendiz ya haya diligenciado.
+// Datos de la bitácora anterior más reciente que ya se envió — se usan solo para prellenar la ARL
+// de una bitácora nueva (suele repetirse mes a mes), nunca para pisar algo que el aprendiz ya haya
+// diligenciado. Las actividades no se copian: son las de cada período (9 nov 2026).
 export type BitacoraPrefillPrevio = {
   arlAfiliado: boolean | null;
   arlNivelRiesgo: string | null;
   arlRiesgoCorresponde: boolean | null;
   arlTieneEPP: boolean | null;
-  actividades: {
-    descripcion: string;
-    competencias: string | null;
-    evidenciaCumplimiento: string | null;
-    observaciones: string | null;
-  }[];
 } | null;
 
 export function BitacoraForm({
@@ -116,15 +110,9 @@ export function BitacoraForm({
           arlNivelRiesgo: prefillPrevio?.arlNivelRiesgo ?? "",
           arlRiesgoCorresponde: booleanAString(prefillPrevio?.arlRiesgoCorresponde ?? null),
           arlTieneEPP: booleanAString(prefillPrevio?.arlTieneEPP ?? null),
-          actividades:
-            prefillPrevio?.actividades && prefillPrevio.actividades.length > 0
-              ? prefillPrevio.actividades.map((a) => ({
-                  descripcion: a.descripcion,
-                  competencias: a.competencias ?? "",
-                  evidenciaCumplimiento: a.evidenciaCumplimiento ?? "",
-                  observaciones: a.observaciones ?? "",
-                }))
-              : [actividadVacia],
+          // Las actividades ya no se copian de la bitácora anterior (9 nov 2026): eran las del mes
+          // pasado y el instructor terminaba evaluándolas. Salen del PDF adjunto o se escriben.
+          actividades: [actividadVacia],
         }
   );
   const [errors, setErrors] = useState<Record<string, string[]>>({});
@@ -181,9 +169,27 @@ export function BitacoraForm({
 
       const siNo = (v: boolean | null | undefined) => (v === true ? "true" : v === false ? "false" : "");
 
+      const delDocumento: {
+        descripcion: string;
+        competencias: string | null;
+        evidenciaCumplimiento: string | null;
+        observaciones: string | null;
+      }[] = d.actividades ?? [];
+
       setForm((prev) => {
-        const actividades = [...prev.actividades];
-        if (actividades[0]) {
+        let actividades = [...prev.actividades];
+        const sinEscribir = actividades.every(
+          (a) => !a.descripcion.trim() && !a.competencias.trim() && !a.evidenciaCumplimiento.trim() && !a.observaciones.trim(),
+        );
+        // Con la tabla del documento reconocida y nada escrito todavía, entran todas sus filas.
+        if (sinEscribir && delDocumento.length > 0) {
+          actividades = delDocumento.map((a) => ({
+            descripcion: a.descripcion,
+            competencias: competenciaDelCatalogo(a.competencias, catalogoCompetencias ?? []),
+            evidenciaCumplimiento: a.evidenciaCumplimiento ?? "",
+            observaciones: a.observaciones ?? "",
+          }));
+        } else if (actividades[0]) {
           actividades[0] = {
             ...actividades[0],
             descripcion: actividades[0].descripcion.trim() || (leido.descripcion ?? ""),
@@ -395,11 +401,9 @@ export function BitacoraForm({
               + Agregar actividad
             </button>
           </div>
-          {usandoPrefill && (
-            <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
-              Precargadas desde tu última bitácora — edítalas, quítalas o agrega nuevas.
-            </p>
-          )}
+          <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
+            Escribe las actividades de este período. Al adjuntar el PDF de la bitácora, SEPA las toma de su tabla.
+          </p>
 
           <div className="flex flex-col gap-3">
             {form.actividades.map((actividad, idx) => (
