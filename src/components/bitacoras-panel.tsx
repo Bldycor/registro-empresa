@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { BotonRechazar, leerAvisoRechazo, NotaRechazo, ResultadoRechazo, type AvisoRechazo } from "@/components/aviso-rechazo";
 import Link from "next/link";
 import { StatBadge } from "@/components/stat-badge";
 import type { EstadoCupoBitacora } from "@/lib/seguimiento-evidencias";
@@ -58,6 +60,9 @@ export function BitacorasPanel({ aprendizId = null }: { aprendizId?: string | nu
   const [observaciones, setObservaciones] = useState<Record<string, string>>({});
   const [expandidoId, setExpandidoId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const router = useRouter();
+  // Resultado del último rechazo: a quién se avisó por correo.
+  const [aviso, setAviso] = useState<AvisoRechazo>(null);
 
   function load() {
     fetch(
@@ -83,13 +88,17 @@ export function BitacorasPanel({ aprendizId = null }: { aprendizId?: string | nu
 
   async function avalar(id: string, estado: "APROBADA" | "RECHAZADA") {
     setBusy(id);
-    await fetch(`/api/instructor/bitacoras/${id}`, {
+    setAviso(null);
+    const res = await fetch(`/api/instructor/bitacoras/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado, observaciones: observaciones[id] ?? null }),
     });
+    if (estado === "RECHAZADA") setAviso(await leerAvisoRechazo(res));
     setBusy(null);
     load();
+    // Los contadores naranjas del menú salen del layout: se refrescan para que bajen al revisar.
+    router.refresh();
   }
 
   if (items === null) {
@@ -176,6 +185,8 @@ export function BitacorasPanel({ aprendizId = null }: { aprendizId?: string | nu
           <option value="TODAS">Todas</option>
         </select>
       </div>
+
+      <ResultadoRechazo aviso={aviso} onCerrar={() => setAviso(null)} />
 
       {visibles.length === 0 ? (
         <p className="rounded-lg border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
@@ -266,6 +277,7 @@ export function BitacorasPanel({ aprendizId = null }: { aprendizId?: string | nu
                       className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
                       rows={2}
                     />
+                    {b.numero >= 4 && <NotaRechazo />}
                     <div className="flex gap-2">
                       <button
                         type="button"
@@ -275,14 +287,7 @@ export function BitacorasPanel({ aprendizId = null }: { aprendizId?: string | nu
                       >
                         Avalar
                       </button>
-                      <button
-                        type="button"
-                        disabled={busy === b.id}
-                        onClick={() => avalar(b.id, "RECHAZADA")}
-                        className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                      >
-                        Rechazar
-                      </button>
+                      <BotonRechazar disabled={busy === b.id} onRechazar={() => avalar(b.id, "RECHAZADA")} avisaPorCorreo={b.numero >= 4} />
                     </div>
                   </div>
                 )}

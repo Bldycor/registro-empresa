@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { z } from "zod";
+import { notificarRechazoEvidencia } from "@/lib/notificar-rechazo";
 
 const AvalSchema = z.object({
   estado: z.enum(["APROBADA", "RECHAZADA"]),
@@ -47,5 +48,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     },
   });
 
-  return NextResponse.json({ formalizacion });
+  // Al rechazar, se avisa por correo al aprendiz, a su instructor y a su coformador (10 nov 2026).
+  const aviso =
+    d.estado === "RECHAZADA"
+      ? await notificarRechazoEvidencia({
+          aprendizId: formalizacion.userId,
+          evidencia: { tipo: "FORMALIZACION" },
+          observacion: d.observaciones,
+          revisor: user,
+        })
+      : null;
+
+  return NextResponse.json({ formalizacion, aviso });
 }

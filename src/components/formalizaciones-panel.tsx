@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { BotonRechazar, leerAvisoRechazo, NotaRechazo, ResultadoRechazo, type AvisoRechazo } from "@/components/aviso-rechazo";
 import { StatBadge } from "@/components/stat-badge";
 import { PlazoBadge } from "@/components/plazo-badge";
 import { AvisoAprendiz, entregaDocumento } from "@/components/aviso-aprendiz";
@@ -36,6 +38,9 @@ export function FormalizacionesPanel({ aprendizId = null }: { aprendizId?: strin
   const [filtroPrograma, setFiltroPrograma] = useState("");
   const [observaciones, setObservaciones] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  const router = useRouter();
+  // Resultado del último rechazo: a quién se avisó por correo.
+  const [aviso, setAviso] = useState<AvisoRechazo>(null);
 
   function load() {
     fetch("/api/instructor/formalizaciones")
@@ -47,13 +52,17 @@ export function FormalizacionesPanel({ aprendizId = null }: { aprendizId?: strin
 
   async function avalar(id: string, estado: "APROBADA" | "RECHAZADA") {
     setBusy(id);
-    await fetch(`/api/instructor/formalizaciones/${id}`, {
+    setAviso(null);
+    const res = await fetch(`/api/instructor/formalizaciones/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado, observaciones: observaciones[id] ?? null }),
     });
+    if (estado === "RECHAZADA") setAviso(await leerAvisoRechazo(res));
     setBusy(null);
     load();
+    // Los contadores naranjas del menú salen del layout: se refrescan para que bajen al revisar.
+    router.refresh();
   }
 
   if (items === null) {
@@ -129,6 +138,8 @@ export function FormalizacionesPanel({ aprendizId = null }: { aprendizId?: strin
         </select>
       </div>
 
+      <ResultadoRechazo aviso={aviso} onCerrar={() => setAviso(null)} />
+
       {visibles.length === 0 ? (
         <p className="rounded-lg border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
           No hay documentos en este filtro.
@@ -181,6 +192,7 @@ export function FormalizacionesPanel({ aprendizId = null }: { aprendizId?: strin
                     className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
                     rows={2}
                   />
+                  <NotaRechazo />
                   <div className="flex gap-2">
                     <button
                       type="button"
@@ -190,14 +202,7 @@ export function FormalizacionesPanel({ aprendizId = null }: { aprendizId?: strin
                     >
                       Avalar
                     </button>
-                    <button
-                      type="button"
-                      disabled={busy === s.id}
-                      onClick={() => avalar(s.id, "RECHAZADA")}
-                      className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                    >
-                      Rechazar
-                    </button>
+                    <BotonRechazar disabled={busy === s.id} onRechazar={() => avalar(s.id, "RECHAZADA")} />
                   </div>
                 </div>
               )}

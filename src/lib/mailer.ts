@@ -6,6 +6,7 @@ import { getVideoConferenceUrl } from "@/lib/video";
 import { componerAvisoPlazos, type AvisoPlazoCorreo } from "@/lib/aviso-plazos-correo";
 import { componerPlanMejoramiento } from "@/lib/plan-mejoramiento-correo";
 import { componerResumenSemanal, type DatosResumenSemanal } from "@/lib/resumen-semanal-correo";
+import { componerRechazoEvidencia, type EvidenciaRechazada } from "@/lib/rechazo-evidencia-correo";
 import {
   atributosInvitacion,
   componerCitacion,
@@ -500,6 +501,32 @@ export async function sendPlanMejoramientoEmail(params: {
   const info = await transporter.sendMail({ from, to, cc: cc.length ? cc : undefined, ...correo });
   if (usingTestAccount) {
     console.log(`[mailer] Vista previa (Ethereal) del plan de mejoramiento: ${nodemailer.getTestMessageUrl(info)}`);
+  }
+  return { info };
+}
+
+// Evidencia rechazada (10 nov 2026): al aprendiz, con copia a su instructor y a su coformador, con
+// la observación del revisor y el enlace de ingreso a SEPA.
+export async function sendRechazoEvidenciaEmail(params: {
+  aprendizEmail: string;
+  copias: string[];
+  aprendizNombre: string;
+  evidencia: EvidenciaRechazada;
+  revisorNombre: string;
+  revisorRol: string;
+  observacion: string | null;
+}) {
+  const from = process.env.EMAIL_FROM || "no-responder@registro-empresa.local";
+  const correo = componerRechazoEvidencia({ ...params, loginUrl: urlApp("/login") });
+  const transporter = await getTransporter();
+  const info = await transporter.sendMail({
+    from,
+    to: params.aprendizEmail,
+    cc: params.copias.length ? params.copias : undefined,
+    ...correo,
+  });
+  if (usingTestAccount) {
+    console.log(`[mailer] Vista previa (Ethereal) de la evidencia rechazada: ${nodemailer.getTestMessageUrl(info)}`);
   }
   return { info };
 }
