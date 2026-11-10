@@ -67,8 +67,15 @@ export function BitacorasPanel({ aprendizId = null }: { aprendizId?: string | nu
     )
       .then((res) => res.json())
       .then((data) => {
-        setItems(data.bitacoras ?? []);
+        const bitacoras: Bitacora[] = data.bitacoras ?? [];
+        setItems(bitacoras);
         setPlan(data.plan ?? null);
+        // Las pendientes son las que el instructor va a abrir: su PDF se empieza a leer ya, para
+        // que «Ver detalle» muestre las actividades sin esperar.
+        // Hasta ocho a la vez: las demás se leen al abrirlas.
+        for (const b of bitacoras.filter((x) => x.estado === "PENDIENTE" && x.archivoUrl).slice(0, 8)) {
+          lecturaDelAdjunto(b.id, b.archivoUrl);
+        }
       });
   }
 
@@ -489,6 +496,19 @@ type LecturaAdjunto = {
 // Lo que se lee del adjunto, por bitácora y archivo: al plegar y desplegar no se vuelve a leer.
 const lecturasAdjunto = new Map<string, Promise<LecturaAdjunto>>();
 
+function lecturaDelAdjunto(bitacoraId: string, archivoUrl: string | null): Promise<LecturaAdjunto> {
+  const clave = `${bitacoraId}|${archivoUrl ?? ""}`;
+  if (!lecturasAdjunto.has(clave)) {
+    lecturasAdjunto.set(
+      clave,
+      fetch(`/api/instructor/bitacoras/${bitacoraId}`)
+        .then((r) => r.json())
+        .catch(() => ({ fuente: "error", actividades: [] }) as LecturaAdjunto),
+    );
+  }
+  return lecturasAdjunto.get(clave)!;
+}
+
 const AVISO_SIN_LECTURA: Record<Exclude<LecturaAdjunto["fuente"], "pdf">, string> = {
   "no-reconocida": "No se reconoció la tabla de actividades del PDF adjunto.",
   "sin-texto": "El PDF adjunto no tiene texto (parece un escaneo).",
@@ -512,25 +532,16 @@ function ActividadesDelAdjunto({
   archivoUrl: string | null;
   registradas: Bitacora["actividades"];
 }) {
-  const clave = `${bitacoraId}|${archivoUrl ?? ""}`;
   const [lectura, setLectura] = useState<LecturaAdjunto | null>(null);
   const [verRegistradas, setVerRegistradas] = useState(false);
 
   useEffect(() => {
     let vigente = true;
-    if (!lecturasAdjunto.has(clave)) {
-      lecturasAdjunto.set(
-        clave,
-        fetch(`/api/instructor/bitacoras/${bitacoraId}`)
-          .then((r) => r.json())
-          .catch(() => ({ fuente: "error", actividades: [] }) as LecturaAdjunto),
-      );
-    }
-    lecturasAdjunto.get(clave)!.then((l) => vigente && setLectura(l));
+    lecturaDelAdjunto(bitacoraId, archivoUrl).then((l) => vigente && setLectura(l));
     return () => {
       vigente = false;
     };
-  }, [clave, bitacoraId]);
+  }, [bitacoraId, archivoUrl]);
 
   if (!lectura) {
     return <p className="animate-pulse text-zinc-500">Leyendo las actividades del documento adjunto…</p>;

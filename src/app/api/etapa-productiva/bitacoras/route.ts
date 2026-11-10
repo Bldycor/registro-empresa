@@ -4,6 +4,20 @@ import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { BitacoraSchema } from "@/lib/validations";
 import { calcularFechaLimiteBitacora } from "@/lib/bitacora-fechas";
+import { type ActividadLeida } from "@/lib/leer-gfpi147";
+import { leerBitacoraDeUrl } from "@/lib/leer-bitacora-url";
+import { competenciaDelCatalogo } from "@/lib/competencia-catalogo";
+
+// Las actividades se toman del PDF adjunto, no de lo que llegue del formulario (9 nov 2026): el
+// aprendiz las ve leídas, confirma que son las de este período y las envía; si algo está mal,
+// corrige su archivo y lo vuelve a adjuntar. Así lo enviado coincide siempre con el documento
+// firmado, y no se cuelan las actividades de la bitácora anterior.
+const SIN_ACTIVIDADES =
+  "SEPA no pudo leer las actividades de tu bitácora. Adjunta el PDF exportado de la plantilla GFPI-F-147 (no una foto ni un escaneo), con la tabla de actividades diligenciada.";
+
+async function actividadesDelAdjunto(archivoUrl: string): Promise<ActividadLeida[]> {
+  return (await leerBitacoraDeUrl(archivoUrl)).actividades ?? [];
+}
 
 const BITACORA_SELECT = {
   id: true,
@@ -91,14 +105,32 @@ export async function POST(request: Request) {
     );
   }
 
-  // La competencia de cada actividad sale del catálogo que cargó Coordinación (2 oct 2026).
+  const delPdf = await actividadesDelAdjunto(d.archivoUrl);
+  if (delPdf.length === 0) {
+    return NextResponse.json({ error: { _root: [SIN_ACTIVIDADES] } }, { status: 400 });
+  }
+
+  // La competencia de cada actividad sale del catálogo que cargó Coordinación (2 oct 2026): la del
+  // PDF si coincide con una del catálogo; si no, la que el aprendiz eligió de la lista.
   const catalogo = await catalogoDelAprendiz(user.id);
+  const listaCatalogo = [...catalogo.competenciaDe].map(([resultadoAprendizaje, nombreCompetencia]) => ({
+    id: resultadoAprendizaje,
+    tipo: "TECNICA" as const,
+    nombreCompetencia,
+    resultadoAprendizaje,
+  }));
+  const actividades = delPdf.map((a, i) => ({
+    descripcion: a.descripcion,
+    competencias: competenciaDelCatalogo(a.competencias, listaCatalogo) || d.actividades[i]?.competencias || null,
+    evidenciaCumplimiento: a.evidenciaCumplimiento,
+    observaciones: a.observaciones,
+  }));
   const guardadas = await prisma.bitacoraActividad.findMany({
     where: { bitacora: { userId: user.id, numero: d.numero } },
     select: { competencias: true },
   });
   const yaGuardadas = new Set(guardadas.map((g) => g.competencias?.trim()).filter((c): c is string => !!c));
-  for (const a of d.actividades) {
+  for (const a of actividades) {
     const problema = problemaEnCompetencia(catalogo, a.competencias, yaGuardadas);
     if (problema) {
       return NextResponse.json({ error: { _root: [problema] } }, { status: 400 });
@@ -116,7 +148,7 @@ export async function POST(request: Request) {
   const actividadFechaInicio = d.periodoDesde ? new Date(d.periodoDesde) : null;
   const actividadFechaFin = d.periodoHasta ? new Date(d.periodoHasta) : null;
 
-  const actividadesData = d.actividades.map((a) => ({
+  const actividadesData = actividades.map((a) => ({
     descripcion: a.descripcion,
     competencias: a.competencias || null,
     fechaInicio: actividadFechaInicio,

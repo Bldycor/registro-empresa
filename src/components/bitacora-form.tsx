@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileUploadField } from "@/components/file-upload-field";
 import { PlantillaEnlace, PLANTILLA_BITACORA } from "@/components/plantilla-enlace";
@@ -8,14 +8,35 @@ import { DatePickerField } from "@/components/date-picker-field";
 import { NivelRiesgoARLValues, nivelRiesgoARLLabel } from "@/lib/validations";
 import { agruparCompetencias, type CompetenciaCatalogo, competenciaDelCatalogo } from "@/lib/competencia-catalogo";
 
-type Actividad = {
+// Bitácora del aprendiz (GFPI-F-147), en tres pasos (decisión del usuario, 9 nov 2026):
+//   1. Adjunta el PDF firmado.
+//   2. SEPA lee el período, la ARL y las actividades, y las muestra para que las verifique.
+//   3. Confirma que son las actividades que realizó en ese período y envía.
+// Las actividades no se escriben ni se editan: salen del documento. Si algo está mal, el aprendiz
+// corrige su archivo y lo vuelve a adjuntar. Antes, el formulario copiaba las actividades de la
+// bitácora anterior y el instructor terminaba rechazándolas por incoherencia. El servidor vuelve a
+// leer el PDF al guardar, así que lo enviado siempre coincide con el documento.
+
+type ActividadLeida = {
   descripcion: string;
-  competencias: string;
-  evidenciaCumplimiento: string;
-  observaciones: string;
+  // Texto de la competencia en el PDF; la del catálogo se calcula al mostrarla.
+  competenciaLeida: string | null;
+  evidenciaCumplimiento: string | null;
+  observaciones: string | null;
 };
 
-type FormFields = {
+type Lectura =
+  | { estado: "sin-archivo" | "leyendo" | "foto" | "sin-texto" | "sin-actividades" | "error" }
+  | {
+      estado: "lista";
+      actividades: ActividadLeida[];
+      periodoDelPdf: boolean;
+      arlDelPdf: boolean;
+      // El «Bitácora N°» que trae el documento, si se leyó.
+      numeroDelPdf: number | null;
+    };
+
+type Campos = {
   periodoDesde: string;
   periodoHasta: string;
   archivoUrl: string;
@@ -23,22 +44,37 @@ type FormFields = {
   arlNivelRiesgo: string;
   arlRiesgoCorresponde: string;
   arlTieneEPP: string;
-  actividades: Actividad[];
-};
-
-const actividadVacia: Actividad = {
-  descripcion: "",
-  competencias: "",
-  evidenciaCumplimiento: "",
-  observaciones: "",
 };
 
 const inputClass =
   "rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-950";
 
-function booleanAString(v: boolean | null): string {
+// Los selectores de Sí/No usan "SI" y "NO" (antes la lectura del PDF ponía "true"/"false", que
+// ningún selector reconocía, y al enviar la ARL leída quedaba en «No»).
+function siNo(v: boolean | null | undefined): string {
   return v === true ? "SI" : v === false ? "NO" : "";
 }
+
+// Del D/M/AAAA del documento al AAAA-MM-DD que usan los campos de fecha.
+function aFechaCampo(valor: string | null | undefined): string {
+  const m = (valor ?? "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (!m) return "";
+  const [, d, mes, anio] = m;
+  return `${anio.length === 2 ? `20${anio}` : anio}-${mes.padStart(2, "0")}-${d.padStart(2, "0")}`;
+}
+
+function fechaLegible(valor: string): string {
+  const m = valor.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : "?";
+}
+
+const AVISO: Record<Exclude<Lectura["estado"], "lista" | "sin-archivo" | "leyendo">, string> = {
+  foto: "Adjuntaste una foto. SEPA solo lee la bitácora en PDF: exporta la plantilla GFPI-F-147 a PDF y adjúntala.",
+  "sin-texto": "Ese PDF no tiene texto (parece un escaneo). Exporta la plantilla GFPI-F-147 a PDF desde Excel y adjúntala.",
+  "sin-actividades":
+    "SEPA no encontró la tabla de actividades en tu PDF. Revisa que sea la plantilla GFPI-F-147 con la tabla «Descripción de las actividades realizadas» diligenciada, y vuelve a adjuntarla.",
+  error: "No se pudo leer el documento. Vuelve a adjuntarlo; si el problema sigue, avísale a tu instructor.",
+};
 
 export type BitacoraFormInitial = {
   periodoDesde: string | null;
@@ -57,8 +93,8 @@ export type BitacoraFormInitial = {
 } | null;
 
 // Datos de la bitácora anterior más reciente que ya se envió — se usan solo para prellenar la ARL
-// de una bitácora nueva (suele repetirse mes a mes), nunca para pisar algo que el aprendiz ya haya
-// diligenciado. Las actividades no se copian: son las de cada período (9 nov 2026).
+// de una bitácora nueva (suele repetirse mes a mes) cuando el PDF no la trae. Las actividades no se
+// copian: son las de cada período (9 nov 2026).
 export type BitacoraPrefillPrevio = {
   arlAfiliado: boolean | null;
   arlNivelRiesgo: string | null;
@@ -82,185 +118,137 @@ export function BitacoraForm({
   onCancel?: () => void;
 }) {
   const router = useRouter();
-  const [form, setForm] = useState<FormFields>(
-    initial
-      ? {
-          periodoDesde: initial.periodoDesde ?? periodoSugerido?.desde ?? "",
-          periodoHasta: initial.periodoHasta ?? periodoSugerido?.hasta ?? "",
-          archivoUrl: initial.archivoUrl ?? "",
-          arlAfiliado: booleanAString(initial.arlAfiliado),
-          arlNivelRiesgo: initial.arlNivelRiesgo ?? "",
-          arlRiesgoCorresponde: booleanAString(initial.arlRiesgoCorresponde),
-          arlTieneEPP: booleanAString(initial.arlTieneEPP),
-          actividades:
-            initial.actividades.length > 0
-              ? initial.actividades.map((a) => ({
-                  descripcion: a.descripcion,
-                  competencias: a.competencias ?? "",
-                  evidenciaCumplimiento: a.evidenciaCumplimiento ?? "",
-                  observaciones: a.observaciones ?? "",
-                }))
-              : [actividadVacia],
-        }
-      : {
-          periodoDesde: periodoSugerido?.desde ?? "",
-          periodoHasta: periodoSugerido?.hasta ?? "",
-          archivoUrl: "",
-          arlAfiliado: booleanAString(prefillPrevio?.arlAfiliado ?? null),
-          arlNivelRiesgo: prefillPrevio?.arlNivelRiesgo ?? "",
-          arlRiesgoCorresponde: booleanAString(prefillPrevio?.arlRiesgoCorresponde ?? null),
-          arlTieneEPP: booleanAString(prefillPrevio?.arlTieneEPP ?? null),
-          // Las actividades ya no se copian de la bitácora anterior (9 nov 2026): eran las del mes
-          // pasado y el instructor terminaba evaluándolas. Salen del PDF adjunto o se escriben.
-          actividades: [actividadVacia],
-        }
-  );
+  const base = initial ?? prefillPrevio;
+  const [form, setForm] = useState<Campos>({
+    periodoDesde: initial?.periodoDesde ?? periodoSugerido?.desde ?? "",
+    periodoHasta: initial?.periodoHasta ?? periodoSugerido?.hasta ?? "",
+    archivoUrl: initial?.archivoUrl ?? "",
+    arlAfiliado: siNo(base?.arlAfiliado),
+    arlNivelRiesgo: base?.arlNivelRiesgo ?? "",
+    arlRiesgoCorresponde: siNo(base?.arlRiesgoCorresponde),
+    arlTieneEPP: siNo(base?.arlTieneEPP),
+  });
+  const [lectura, setLectura] = useState<Lectura>({ estado: initial?.archivoUrl ? "leyendo" : "sin-archivo" });
+  const [confirmado, setConfirmado] = useState(false);
+  // Competencia elegida de la lista para las actividades cuya competencia del PDF no está en el catálogo.
+  const [elegidas, setElegidas] = useState<Record<number, string>>({});
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [subiendoArchivo, setSubiendoArchivo] = useState(false);
-  const [leyendo, setLeyendo] = useState(false);
-  const [lectura, setLectura] = useState<string | null>(null);
-  const [catalogoCompetencias, setCatalogoCompetencias] = useState<CompetenciaCatalogo[] | null>(
-    null
-  );
+  const [catalogo, setCatalogo] = useState<CompetenciaCatalogo[] | null>(null);
+  // Solo cuenta la última lectura: si el aprendiz cambia de archivo a mitad, la anterior se ignora.
+  const lecturaVigente = useRef(0);
 
   useEffect(() => {
     fetch("/api/etapa-productiva/competencias")
       .then((res) => res.json())
-      .then((data) => setCatalogoCompetencias(data.competencias ?? []))
-      .catch(() => setCatalogoCompetencias([]));
+      .then((data) => setCatalogo(data.competencias ?? []))
+      .catch(() => setCatalogo([]));
   }, []);
 
-  // Del D/M/AAAA del documento al AAAA-MM-DD que usan los campos de fecha.
-  function aFechaCampo(valor: string): string {
-    const m = valor.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
-    if (!m) return "";
-    const [, d, mes, anio] = m;
-    return `${anio.length === 2 ? `20${anio}` : anio}-${mes.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  // Pide la lectura del PDF sin guardar nada.
+  async function pedirLectura(url: string) {
+    const res = await fetch("/api/etapa-productiva/bitacoras/leer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archivoUrl: url }),
+    });
+    return res.json();
   }
 
-  // Al adjuntar la bitácora firmada se lee y se diligencia lo que esté vacío. Nada se guarda
-  // hasta que el aprendiz revisa y pulsa enviar.
-  async function leerDelDocumento(url: string) {
-    setLeyendo(true);
-    setLectura(null);
-    try {
-      const res = await fetch("/api/etapa-productiva/bitacoras/leer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ archivoUrl: url }),
-      });
-      const d = await res.json();
-      const leido = d.datos ?? {};
+  // Aplica lo leído, si sigue siendo la última lectura pedida.
+  function aplicarLectura(turno: number, d: {
+    error?: boolean;
+    esImagen?: boolean;
+    sinTexto?: boolean;
+    datos?: Record<string, string | boolean | null | undefined>;
+    actividades?: { descripcion: string; competencias: string | null; evidenciaCumplimiento: string | null; observaciones: string | null }[];
+  }) {
+    if (turno !== lecturaVigente.current) return;
+    if (d.error) return setLectura({ estado: "error" });
+    if (d.esImagen) return setLectura({ estado: "foto" });
+    if (d.sinTexto) return setLectura({ estado: "sin-texto" });
+    const filas = d.actividades ?? [];
+    if (filas.length === 0) return setLectura({ estado: "sin-actividades" });
 
-      if (d.esImagen) {
-        setLectura("Subiste una foto. SEPA lee la bitácora automáticamente solo cuando es un PDF: diligencia los campos a mano. La foto se envía igual como soporte.");
-        return;
-      }
-      if (d.sinTexto) {
-        setLectura("Ese PDF no tiene texto (parece una foto o un escaneo): diligencia los campos a mano.");
-        return;
-      }
-      if (!d.leidos) {
-        setLectura("No se reconoció ningún campo de la bitácora en ese PDF: diligencia los campos a mano.");
-        return;
-      }
-
-      const siNo = (v: boolean | null | undefined) => (v === true ? "true" : v === false ? "false" : "");
-
-      const delDocumento: {
-        descripcion: string;
-        competencias: string | null;
-        evidenciaCumplimiento: string | null;
-        observaciones: string | null;
-      }[] = d.actividades ?? [];
-
-      setForm((prev) => {
-        let actividades = [...prev.actividades];
-        const sinEscribir = actividades.every(
-          (a) => !a.descripcion.trim() && !a.competencias.trim() && !a.evidenciaCumplimiento.trim() && !a.observaciones.trim(),
-        );
-        // Con la tabla del documento reconocida y nada escrito todavía, entran todas sus filas.
-        if (sinEscribir && delDocumento.length > 0) {
-          actividades = delDocumento.map((a) => ({
-            descripcion: a.descripcion,
-            competencias: competenciaDelCatalogo(a.competencias, catalogoCompetencias ?? []),
-            evidenciaCumplimiento: a.evidenciaCumplimiento ?? "",
-            observaciones: a.observaciones ?? "",
-          }));
-        } else if (actividades[0]) {
-          actividades[0] = {
-            ...actividades[0],
-            descripcion: actividades[0].descripcion.trim() || (leido.descripcion ?? ""),
-            competencias:
-              actividades[0].competencias.trim() ||
-              competenciaDelCatalogo(leido.competencias, catalogoCompetencias ?? []),
-            evidenciaCumplimiento:
-              actividades[0].evidenciaCumplimiento.trim() || (leido.evidenciaCumplimiento ?? ""),
-            observaciones: actividades[0].observaciones.trim() || (leido.observaciones ?? ""),
-          };
-        }
-        return {
-          ...prev,
-          periodoDesde: prev.periodoDesde || (leido.periodoDesde ? aFechaCampo(leido.periodoDesde) : ""),
-          periodoHasta: prev.periodoHasta || (leido.periodoHasta ? aFechaCampo(leido.periodoHasta) : ""),
-          arlAfiliado: prev.arlAfiliado || siNo(leido.arlAfiliado),
-          arlNivelRiesgo: prev.arlNivelRiesgo || (leido.arlNivelRiesgo ?? ""),
-          arlRiesgoCorresponde: prev.arlRiesgoCorresponde || siNo(leido.arlRiesgoCorresponde),
-          arlTieneEPP: prev.arlTieneEPP || siNo(leido.arlTieneEPP),
-          actividades,
-        };
-      });
-
-      setLectura(
-        `De la bitácora se tomaron ${d.leidos} ${d.leidos === 1 ? "dato" : "datos"} y quedaron puestos en el formulario. Revísalos y corrige lo que haga falta antes de enviar.`,
-      );
-    } catch {
-      setLectura("No se pudo leer el documento: diligencia los campos a mano y envíalo igual.");
-    } finally {
-      setLeyendo(false);
-    }
+    const leido = d.datos ?? {};
+    const desde = aFechaCampo(leido.periodoDesde as string | undefined);
+    const hasta = aFechaCampo(leido.periodoHasta as string | undefined);
+    const arl = {
+      arlAfiliado: siNo(leido.arlAfiliado as boolean | null | undefined),
+      arlNivelRiesgo: (leido.arlNivelRiesgo as string | undefined) ?? "",
+      arlRiesgoCorresponde: siNo(leido.arlRiesgoCorresponde as boolean | null | undefined),
+      arlTieneEPP: siNo(leido.arlTieneEPP as boolean | null | undefined),
+    };
+    // Lo leído del PDF manda; lo que el PDF no trae conserva lo que ya había.
+    setForm((prev) => ({
+      ...prev,
+      periodoDesde: desde || prev.periodoDesde,
+      periodoHasta: hasta || prev.periodoHasta,
+      arlAfiliado: arl.arlAfiliado || prev.arlAfiliado,
+      arlNivelRiesgo: arl.arlNivelRiesgo || prev.arlNivelRiesgo,
+      arlRiesgoCorresponde: arl.arlRiesgoCorresponde || prev.arlRiesgoCorresponde,
+      arlTieneEPP: arl.arlTieneEPP || prev.arlTieneEPP,
+    }));
+    setElegidas({});
+    setLectura({
+      estado: "lista",
+      periodoDelPdf: Boolean(desde || hasta),
+      arlDelPdf: Object.values(arl).some(Boolean),
+      numeroDelPdf: Number(leido.numero) || null,
+      actividades: filas.map((a) => ({
+        descripcion: a.descripcion,
+        competenciaLeida: a.competencias,
+        evidenciaCumplimiento: a.evidenciaCumplimiento,
+        observaciones: a.observaciones,
+      })),
+    });
   }
 
-  function update<K extends keyof FormFields>(key: K, value: FormFields[K]) {
+  function leerDelDocumento(url: string) {
+    const turno = ++lecturaVigente.current;
+    setLectura({ estado: "leyendo" });
+    setConfirmado(false);
+    pedirLectura(url)
+      .then((d) => aplicarLectura(turno, d))
+      .catch(() => turno === lecturaVigente.current && setLectura({ estado: "error" }));
+  }
+
+  // Al corregir una bitácora ya enviada, su PDF se vuelve a leer para mostrar lo que va a quedar.
+  const archivoInicial = initial?.archivoUrl;
+  useEffect(() => {
+    if (!archivoInicial) return;
+    const turno = ++lecturaVigente.current;
+    pedirLectura(archivoInicial)
+      .then((d) => aplicarLectura(turno, d))
+      .catch(() => turno === lecturaVigente.current && setLectura({ estado: "error" }));
+    // Solo al abrir el formulario.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function update<K extends keyof Campos>(key: K, value: Campos[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  function updateActividad(idx: number, key: keyof Actividad, value: string) {
-    setForm((prev) => ({
-      ...prev,
-      actividades: prev.actividades.map((a, i) => (i === idx ? { ...a, [key]: value } : a)),
-    }));
-  }
-
-  function agregarActividad() {
-    setForm((prev) => ({ ...prev, actividades: [...prev.actividades, actividadVacia] }));
-  }
-
-  function quitarActividad(idx: number) {
-    setForm((prev) => ({
-      ...prev,
-      actividades: prev.actividades.length > 1 ? prev.actividades.filter((_, i) => i !== idx) : prev.actividades,
-    }));
-  }
-
-  const usandoPrefill = !initial && Boolean(prefillPrevio);
+  // Competencia de cada actividad: la del catálogo que coincide con la del PDF o, si ninguna
+  // coincide, la que el aprendiz elige de la lista.
+  const competenciaDe = (a: ActividadLeida, idx: number) =>
+    (catalogo ? competenciaDelCatalogo(a.competenciaLeida, catalogo) : "") || elegidas[idx] || "";
+  const coincide = (a: ActividadLeida) => Boolean(catalogo && competenciaDelCatalogo(a.competenciaLeida, catalogo));
 
   function cancelar() {
-    // Cuando el formulario está anidado en un acordeón (lista de las bitácoras en una sola
-    // página), "Cancelar" solo debe cerrar esa fila — router.back() sacaría al aprendiz de toda
-    // la página. Fuera de ese contexto (sin onCancel), sí navega atrás como el resto de evidencias.
-    if (onCancel) {
-      onCancel();
-    } else {
-      router.back();
-    }
+    // Anidado en el acordeón de bitácoras, «Cancelar» solo cierra esa fila; fuera de él, vuelve atrás.
+    if (onCancel) onCancel();
+    else router.back();
   }
+
+  const lista = lectura.estado === "lista" ? lectura : null;
+  const puedeEnviar = Boolean(lista) && confirmado && !loading && !subiendoArchivo;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (subiendoArchivo) return;
+    if (!lista || !confirmado) return;
     setErrors({});
     setSuccess(false);
     setLoading(true);
@@ -277,246 +265,205 @@ export function BitacoraForm({
         arlNivelRiesgo: form.arlNivelRiesgo || null,
         arlRiesgoCorresponde: form.arlRiesgoCorresponde ? form.arlRiesgoCorresponde === "SI" : null,
         arlTieneEPP: form.arlTieneEPP ? form.arlTieneEPP === "SI" : null,
-        actividades: form.actividades.map((a) => ({
+        // El servidor toma las actividades del PDF; de aquí solo usa la competencia elegida del
+        // catálogo cuando la del documento no coincide con ninguna.
+        actividades: lista.actividades.map((a, idx) => ({
           descripcion: a.descripcion,
-          competencias: a.competencias || null,
-          evidenciaCumplimiento: a.evidenciaCumplimiento || null,
-          observaciones: a.observaciones || null,
+          competencias: competenciaDe(a, idx) || null,
+          evidenciaCumplimiento: a.evidenciaCumplimiento,
+          observaciones: a.observaciones,
         })),
+        confirmaActividades: true,
       }),
     });
 
     setLoading(false);
-
     if (!res.ok) {
       const data = await res.json();
       setErrors(data.error ?? {});
       return;
     }
-
     setSuccess(true);
     if (onSaved) onSaved();
     router.refresh();
   }
+
+  const grupos = catalogo ? agruparCompetencias(catalogo) : [];
 
   return (
     <form
       onSubmit={handleSubmit}
       className="w-full rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
     >
-      <div className="flex flex-col gap-4">
-        <div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <DatePickerField
-              label="Período desde"
-              value={form.periodoDesde}
-              onChange={(v) => update("periodoDesde", v)}
-              error={errors.periodoDesde?.[0]}
-            />
-            <DatePickerField
-              label="Período hasta"
-              value={form.periodoHasta}
-              onChange={(v) => update("periodoHasta", v)}
-              error={errors.periodoHasta?.[0]}
-            />
-          </div>
-          {periodoSugerido && (
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-              Calculado automáticamente según tu fecha de inicio de Etapa Productiva — puedes
-              ajustarlo si es necesario.
-            </p>
-          )}
-        </div>
-
-        <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-          <h3 className="mb-1 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-            Afiliación a ARL
-          </h3>
-          {usandoPrefill && (
-            <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
-              Precargado desde tu última bitácora — ajústalo si algo cambió.
-            </p>
-          )}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="¿Estás afiliado a la ARL?">
-              <select
-                value={form.arlAfiliado}
-                onChange={(e) => update("arlAfiliado", e.target.value)}
-                className={inputClass}
-              >
-                <option value="">Sin definir</option>
-                <option value="SI">Sí</option>
-                <option value="NO">No</option>
-              </select>
-            </Field>
-            <Field label="Nivel de riesgo">
-              <select
-                value={form.arlNivelRiesgo}
-                onChange={(e) => update("arlNivelRiesgo", e.target.value)}
-                className={inputClass}
-              >
-                <option value="">Sin definir</option>
-                {NivelRiesgoARLValues.map((v) => (
-                  <option key={v} value={v}>
-                    {nivelRiesgoARLLabel[v]}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="¿El nivel de riesgo corresponde a tu labor?">
-              <select
-                value={form.arlRiesgoCorresponde}
-                onChange={(e) => update("arlRiesgoCorresponde", e.target.value)}
-                className={inputClass}
-              >
-                <option value="">Sin definir</option>
-                <option value="SI">Sí</option>
-                <option value="NO">No</option>
-              </select>
-            </Field>
-            <Field label="¿La empresa te suministra los EPP?">
-              <select
-                value={form.arlTieneEPP}
-                onChange={(e) => update("arlTieneEPP", e.target.value)}
-                className={inputClass}
-              >
-                <option value="">Sin definir</option>
-                <option value="SI">Sí</option>
-                <option value="NO">No</option>
-              </select>
-            </Field>
-          </div>
-        </div>
-
-        <div>
-          <div className="mb-1 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-              Descripción de las actividades realizadas
-            </h3>
-            <button
-              type="button"
-              onClick={agregarActividad}
-              className="text-xs font-medium text-zinc-600 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-            >
-              + Agregar actividad
-            </button>
-          </div>
-          <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
-            Escribe las actividades de este período. Al adjuntar el PDF de la bitácora, SEPA las toma de su tabla.
+      <div className="flex flex-col gap-5">
+        <Paso n={1} titulo="Adjunta tu bitácora en PDF">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Diligencia la plantilla GFPI-F-147, fírmala y adjúntala en PDF. SEPA leerá de ella el período, la ARL y
+            las actividades.
           </p>
+          <PlantillaEnlace plantilla={PLANTILLA_BITACORA} />
+          <FileUploadField
+            label="Bitácora firmada (PDF)"
+            pathPrefix="bitacora-ep"
+            value={form.archivoUrl || null}
+            onChange={(url) => {
+              update("archivoUrl", url);
+              if (url) leerDelDocumento(url);
+              else setLectura({ estado: "sin-archivo" });
+            }}
+            error={errors.archivoUrl?.[0]}
+            required
+            onUploadingChange={setSubiendoArchivo}
+          />
+          {lectura.estado === "leyendo" && (
+            <p className="animate-pulse text-sm text-zinc-500 dark:text-zinc-400">Leyendo tu bitácora…</p>
+          )}
+          {lectura.estado in AVISO && (
+            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+              {AVISO[lectura.estado as keyof typeof AVISO]}
+            </p>
+          )}
+        </Paso>
 
-          <div className="flex flex-col gap-3">
-            {form.actividades.map((actividad, idx) => (
-              <div
-                key={idx}
-                className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
-              >
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                    Actividad {idx + 1}
-                  </span>
-                  {form.actividades.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => quitarActividad(idx)}
-                      className="text-xs font-medium text-red-600 underline hover:text-red-800 dark:text-red-500"
-                    >
-                      Quitar
-                    </button>
-                  )}
-                </div>
+        {lista && (
+          <Paso n={2} titulo="Verifica lo que SEPA leyó">
+            <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+              Revisa las actividades que SEPA tomó de tu bitácora. Deben ser las que realizaste entre el{" "}
+              <strong>{fechaLegible(form.periodoDesde)}</strong> y el <strong>{fechaLegible(form.periodoHasta)}</strong>.
+              Si alguna no corresponde, corrige tu archivo y vuelve a adjuntarlo.
+            </p>
 
-                <div className="flex flex-col gap-3">
-                  <Field
-                    label="Descripción"
-                    error={idx === 0 ? errors["actividades.0.descripcion"]?.[0] : undefined}
-                  >
-                    <textarea
-                      required
-                      rows={2}
-                      value={actividad.descripcion}
-                      onChange={(e) => updateActividad(idx, "descripcion", e.target.value)}
-                      className={inputClass}
-                    />
-                  </Field>
-                  <Field label="Competencia aplicada">
-                    {catalogoCompetencias && catalogoCompetencias.length > 0 ? (
-                      <select
-                        value={actividad.competencias}
-                        onChange={(e) => updateActividad(idx, "competencias", e.target.value)}
-                        className={inputClass}
-                      >
-                        <option value="">Selecciona</option>
-                        {/* Una bitácora vieja puede tener guardado un texto que no está en el
-                            catálogo: se muestra para que se vea, pero hay que cambiarlo. */}
-                        {actividad.competencias &&
-                          !agruparCompetencias(catalogoCompetencias).some(
-                            ([nombre]) => nombre === actividad.competencias,
-                          ) && (
-                            <option value={actividad.competencias}>
-                              {actividad.competencias} — no está en el catálogo, elige otra
-                            </option>
-                          )}
-                        {/* Solo las competencias del programa, sin sus resultados de aprendizaje
-                            (decisión de Coordinación, 2 oct 2026). */}
-                        {agruparCompetencias(catalogoCompetencias).map(([nombreCompetencia]) => (
-                          <option key={nombreCompetencia} value={nombreCompetencia}>
-                            {nombreCompetencia}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      // Sin catálogo no se escribe a mano: solo se elige lo que cargó
-                      // Coordinación (decisión de Coordinación, 2 oct 2026).
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {catalogoCompetencias === null
-                          ? "Cargando competencias…"
-                          : "Tu programa todavía no tiene competencias cargadas. Pide a Coordinación de Etapa Productiva que las cargue; puedes enviar la bitácora sin este dato."}
-                      </p>
-                    )}
-                  </Field>
-                  <Field label="Evidencia de cumplimiento">
-                    <input
-                      value={actividad.evidenciaCumplimiento}
-                      onChange={(e) => updateActividad(idx, "evidenciaCumplimiento", e.target.value)}
-                      className={inputClass}
-                    />
-                  </Field>
-                  <Field label="Observaciones">
-                    <input
-                      value={actividad.observaciones}
-                      onChange={(e) => updateActividad(idx, "observaciones", e.target.value)}
-                      className={inputClass}
-                    />
-                  </Field>
-                </div>
+            {lista.numeroDelPdf !== null && lista.numeroDelPdf !== numero && (
+              <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+                Tu archivo dice «Bitácora N° {lista.numeroDelPdf}» y lo estás adjuntando en la Bitácora {numero}. Revisa
+                que sea el archivo de este período antes de enviarlo.
+              </p>
+            )}
+
+            <div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <DatePickerField
+                  label="Período desde"
+                  value={form.periodoDesde}
+                  onChange={(v) => update("periodoDesde", v)}
+                  error={errors.periodoDesde?.[0]}
+                />
+                <DatePickerField
+                  label="Período hasta"
+                  value={form.periodoHasta}
+                  onChange={(v) => update("periodoHasta", v)}
+                  error={errors.periodoHasta?.[0]}
+                />
               </div>
-            ))}
-          </div>
-          {errors.actividades && (
-            <p className="mt-1 text-sm text-red-600">{errors.actividades[0]}</p>
-          )}
-        </div>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                {lista.periodoDelPdf
+                  ? "Leído de tu bitácora."
+                  : "Tu PDF no trae el período: SEPA puso el que te corresponde según tu fecha de inicio. Ajústalo si hace falta."}
+              </p>
+            </div>
 
-        <PlantillaEnlace plantilla={PLANTILLA_BITACORA} />
-        <FileUploadField
-          label="Bitácora diligenciada (adjunto)"
-          pathPrefix="bitacora-ep"
-          value={form.archivoUrl || null}
-          onChange={(url) => {
-            update("archivoUrl", url);
-            if (url) leerDelDocumento(url);
-          }}
-          error={errors.archivoUrl?.[0]}
-          required
-          onUploadingChange={setSubiendoArchivo}
-        />
+            <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+              <h4 className="mb-1 text-sm font-semibold text-zinc-700 dark:text-zinc-300">Afiliación a ARL</h4>
+              <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
+                {lista.arlDelPdf
+                  ? "Leída de tu bitácora. Completa lo que falte."
+                  : "Tu PDF no trae la ARL: complétala."}
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <SiNo label="¿Estás afiliado a la ARL?" value={form.arlAfiliado} onChange={(v) => update("arlAfiliado", v)} />
+                <Field label="Nivel de riesgo">
+                  <select value={form.arlNivelRiesgo} onChange={(e) => update("arlNivelRiesgo", e.target.value)} className={inputClass}>
+                    <option value="">Sin definir</option>
+                    {NivelRiesgoARLValues.map((v) => (
+                      <option key={v} value={v}>
+                        {nivelRiesgoARLLabel[v]}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <SiNo
+                  label="¿El nivel de riesgo corresponde a tu labor?"
+                  value={form.arlRiesgoCorresponde}
+                  onChange={(v) => update("arlRiesgoCorresponde", v)}
+                />
+                <SiNo label="¿La empresa te suministra los EPP?" value={form.arlTieneEPP} onChange={(v) => update("arlTieneEPP", v)} />
+              </div>
+            </div>
 
-        {leyendo && <p className="text-xs text-zinc-500 dark:text-zinc-400">Leyendo la bitácora…</p>}
-        {lectura && (
-          <p className="rounded-md bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-950 dark:text-zinc-400">
-            {lectura}
-          </p>
+            <div>
+              <h4 className="mb-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                Actividades de tu bitácora ({lista.actividades.length})
+              </h4>
+              <ol className="flex flex-col gap-2">
+                {lista.actividades.map((a, idx) => (
+                  <li key={idx} className="rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+                    <p className="text-zinc-900 dark:text-zinc-100">
+                      <span className="font-semibold">{idx + 1}.</span> {a.descripcion}
+                    </p>
+                    <dl className="mt-1 flex flex-col gap-0.5 text-xs text-zinc-600 dark:text-zinc-400">
+                      <div>
+                        <dt className="inline font-medium">Competencia: </dt>
+                        <dd className="inline">
+                          {coincide(a) ? (
+                            competenciaDe(a, idx)
+                          ) : grupos.length > 0 ? (
+                            <span className="mt-1 flex flex-col gap-1">
+                              <span className="text-amber-700 dark:text-amber-400">
+                                {a.competenciaLeida
+                                  ? `«${a.competenciaLeida}» no coincide con el catálogo de tu programa: elígela de la lista.`
+                                  : "Tu bitácora no trae la competencia: elígela de la lista."}
+                              </span>
+                              <select
+                                value={elegidas[idx] ?? ""}
+                                onChange={(e) => setElegidas((prev) => ({ ...prev, [idx]: e.target.value }))}
+                                className={inputClass}
+                              >
+                                <option value="">Selecciona</option>
+                                {grupos.map(([nombre]) => (
+                                  <option key={nombre} value={nombre}>
+                                    {nombre}
+                                  </option>
+                                ))}
+                              </select>
+                            </span>
+                          ) : (
+                            (a.competenciaLeida ?? "—")
+                          )}
+                        </dd>
+                      </div>
+                      {a.evidenciaCumplimiento && (
+                        <div>
+                          <dt className="inline font-medium">Evidencia: </dt>
+                          <dd className="inline">{a.evidenciaCumplimiento}</dd>
+                        </div>
+                      )}
+                      {a.observaciones && (
+                        <div>
+                          <dt className="inline font-medium">Observaciones: </dt>
+                          <dd className="inline">{a.observaciones}</dd>
+                        </div>
+                      )}
+                    </dl>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </Paso>
+        )}
+
+        {lista && (
+          <Paso n={3} titulo="Confirma y envía">
+            <label className="flex items-start gap-2 rounded-md border border-zinc-200 p-3 text-sm text-zinc-800 dark:border-zinc-800 dark:text-zinc-200">
+              <input
+                type="checkbox"
+                checked={confirmado}
+                onChange={(e) => setConfirmado(e.target.checked)}
+                className="mt-0.5 h-4 w-4"
+              />
+              Confirmo que estas son las actividades que realicé en el período de esta bitácora.
+            </label>
+            {errors.confirmaActividades && <p className="text-sm text-red-600">{errors.confirmaActividades[0]}</p>}
+          </Paso>
         )}
 
         {errors._root && <p className="text-sm text-red-600">{errors._root[0]}</p>}
@@ -529,16 +476,11 @@ export function BitacoraForm({
         <div className="mt-2 flex items-center justify-between border-t border-zinc-100 pt-4 dark:border-zinc-800">
           <button
             type="submit"
-            disabled={loading || subiendoArchivo}
+            disabled={!puedeEnviar}
+            title={!lista ? "Primero adjunta tu bitácora en PDF." : !confirmado ? "Confirma las actividades para enviar." : undefined}
             className="rounded-md bg-sena px-4 py-2 text-sm font-medium text-white hover:bg-sena-oscuro disabled:opacity-50 dark:bg-sena dark:text-white dark:hover:bg-sena-oscuro"
           >
-            {loading
-              ? "Enviando…"
-              : subiendoArchivo
-                ? "Subiendo archivo…"
-                : initial
-                  ? "Actualizar bitácora"
-                  : "Enviar bitácora"}
+            {loading ? "Enviando…" : subiendoArchivo ? "Subiendo archivo…" : initial ? "Actualizar bitácora" : "Enviar bitácora"}
           </button>
           <button
             type="button"
@@ -554,15 +496,31 @@ export function BitacoraForm({
   );
 }
 
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
+function Paso({ n, titulo, children }: { n: number; titulo: string; children: React.ReactNode }) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-azul text-xs text-white">{n}</span>
+        {titulo}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function SiNo({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <Field label={label}>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={inputClass}>
+        <option value="">Sin definir</option>
+        <option value="SI">Sí</option>
+        <option value="NO">No</option>
+      </select>
+    </Field>
+  );
+}
+
+function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
       <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{label}</label>

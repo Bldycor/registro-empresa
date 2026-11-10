@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 import { z } from "zod";
-import { esPdf } from "@/lib/leer-pdf";
-import { leerBitacora } from "@/lib/leer-gfpi147";
+import { leerBitacoraDeUrl } from "@/lib/leer-bitacora-url";
 
 const AvalSchema = z.object({
   estado: z.enum(["APROBADA", "RECHAZADA"]),
@@ -75,17 +74,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   }
   if (!bitacora.archivoUrl) return NextResponse.json({ fuente: "sin-archivo", actividades: [] });
 
-  try {
-    const respuesta = await fetch(bitacora.archivoUrl);
-    if (!respuesta.ok) return NextResponse.json({ fuente: "error", actividades: [] });
-    const archivo = await respuesta.arrayBuffer();
-    if (!esPdf(archivo)) return NextResponse.json({ fuente: "foto", actividades: [] });
-    const lectura = await leerBitacora(archivo);
-    if (lectura.sinTexto) return NextResponse.json({ fuente: "sin-texto", actividades: [] });
-    const actividades = lectura.actividades ?? [];
-    return NextResponse.json({ fuente: actividades.length ? "pdf" : "no-reconocida", actividades });
-  } catch (error) {
-    console.error("[instructor/bitacoras] No se pudo leer el PDF adjunto:", error);
-    return NextResponse.json({ fuente: "error", actividades: [] });
-  }
+  const lectura = await leerBitacoraDeUrl(bitacora.archivoUrl);
+  if (lectura.error) return NextResponse.json({ fuente: "error", actividades: [] });
+  if (lectura.esImagen) return NextResponse.json({ fuente: "foto", actividades: [] });
+  if (lectura.sinTexto) return NextResponse.json({ fuente: "sin-texto", actividades: [] });
+  const actividades = lectura.actividades ?? [];
+  return NextResponse.json({ fuente: actividades.length ? "pdf" : "no-reconocida", actividades });
 }

@@ -837,6 +837,11 @@ export const BitacoraSchema = z.object({
   arlRiesgoCorresponde: z.boolean().nullable().optional(),
   arlTieneEPP: z.boolean().nullable().optional(),
   actividades: z.array(BitacoraActividadSchema).min(1, "Agrega al menos una actividad."),
+  // El aprendiz confirma que las actividades leídas del PDF son las que hizo en el período
+  // (9 nov 2026). Sin la confirmación no se envía.
+  confirmaActividades: z.literal(true, {
+    message: "Confirma que estas son las actividades que realizaste en el período de esta bitácora.",
+  }),
 });
 
 export type BitacoraInput = z.infer<typeof BitacoraSchema>;
