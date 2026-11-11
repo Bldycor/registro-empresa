@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { FiltrosActivos } from "@/components/filtros-activos";
+import { BuscadorListado } from "@/components/buscador-listado";
 import { CampoFechaFiltro } from "@/components/campo-fecha-filtro";
 import { SelectorCoordinacion } from "@/components/selector-coordinacion";
 import { describirFiltros, porcentaje, type Reporte } from "@/lib/reportes";
@@ -230,6 +232,22 @@ function Tabla({ encabezados, children }: { encabezados: string[]; children: Rea
   );
 }
 
+// La situación de cada aprendiz (el mismo grupo del panorama), con su color.
+const SITUACION: Record<string, { etiqueta: string; clase: string }> = {
+  enRiesgo: { etiqueta: "Necesita atención", clase: "bg-red-50 text-red-800 ring-red-200 dark:bg-red-950/40 dark:text-red-200 dark:ring-red-800" },
+  alDia: { etiqueta: "Al día", clase: "bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-200 dark:ring-emerald-800" },
+  porCertificar: { etiqueta: "Por certificar", clase: "bg-sky-50 text-sky-800 ring-sky-200 dark:bg-sky-950/40 dark:text-sky-200 dark:ring-sky-800" },
+  certificados: { etiqueta: "Certificado", clase: "bg-sky-50 text-sky-800 ring-sky-200 dark:bg-sky-950/40 dark:text-sky-200 dark:ring-sky-800" },
+  sinIniciar: { etiqueta: "Sin iniciar", clase: "bg-zinc-50 text-zinc-700 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700" },
+  enPausa: { etiqueta: "En pausa o retirado", clase: "bg-zinc-50 text-zinc-700 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700" },
+};
+
+const sinTildes = (t: string) =>
+  t
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
 export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; excelHref: string }) {
   const f = r.filtros;
   const m = r.metricas;
@@ -327,6 +345,8 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
           </Link>
         )}
       </form>
+
+      <FiltrosActivos r={r} ruta="/formulario/reportes" />
 
       <nav aria-label="Secciones del reporte" className="flex flex-wrap gap-1 text-sm print:hidden">
         {[
@@ -544,9 +564,17 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
         {r.listado.length === 0 ? (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Ningún aprendiz cumple los filtros.</p>
         ) : (
+          <BuscadorListado
+            grupos={Object.entries(SITUACION).map(([valor, g]) => ({
+              valor,
+              etiqueta: g.etiqueta,
+              cantidad: r.listado.filter((a) => a.grupo === valor).length,
+            }))}
+          >
           <Tabla
             encabezados={[
               "Aprendiz",
+              "Situación",
               "Documento",
               "Ficha",
               "Empresa",
@@ -566,11 +594,20 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
             ]}
           >
             {r.listado.map((a) => (
-              <tr key={a.id}>
+              <tr
+                key={a.id}
+                data-grupo={a.grupo}
+                data-buscar={sinTildes([a.nombre, a.documento, a.ficha, a.empresa, a.instructor, a.nit].filter(Boolean).join(" "))}
+              >
                 <td className={td}>
                   <Link href={`/formulario/expediente/${a.id}`} className="underline print:no-underline">
                     {a.nombre}
                   </Link>
+                </td>
+                <td className={td}>
+                  <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${SITUACION[a.grupo]?.clase ?? ""}`}>
+                    {SITUACION[a.grupo]?.etiqueta ?? "—"}
+                  </span>
                 </td>
                 <td className={td}>{a.documento}</td>
                 <td className={td}>{a.ficha ?? "—"}</td>
@@ -628,6 +665,7 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
               </tr>
             ))}
           </Tabla>
+          </BuscadorListado>
         )}
       </Seccion>
     </div>

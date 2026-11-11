@@ -197,6 +197,10 @@ const COORDINADOR: GuiaRol = {
           opcion: "Planes de mejoramiento",
           que: "Autorizas los planes que redactan los instructores. El reglamento del aprendiz (Acuerdo 009) pide la firma del coordinador académico: tu autorización es esa firma, y con ella arranca el plazo y le llega la comunicación escrita al aprendiz. No requiere acta del Comité. Si algo falta, lo devuelves al instructor con tu observación.",
         },
+        {
+          opcion: "Avisos de rechazo",
+          que: "Cada evidencia que se rechaza avisa por correo al aprendiz, a su instructor y a su coformador. Aquí ves las que ya estaban rechazadas sin ese aviso y las envías de una vez; las ya avisadas no se repiten. En bitácoras aplica desde la N° 4.",
+        },
       ],
     },
     {
@@ -466,6 +470,10 @@ export const ayudaMenu: Record<string, { icono: string; resumen: string }> = {
   "/formulario/coordinador/planes": {
     icono: "📝",
     resumen: "Autoriza el plan de mejoramiento: tu firma arranca el plazo.",
+  },
+  "/formulario/coordinador/avisos-rechazo": {
+    icono: "✉️",
+    resumen: "Envía el aviso por correo de las evidencias que ya estaban rechazadas.",
   },
   "/formulario/coordinador/perfil": { icono: "👤", resumen: "Tus datos de contacto." },
   // Comunes

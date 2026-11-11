@@ -32,6 +32,7 @@ const gruposCoordinacion = (estructuraExtra: Grupo["items"] = []): Grupo[] => [
       { href: "/formulario/coordinador/interrupciones", label: "Interrupciones EP" },
       { href: "/formulario/coordinador/aplazamientos", label: "Aplazamientos EP" },
       { href: "/formulario/coordinador/planes", label: "Planes de mejoramiento" },
+      { href: "/formulario/coordinador/avisos-rechazo", label: "Avisos de rechazo" },
     ],
   },
   {

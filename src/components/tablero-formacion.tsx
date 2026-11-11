@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FiltrosActivos } from "@/components/filtros-activos";
 import { CampoFechaFiltro } from "@/components/campo-fecha-filtro";
 import { SelectorCoordinacion } from "@/components/selector-coordinacion";
 import type { Reporte } from "@/lib/reportes";
@@ -54,6 +55,7 @@ export function TableroFormacion({ r, informe }: { r: Reporte; informe: Informe 
     <div className="flex flex-col gap-8 print:gap-5 print:text-black">
       <Encabezado r={r} filtrado={filtrado} />
       <Filtros r={r} filtrado={filtrado} />
+      <FiltrosActivos r={r} ruta="/formulario/formacion" />
 
       {total === 0 ? (
         <p className="rounded-xl border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">

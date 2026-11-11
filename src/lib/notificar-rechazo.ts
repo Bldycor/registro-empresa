@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { prismaBase } from "@/lib/prisma-base";
 import { sendRechazoEvidenciaEmail } from "@/lib/mailer";
 import { destinatariosReunion } from "@/lib/reuniones";
 import type { EvidenciaRechazada } from "@/lib/rechazo-evidencia-correo";
@@ -23,13 +24,29 @@ export function avisaRechazo(evidencia: EvidenciaRechazada): boolean {
   return evidencia.tipo !== "BITACORA" || evidencia.numero >= PRIMERA_BITACORA_CON_AVISO;
 }
 
-const ROL_REVISOR: Record<string, string> = {
+export const ROL_REVISOR: Record<string, string> = {
   INSTRUCTOR: "instructor de seguimiento",
   COORDINADOR: "Coordinación de Etapa Productiva",
   ADMIN: "Coordinación de Etapa Productiva",
 };
 
 // A quién se le envía el aviso. Vacío = no se pudo preparar.
+// Constancia de cada aviso enviado, en el rastro de auditoría: con ella el envío único de las
+// evidencias que ya estaban rechazadas (`src/lib/avisos-rechazo-pendientes.ts`) no repite avisos.
+export const ACCION_AVISO_RECHAZO = "AVISO_RECHAZO_ENVIADO";
+
+export function claveAviso(aprendizId: string, e: EvidenciaRechazada): string {
+  return `${e.tipo}:${aprendizId}${e.tipo === "BITACORA" ? `:${e.numero}` : ""}`;
+}
+
+export async function anotarAviso(aprendizId: string, e: EvidenciaRechazada, destinatarios: string[]) {
+  await prismaBase.registroAuditoria
+    .create({
+      data: { usuarioNombre: "SEPA", accion: ACCION_AVISO_RECHAZO, entidad: "AvisoRechazo", entidadId: claveAviso(aprendizId, e), detalle: { destinatarios } },
+    })
+    .catch((error) => console.error("[notificar-rechazo] No se pudo anotar el aviso:", error));
+}
+
 export type AvisoRechazo = { destinatarios: string[] };
 
 export async function notificarRechazoEvidencia(p: {
@@ -69,7 +86,9 @@ export async function notificarRechazoEvidencia(p: {
         revisorNombre: `${p.revisor.nombres} ${p.revisor.apellidos}`,
         revisorRol: ROL_REVISOR[p.revisor.role] ?? "SEPA",
         observacion: p.observacion ?? null,
-      }).catch((error) => console.error("[notificar-rechazo] No se pudo enviar el correo:", error)),
+      })
+        .then(() => anotarAviso(p.aprendizId, p.evidencia, destinatarios))
+        .catch((error) => console.error("[notificar-rechazo] No se pudo enviar el correo:", error)),
     );
     return { destinatarios };
   } catch (error) {
