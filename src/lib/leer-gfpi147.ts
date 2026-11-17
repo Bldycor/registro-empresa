@@ -247,7 +247,7 @@ function leerPorPosicion(paginas: TextoPosicionado[][]): Partial<DatosBitacora> 
 // de la tabla (el límite entre dos es el punto medio de sus títulos) y cada fila, de su fecha de
 // inicio: una fila va desde la mitad del camino a la fila de arriba hasta la mitad del camino a la
 // de abajo. Si la tabla no se reconoce entera, no se devuelve nada.
-function actividadesDelDocumento(paginas: TextoPosicionado[][]): ActividadLeida[] {
+export function actividadesDelDocumento(paginas: TextoPosicionado[][]): ActividadLeida[] {
   const titulos: [keyof ActividadLeida, RegExp][] = [
     ["descripcion", /^Descripci[óo]n de la actividad/i],
     ["competencias", /^Competencias del programa de formaci[óo]n/i],
@@ -261,7 +261,27 @@ function actividadesDelDocumento(paginas: TextoPosicionado[][]): ActividadLeida[
       const t = pagina.find((i) => patron.test(i.s.trim()));
       return t ? { clave, centro: t.x + t.w / 2, y: t.y } : null;
     });
-    if (columnas.some((c) => !c)) continue;
+    const fijas = columnas.filter((c) => c && c.clave !== "fechaInicio" && c.clave !== "fechaFin");
+    if (fijas.length < 4) continue;
+    // Las columnas de fecha se ubican por sus títulos, pero hay aprendices que escriben la fecha
+    // encima del título «Fecha de inicio (dd/mm/aa)» (pasó el 17 nov 2026: la tabla no se
+    // reconocía y no podían enviar). Si falta alguno, se ubica por las fechas escritas entre
+    // «Competencias» y «Evidencia»: la columna más a la izquierda es el inicio, la otra el fin.
+    if (!columnas[2] || !columnas[3]) {
+      const competencias = columnas[1]!;
+      const evidencia = columnas[4]!;
+      const centros = pagina
+        .filter((i) => FECHA.test(i.s.trim()))
+        .map((i) => i.x + i.w / 2)
+        .filter((c) => c > competencias.centro && c < evidencia.centro)
+        .sort((a, b) => a - b);
+      if (!centros.length) continue;
+      const izquierda = centros[0];
+      const derecha = centros[centros.length - 1];
+      if (derecha - izquierda < 10) continue; // una sola columna con fechas: no se puede saber cuál es
+      columnas[2] ??= { clave: "fechaInicio", centro: izquierda, y: competencias.y };
+      columnas[3] ??= { clave: "fechaFin", centro: derecha, y: competencias.y };
+    }
     const cols = (columnas as { clave: keyof ActividadLeida; centro: number; y: number }[]).sort((a, b) => a.centro - b.centro);
     if (cols[0].clave !== "descripcion" || cols[2].clave !== "fechaInicio") continue;
     const techo = Math.min(...cols.map((c) => c.y));

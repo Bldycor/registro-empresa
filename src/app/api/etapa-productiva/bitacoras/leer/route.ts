@@ -17,5 +17,10 @@ export async function POST(request: Request) {
   // Una foto no se lee: la pantalla pide el PDF.
   const { error, ...lectura } = await leerBitacoraDeUrl(archivoUrl);
   if (error) return NextResponse.json({ datos: {}, leidos: 0, sinTexto: false, error: true });
+  // Un PDF con texto en el que no se halló la tabla bloquea al aprendiz: queda en los logs de
+  // Vercel («bitacora-sin-actividades») con el archivo, para revisar el lector sin esperar el reclamo.
+  if (!lectura.esImagen && !lectura.sinTexto && !lectura.actividades?.length) {
+    console.warn("bitacora-sin-actividades", JSON.stringify({ aprendiz: user.id, archivoUrl, leidos: lectura.leidos }));
+  }
   return NextResponse.json(lectura);
 }
