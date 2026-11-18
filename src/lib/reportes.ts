@@ -9,7 +9,14 @@ import { advertenciaPlazoCulminacion, plazoMaximoCulminacion } from "@/lib/plazo
 import { aprendicesActivosPorInstructor } from "@/lib/carga-instructor";
 import { superaTope } from "@/lib/tope-instructor";
 import { fechaEnColombia } from "@/lib/plazos-institucionales";
-import { CoordinacionValues, coordinacionLabel, estadoAprendizLabel, type CoordinacionValue } from "@/lib/validations";
+import {
+  CoordinacionValues,
+  alternativaEtapaProductivaLabel,
+  coordinacionLabel,
+  estadoAprendizLabel,
+  type AlternativaEtapaProductivaValue,
+  type CoordinacionValue,
+} from "@/lib/validations";
 import { calcularSlotsBitacoras } from "@/lib/bitacora-fechas";
 import { TODAS_LAS_VARIABLES, variableLabel } from "@/lib/evaluacion-variables";
 
@@ -170,7 +177,7 @@ export async function construirReporte(f: FiltrosReporte) {
           },
         },
         companyProfile: { select: { empresaPatrocinadora: true, nitEmpresa: true, sucursal: { select: { nombre: true } } } },
-        seleccionesAlternativa: { select: { estado: true }, orderBy: { createdAt: "desc" }, take: 1 },
+        seleccionesAlternativa: { select: { estado: true, alternativa: true }, orderBy: { createdAt: "desc" }, take: 1 },
         formalizacionEtapaProductiva: { select: { estado: true } },
         concertacionFuncion: { select: { estado: true, fecha: true } },
         bitacoras: { select: { numero: true, estado: true, fechaLimite: true, fechaEntrega: true, fechaAval: true } },
@@ -224,6 +231,12 @@ export async function construirReporte(f: FiltrosReporte) {
   // Cada aprendiz en UN solo grupo, para que los indicadores sumen siempre el total y se lean de
   // un vistazo (pedido de Coordinación, 9 oct 2026): primero lo que dice su estado, y entre los
   // activos, si tiene algo vencido o no.
+  // Gestión de la etapa productiva (18 nov 2026, funciones de las Res. 4016 y 4017 de 2009): con qué
+  // alternativa está cada aprendiz, en qué empresas, y qué evidencias están hoy devueltas.
+  const alternativas = new Map<string, number>();
+  let alternativasPendientes = 0;
+  const empresasFormadoras = new Map<string, number>();
+  const devueltas = { alternativa: 0, formalizacion: 0, bitacoras: 0, certificacion: 0 };
   const semaforo = { alDia: 0, enRiesgo: 0, porCertificar: 0, certificados: 0, enPausa: 0, sinIniciar: 0 };
   const rubrica = { valoradas: 0, satisfactorio: 0 };
   // La rúbrica criterio por criterio, para ver qué hay que reforzar en la formación.
@@ -449,6 +462,19 @@ export async function construirReporte(f: FiltrosReporte) {
                 : "alDia";
     semaforo[grupo]++;
 
+    const alternativa = a.seleccionesAlternativa[0];
+    if (alternativa?.estado === "APROBADA") alternativas.set(alternativa.alternativa, (alternativas.get(alternativa.alternativa) ?? 0) + 1);
+    if (alternativa?.estado === "PENDIENTE") alternativasPendientes++;
+    if (alternativa?.estado === "RECHAZADA") devueltas.alternativa++;
+    if (a.formalizacionEtapaProductiva?.estado === "RECHAZADA") devueltas.formalizacion++;
+    if (a.certificacionEmpresario?.estado === "RECHAZADA") devueltas.certificacion++;
+    devueltas.bitacoras += a.bitacoras.filter((b) => b.estado === "RECHAZADA").length;
+    // Empresa formadora: la del aprendiz que ya inició la etapa productiva y no desertó.
+    const empresa = a.companyProfile?.empresaPatrocinadora?.trim();
+    if (empresa && a.fechaInicioEtapaProductiva && a.estado !== "DESERTADO") {
+      empresasFormadoras.set(empresa, (empresasFormadoras.get(empresa) ?? 0) + 1);
+    }
+
     // Consolidado por ficha y por programa.
     const atrasosAprendiz = checklist.filter((c) => c.estado === "atrasada").length;
     const rubricaAprendiz = a.evaluaciones.flatMap((e) => e.variables);
@@ -548,6 +574,21 @@ export async function construirReporte(f: FiltrosReporte) {
       novedades,
       planesMejoramiento,
       alertas: { plazo24Meses: conAdvertenciaPlazo, instructoresSobreTope },
+      gestionEP: {
+        alternativas: [...alternativas.entries()]
+          .map(([tipo, cantidad]) => ({ tipo, etiqueta: alternativaEtapaProductivaLabel[tipo as AlternativaEtapaProductivaValue] ?? tipo, cantidad }))
+          .sort((x, y) => y.cantidad - x.cantidad),
+        alternativasPendientes,
+        empresas: {
+          total: empresasFormadoras.size,
+          aprendices: [...empresasFormadoras.values()].reduce((t, n) => t + n, 0),
+          principales: [...empresasFormadoras.entries()]
+            .map(([nombre, aprendices]) => ({ nombre, aprendices }))
+            .sort((x, y) => y.aprendices - x.aprendices || x.nombre.localeCompare(y.nombre))
+            .slice(0, 5),
+        },
+        devueltas,
+      },
     },
     cumplimiento: {
       porEvidencia: Object.values(matriz).map((e) => ({ ...e, avance: avance[e.clave as ChecklistItem["clave"]] })),

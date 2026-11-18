@@ -248,7 +248,15 @@ const sinTildes = (t: string) =>
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 
-export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; excelHref: string }) {
+export function ReportesVista({
+  reporte: r,
+  excelHref,
+  cierre,
+}: {
+  reporte: Reporte;
+  excelHref: string;
+  cierre?: React.ReactNode;
+}) {
   const f = r.filtros;
   const m = r.metricas;
   const hayFiltros = Object.values(f).some(Boolean);
@@ -355,6 +363,7 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
           ["#por-ficha", "Por ficha"],
           ["#por-programa", "Por programa"],
           ["#listado", "Listado"],
+          ...(cierre ? [["#recomendaciones", "Recomendaciones"]] : []),
         ].map(([href, texto]) => (
           <a
             key={href}
@@ -668,6 +677,7 @@ export function ReportesVista({ reporte: r, excelHref }: { reporte: Reporte; exc
           </BuscadorListado>
         )}
       </Seccion>
+      {cierre}
     </div>
   );
 }

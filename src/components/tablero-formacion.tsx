@@ -42,7 +42,7 @@ const GRUPOS = [
   { clave: "enPausa", etiqueta: "En pausa o retirados", ayuda: "Interrumpida, aplazada o desertó", color: "bg-zinc-500 dark:bg-zinc-400" },
 ] as const;
 
-export function TableroFormacion({ r, informe }: { r: Reporte; informe: Informe }) {
+export function TableroFormacion({ r, informe, cierre }: { r: Reporte; informe: Informe; cierre?: React.ReactNode }) {
   const m = r.metricas;
   const s = m.semaforo;
   const total = m.aprendices;
@@ -73,6 +73,7 @@ export function TableroFormacion({ r, informe }: { r: Reporte; informe: Informe 
           <Acompanamiento r={r} informe={informe} filtrado={filtrado} />
           <PorGrupo r={r} />
           <Atencion r={r} query={query} />
+          {cierre}
         </>
       )}
 
