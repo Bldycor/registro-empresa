@@ -2,6 +2,9 @@ import writeExcelFile from "write-excel-file/node";
 import { requireApiUser } from "@/lib/auth-guards";
 import { construirReporte, describirFiltros, leerFiltros, porcentaje } from "@/lib/reportes";
 import { fechaEnColombia, formatoMomento } from "@/lib/plazos-institucionales";
+import { construirInformeInstructores } from "@/lib/informe-instructores";
+import { construirInformeFunciones } from "@/lib/informe-funciones";
+import { lecturaAcademica, lecturaFormacion, type LecturaCoordinacion } from "@/lib/lectura-coordinaciones";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +20,36 @@ export async function GET(request: Request) {
   const { user, response } = await requireApiUser(["INSTRUCTOR", "COORDINADOR", "ADMIN", "COORDINADOR_FORMACION"]);
   if (!user) return response;
 
-  const r = await construirReporte(leerFiltros(new URL(request.url).searchParams));
+  const filtros = leerFiltros(new URL(request.url).searchParams);
+  // Las lecturas por funciones van a quien las ve en pantalla: la de Formación (Res. 4017, tablero)
+  // a Coordinación de Formación, Coordinación de EP y Admin; la Académica (Res. 4016, Reportes) a
+  // Coordinación de EP y Admin. Funciones en la empresa se calcula en paralelo con el reporte.
+  const conFormacion = user.role !== "INSTRUCTOR";
+  const conAcademica = user.role === "COORDINADOR" || user.role === "ADMIN";
+  const funcionesEmpresa = conFormacion
+    ? construirInformeFunciones({ programa: filtros.programa, ficha: filtros.ficha }).catch(() => null)
+    : null;
+  const r = await construirReporte(filtros);
   const m = r.metricas;
+  const soloCoordinacion = Object.entries(filtros).every(([k, v]) => k === "coordinacion" || !v);
+  const informe = conFormacion
+    ? await construirInformeInstructores({ coordinacion: filtros.coordinacion, ...(soloCoordinacion ? { reporte: r } : {}) })
+    : null;
+  const lecturas: { hoja: string; titulo: string; l: LecturaCoordinacion }[] = [];
+  if (informe && conFormacion) {
+    lecturas.push({
+      hoja: "Formación (Res. 4017)",
+      titulo: "Resumen y recomendaciones para la Coordinación de Formación",
+      l: lecturaFormacion(r, informe, await funcionesEmpresa),
+    });
+  }
+  if (informe && conAcademica) {
+    lecturas.push({
+      hoja: "Académica (Res. 4016)",
+      titulo: "Resumen y recomendaciones para la Coordinación Académica",
+      l: lecturaAcademica(r, informe),
+    });
+  }
 
   const metricas = [
     [negrita("Reporte de Etapa Productiva — SEPA"), null, null],
@@ -191,6 +222,32 @@ export async function GET(request: Request) {
     ]),
   ];
 
+  const TONO = { bien: "✓ Bien", regular: "! Revisar", atencion: "! Pide acción", neutro: "· Informativo" } as const;
+  const hojaLectura = ({ titulo, l }: { titulo: string; l: LecturaCoordinacion }) => [
+    [negrita(titulo), null, null, null, null],
+    [texto(l.resolucion), texto(l.nota), null, null, null],
+    [texto("Generado"), texto(`${formatoMomento(r.generado)} · ${describirFiltros(r)}`), null, null, null],
+    [texto("Resumen"), texto(l.resumen), null, null, null],
+    [null, null, null, null, null],
+    [negrita("Artículo"), negrita("Frente de gestión"), negrita("Cifra"), negrita("Detalle"), negrita("Lectura")],
+    ...l.items.map((i) => [
+      texto(i.funcion),
+      texto(i.titulo),
+      texto(i.cifra),
+      texto(i.detalle),
+      texto(`${TONO[i.lectura.tono]}: ${i.lectura.texto}`),
+    ]),
+    [null, null, null, null, null],
+    [negrita("Recomendaciones"), null, null, null, null],
+    [negrita("N°"), negrita("Prioridad"), negrita("Artículo"), negrita("Recomendación"), null],
+    ...(l.recomendaciones.length
+      ? l.recomendaciones.map((x, k) => [numero(k + 1), texto(x.urgente ? "Prioridad" : "Normal"), texto(x.funcion), texto(x.texto), null])
+      : [[null, null, null, texto("Con las cifras de hoy ningún frente pide recomendaciones."), null]]),
+    [null, null, null, null, null],
+    [negrita("Lo que SEPA no mide (no se estima)"), null, null, null, null],
+    ...l.noMide.map((t) => [null, null, null, texto(t), null]),
+  ];
+
   const ancho = (...w: number[]) => w.map((width) => ({ width }));
   const archivo = await writeExcelFile([
     { data: metricas, sheet: "Métricas", columns: ancho(44, 22, 48) },
@@ -211,6 +268,7 @@ export async function GET(request: Request) {
       sheet: "Aprendices",
       columns: ancho(32, 16, 14, 30, 28, 22, 16, 28, 20, 12, 12, 12, 12, 12, 16, 16, 20, 16, 18, 40, 14, 24, 24, 16),
     },
+    ...lecturas.map((x) => ({ data: hojaLectura(x), sheet: x.hoja, columns: ancho(16, 34, 14, 80, 60) })),
   ]).toBuffer();
 
   return new Response(new Uint8Array(archivo), {
