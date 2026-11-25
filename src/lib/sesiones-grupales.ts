@@ -316,7 +316,7 @@ export async function guardarSesion(
       ok: false,
       status: 409,
       campo: "aprendizIds",
-      mensaje: `${noHabilitados.length} de los aprendices elegidos no pueden tener el ${NOMBRE_MOMENTO[d.momento]} ahora (no son de tus fichas, no están activos, ya lo tienen evaluado o les falta el momento anterior).`,
+      mensaje: `${noHabilitados.length === 1 ? "Uno de los aprendices elegidos no puede" : `${noHabilitados.length} de los aprendices elegidos no pueden`} tener el ${NOMBRE_MOMENTO[d.momento]} ahora: no es de tus fichas, no está activo, ya lo tiene evaluado o le falta el momento anterior.`,
     };
   }
   if (await choque({ instructorId: instructor.id, momento: d.momento, fecha: d.fecha, horaInicio: d.horaInicio, horaFin: d.horaFin, convocados: ids, sesionId })) {

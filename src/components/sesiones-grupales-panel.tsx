@@ -38,7 +38,8 @@ const campo =
 
 function fechaLegible(f: string) {
   const [y, m, d] = f.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+  const t = new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+  return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
 type Borrador = {
@@ -149,7 +150,11 @@ function TarjetaSesion({ s, onEditar, onCancelada }: { s: SesionListada; onEdita
       setError(data?.error?._root?.[0] ?? "No se pudo cancelar la sesión.");
       return;
     }
-    onCancelada?.(`Sesión cancelada. A los ${s.convocados.length} convocados les llega el aviso y su momento queda sin agendar.`);
+    onCancelada?.(
+      s.convocados.length === 1
+        ? "Sesión cancelada. Al convocado le llega el aviso y su momento queda sin agendar."
+        : `Sesión cancelada. A los ${s.convocados.length} convocados les llega el aviso y su momento queda sin agendar.`,
+    );
   }
 
   return (
@@ -157,7 +162,7 @@ function TarjetaSesion({ s, onEditar, onCancelada }: { s: SesionListada; onEdita
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-sena-oscuro dark:text-emerald-400">{momento.nombre}</p>
-          <p className="text-base font-semibold capitalize text-zinc-900 dark:text-zinc-50">
+          <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
             {fechaLegible(s.fecha)} · {s.horaInicio} - {s.horaFin}
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
