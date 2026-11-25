@@ -191,8 +191,33 @@ export function componerRecordatorioReunion(p: {
   videollamadaUrl: string;
   cuando: "hoy" | "manana";
   detalle?: string | null;
+  // Sesión grupal presencial: dónde es, en vez del enlace de la videollamada.
+  lugar?: string | null;
 }): { subject: string; text: string; html: string } {
   const dia = p.cuando === "hoy" ? "hoy" : "mañana";
+  if (p.lugar) {
+    const tituloMin = p.titulo.toLowerCase();
+    return {
+      subject: `Recordatorio: ${p.titulo} ${dia} - ${p.aprendizNombre}`,
+      text: [
+        `Te recordamos que ${dia} es la sesión grupal presencial de ${tituloMin} (etapa productiva).`,
+        "",
+        `Fecha: ${fechaLegible(p.horario.fecha)}`,
+        `Hora: ${p.horario.horaInicio} - ${p.horario.horaFin}`,
+        `Lugar: ${p.lugar}`,
+        `Aprendiz: ${p.aprendizNombre}`,
+      ].join("\n"),
+      html: [
+        `<p>Te recordamos que <strong>${dia}</strong> es la sesión grupal presencial de ${escaparHtml(tituloMin)} (etapa productiva).</p>`,
+        "<ul>",
+        `<li><strong>Fecha:</strong> ${escaparHtml(fechaLegible(p.horario.fecha))}</li>`,
+        `<li><strong>Hora:</strong> ${p.horario.horaInicio} - ${p.horario.horaFin}</li>`,
+        `<li><strong>Lugar:</strong> ${escaparHtml(p.lugar)}</li>`,
+        `<li><strong>Aprendiz:</strong> ${escaparHtml(p.aprendizNombre)}</li>`,
+        "</ul>",
+      ].join("\n"),
+    };
+  }
   const tituloMin = p.titulo.toLowerCase();
   const cambio = "Si hay que cambiar la fecha o la hora, se reprograma en SEPA y a todos les llega el aviso.";
   return {

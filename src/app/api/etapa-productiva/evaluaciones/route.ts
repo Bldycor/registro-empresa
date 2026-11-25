@@ -104,6 +104,9 @@ export async function POST(request: Request) {
       { status: 409 }
     );
   }
+  if (existing?.sesionGrupalId && existing.estado === "PENDIENTE") {
+    return NextResponse.json({ error: "Esta reunión es grupal: la programó tu instructor para varios aprendices. Si no puedes asistir, escríbele para que la ajuste." }, { status: 409 });
+  }
   if (existing?.estado === "APROBADA") {
     return NextResponse.json(
       { error: "Esta evaluación ya fue finalizada por tu instructor — no se puede reagendar." },

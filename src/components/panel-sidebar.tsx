@@ -96,6 +96,7 @@ const roleNav: Record<string, Grupo[]> = {
       titulo: "Reuniones y novedades",
       icono: "📅",
       items: [
+        { href: "/formulario/instructor/sesiones-grupales", label: "Sesiones grupales" },
         { href: "/formulario/instructor/extraordinarias", label: "Reuniones extraordinarias" },
         { href: "/formulario/instructor/novedades", label: "Novedades" },
         { href: "/formulario/instructor/planes", label: "Planes de mejoramiento" },

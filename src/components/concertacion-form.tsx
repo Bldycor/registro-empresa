@@ -29,6 +29,7 @@ function formatFechaLegible(fecha: string) {
 export function ConcertacionForm({
   initialData,
   videollamadaUrl,
+  sesionGrupal = null,
   estado,
   variables,
   competenciasDesarrollar,
@@ -36,6 +37,8 @@ export function ConcertacionForm({
 }: {
   initialData: ConcertacionInput | null;
   videollamadaUrl: string | null;
+  // Sesión grupal que convocó el instructor (25 nov 2026): no se reagenda desde aquí.
+  sesionGrupal?: { modalidad: "PRESENCIAL" | "VIRTUAL"; lugar: string | null } | null;
   estado?: "PENDIENTE" | "APROBADA" | "RECHAZADA";
   variables?: ConcertacionVariableData[];
   competenciasDesarrollar?: string | null;
@@ -210,7 +213,16 @@ export function ConcertacionForm({
         )}
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          {estado !== "APROBADA" && (
+          {sesionGrupal && estado !== "APROBADA" && (
+            <div className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200">
+                <p className="font-semibold">Sesión grupal convocada por tu instructor</p>
+                <p className="mt-0.5">
+                  {sesionGrupal.modalidad === "PRESENCIAL" ? `Presencial${sesionGrupal.lugar ? `, en ${sesionGrupal.lugar}` : ""}.` : "Virtual: el enlace es el mismo para todos los convocados."}{" "}
+                  Si no puedes asistir, escríbele a tu instructor. Tu formato y tu valoración siguen siendo individuales.
+                </p>
+              </div>
+          )}
+          {estado !== "APROBADA" && !sesionGrupal && (
             <button
               type="button"
               onClick={() => setEditando(true)}

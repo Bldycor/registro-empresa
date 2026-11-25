@@ -432,6 +432,7 @@ model User {
   formalizacionesAval         FormalizacionEtapaProductiva[] @relation("AvalFormalizacion")
   bitacorasAval               Bitacora[]                    @relation("AvalBitacora")
   evaluacionesAval            Evaluacion[]                  @relation("AvalEvaluacion")
+  sesionesGrupales            SesionGrupal[]                @relation("SesionesGrupalesInstructor")
   certificacionesAval         CertificacionEmpresario[]     @relation("AvalCertificacion")
   concertacionesAval          ConcertacionFuncion[]         @relation("AvalConcertacion")
   interrupcionesEP            InterrupcionEtapaProductiva[] @relation("AprendizInterrupciones")
@@ -768,6 +769,11 @@ model ConcertacionFuncion {
   videollamadaUrl String? // Enlace real de la videollamada (Google Meet, o Jitsi si no hay integración con Google Calendar)
   googleEventId   String? // Id del evento en Google Calendar, para poder actualizarlo al reagendar
 
+  // Sesión grupal que convocó el instructor (25 nov 2026). La reunión es una sola para varios
+  // aprendices, pero la evidencia sigue siendo individual: formato y valoración por aprendiz.
+  sesionGrupalId String?
+  sesionGrupal   SesionGrupal? @relation(fields: [sesionGrupalId], references: [id], onDelete: SetNull)
+
   // Contenido real del Momento 1 (planeación), según GFPI-F-023.
   competenciasDesarrollar   String?
   resultadosAprendizaje     String?
@@ -842,6 +848,10 @@ model Evaluacion {
   googleEventId   String?
   modalidad       ModalidadEjecucionEP?
   enlaceGrabacion String?
+
+  // Sesión grupal que convocó el instructor (25 nov 2026); ver SesionGrupal.
+  sesionGrupalId String?
+  sesionGrupal   SesionGrupal? @relation(fields: [sesionGrupalId], references: [id], onDelete: SetNull)
 
   // Formato GFPI-F-023 del momento firmado, en PDF. Lo sube el aprendiz.
   archivoUrl      String?
@@ -1270,4 +1280,33 @@ model SucursalEmpresa {
 
   @@unique([empresaId, nombre])
   @@index([empresaId])
+}
+
+// Sesión grupal de un momento (25 nov 2026, decisión del usuario para la prueba piloto): el
+// instructor convoca a varios aprendices de sus fichas a una sola reunión, presencial o virtual,
+// del Momento 1, 2 o 3. Solo van los convocados. Cada aprendiz conserva su propia evidencia: su
+// ConcertacionFuncion o su Evaluacion apuntan aquí, con la misma fecha y franja, y se valoran por
+// separado como siempre.
+model SesionGrupal {
+  id           String @id @default(cuid())
+  instructorId String
+  instructor   User   @relation("SesionesGrupalesInstructor", fields: [instructorId], references: [id], onDelete: Cascade)
+
+  momento    Int // 1, 2 o 3
+  fecha      DateTime
+  horaInicio String
+  horaFin    String
+  modalidad  ModalidadEjecucionEP
+  lugar      String? // Solo en la presencial
+
+  videollamadaUrl String? // Solo en la virtual
+  googleEventId   String?
+
+  concertaciones ConcertacionFuncion[]
+  evaluaciones   Evaluacion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([instructorId, fecha])
 }

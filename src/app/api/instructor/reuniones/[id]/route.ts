@@ -36,6 +36,7 @@ const REUNION_SELECT = {
   estado: true,
   videollamadaUrl: true,
   googleEventId: true,
+  sesionGrupalId: true,
   user: { select: APRENDIZ_SELECT },
 } as const;
 
@@ -84,6 +85,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       "_root",
       "Una reunión extraordinaria se reprograma una vez aprobada. Mientras esté por aprobar, apruébala o recházala con una nota.",
     );
+  }
+  if (reunion.sesionGrupalId) {
+    return error(409, "_root", "Esta reunión es parte de una sesión grupal: reprográmala desde «Sesiones grupales», para todos a la vez.");
   }
   if (!reunion.esExtraordinario && reunion.estado === "APROBADA") {
     return error(409, "_root", "Ya finalizaste la valoración de este Momento: la reunión no se puede reprogramar.");

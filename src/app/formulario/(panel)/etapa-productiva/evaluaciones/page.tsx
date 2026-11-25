@@ -18,11 +18,11 @@ export default async function EtapaProductivaPage() {
     prisma.companyProfile.findUnique({ where: { userId: currentUser.id } }),
     prisma.concertacionFuncion.findUnique({
       where: { userId: currentUser.id },
-      include: { variables: true },
+      include: { variables: true, sesionGrupal: { select: { modalidad: true, lugar: true } } },
     }),
     prisma.evaluacion.findMany({
       where: { userId: currentUser.id, numero: { in: [2, 3] }, esExtraordinario: false },
-      include: { variables: true },
+      include: { variables: true, sesionGrupal: { select: { modalidad: true, lugar: true } } },
       orderBy: { numero: "asc" },
     }),
     prisma.user.findUnique({
@@ -69,6 +69,7 @@ export default async function EtapaProductivaPage() {
       horaFin: e.horaFin,
       modalidad: e.modalidad,
       videollamadaUrl: e.videollamadaUrl,
+      sesionGrupal: e.sesionGrupal,
       juicioFinal: e.juicioFinal,
       retroalimentacionCoformador: e.retroalimentacionCoformador,
       retroalimentacionInstructor: e.retroalimentacionInstructor,
@@ -125,6 +126,7 @@ export default async function EtapaProductivaPage() {
               : null
           }
           videollamadaUrl={concertacion?.videollamadaUrl ?? null}
+          sesionGrupal={concertacion?.sesionGrupal ?? null}
           estado={(concertacion?.estado as "PENDIENTE" | "APROBADA" | "RECHAZADA") ?? "PENDIENTE"}
           competenciasDesarrollar={concertacion?.competenciasDesarrollar ?? null}
           resultadosAprendizaje={concertacion?.resultadosAprendizaje ?? null}

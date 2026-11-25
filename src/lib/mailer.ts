@@ -363,6 +363,7 @@ export async function sendRecordatorioReunionEmail(params: {
   videollamadaUrl: string;
   cuando: "hoy" | "manana";
   detalle: string | null;
+  lugar?: string | null;
 }) {
   const from = process.env.EMAIL_FROM || "no-responder@registro-empresa.local";
   const correo = componerRecordatorioReunion(params);
@@ -529,4 +530,60 @@ export async function sendRechazoEvidenciaEmail(params: {
     console.log(`[mailer] Vista previa (Ethereal) de la evidencia rechazada: ${nodemailer.getTestMessageUrl(info)}`);
   }
   return { info };
+}
+
+// Citación, reprogramación o cancelación de una sesión grupal (25 nov 2026; texto en
+// `src/lib/sesion-grupal-correo.ts`). Un correo por aprendiz (con su coformador) y uno para el
+// instructor con la lista de convocados: así ningún aprendiz ve los correos de los demás. La
+// invitación de calendario va con la citación y la reprogramación, no con la cancelación.
+export async function sendSesionGrupalEmail(p: {
+  sesionId: string;
+  destinatarios: string[];
+  correo: { subject: string; text: string; html: string };
+  sesion: import("@/lib/sesion-grupal-correo").SesionCorreo;
+  cancelada?: boolean;
+}) {
+  const from = process.env.EMAIL_FROM || "no-responder@registro-empresa.local";
+  const to = Array.from(new Set(p.destinatarios.filter(Boolean)));
+  if (!to.length) return;
+
+  let icsContent: string | null = null;
+  if (!p.cancelada) {
+    try {
+      const base = atributosInvitacion({
+        reunionId: `grupal-${p.sesionId}`,
+        titulo: `Sesión grupal - ${p.sesion.titulo}`,
+        aprendizNombre: "SEPA",
+        horario: p.sesion.horario,
+        videollamadaUrl: p.sesion.videollamadaUrl ?? "",
+        organizador: { name: "Registro Empresa", email: direccionDesnuda(from) },
+        asistentes: to,
+      });
+      const presencial = p.sesion.modalidad === "PRESENCIAL";
+      icsContent = await buildIcsEvent({
+        ...base,
+        title: `Sesión grupal - ${p.sesion.titulo}`,
+        description: presencial
+          ? `Sesión grupal presencial${p.sesion.lugar ? ` en ${p.sesion.lugar}` : ""} (etapa productiva).`
+          : `Sesión grupal virtual (etapa productiva).\n\nUnirse: ${p.sesion.videollamadaUrl ?? ""}`,
+        location: presencial ? (p.sesion.lugar ?? "Presencial") : (p.sesion.videollamadaUrl ?? undefined),
+        url: presencial ? undefined : (p.sesion.videollamadaUrl ?? undefined),
+      });
+    } catch (err) {
+      console.error("[mailer] No se pudo armar la invitación de la sesión grupal; se envía sin adjunto:", err);
+    }
+  }
+
+  const transporter = await getTransporter();
+  const info = await transporter.sendMail({
+    from,
+    to,
+    subject: p.correo.subject,
+    text: p.correo.text,
+    html: p.correo.html,
+    ...(icsContent ? { icalEvent: { filename: "invitacion.ics", method: "REQUEST", content: icsContent } } : {}),
+  });
+  if (usingTestAccount) {
+    console.log(`[mailer] Cuenta de prueba (Ethereal) — vista previa: ${nodemailer.getTestMessageUrl(info)}`);
+  }
 }

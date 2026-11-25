@@ -83,6 +83,9 @@ export async function POST(request: Request) {
     );
   }
 
+  if (existing?.sesionGrupalId && existing.estado !== "APROBADA") {
+    return NextResponse.json({ error: "Esta reunión es grupal: la programó tu instructor para varios aprendices. Si no puedes asistir, escríbele para que la ajuste." }, { status: 409 });
+  }
   if (existing?.estado === "APROBADA") {
     return NextResponse.json(
       { error: "Tu instructor ya finalizó la valoración de este momento — no se puede reagendar." },

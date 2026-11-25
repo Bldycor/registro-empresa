@@ -21,6 +21,8 @@ export type EvaluacionMomentoData = {
   horaFin: string | null;
   modalidad: "PRESENCIAL" | "VIRTUAL" | null;
   videollamadaUrl: string | null;
+  // Sesión grupal que convocó el instructor (25 nov 2026): no se reagenda desde aquí.
+  sesionGrupal?: { modalidad: "PRESENCIAL" | "VIRTUAL"; lugar: string | null } | null;
   juicioFinal: "APROBADO" | "NO_APROBADO" | null;
   retroalimentacionCoformador: string | null;
   retroalimentacionInstructor: string | null;
@@ -276,7 +278,16 @@ export function EvaluacionMomento({
                 Unirse a la videollamada
               </a>
             )}
-            {!finalizada && (
+            {data.sesionGrupal && !finalizada && (
+              <div className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200">
+                <p className="font-semibold">Sesión grupal convocada por tu instructor</p>
+                <p className="mt-0.5">
+                  {data.sesionGrupal.modalidad === "PRESENCIAL" ? `Presencial${data.sesionGrupal.lugar ? `, en ${data.sesionGrupal.lugar}` : ""}.` : "Virtual: el enlace es el mismo para todos los convocados."}{" "}
+                  Si no puedes asistir, escríbele a tu instructor. Tu formato y tu valoración siguen siendo individuales.
+                </p>
+              </div>
+            )}
+            {!finalizada && !data.sesionGrupal && (
               <button
                 type="button"
                 onClick={() => setEditando(true)}

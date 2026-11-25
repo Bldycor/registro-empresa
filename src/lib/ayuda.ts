@@ -107,6 +107,10 @@ const INSTRUCTOR: GuiaRol = {
       titulo: "Reuniones y novedades",
       opciones: [
         {
+          opcion: "Sesiones grupales",
+          que: "Convocas a varios aprendices de tus fichas —toda una ficha o los que elijas— a una sola reunión del Momento 1, 2 o 3, presencial (con el lugar) o virtual (un solo enlace). Solo aparecen los que pueden tener ese momento: el 2 con el 1 avalado y el 3 con el 2 evaluado. A cada aprendiz le llega su citación sin ver a los demás, y su evidencia sigue siendo individual: su formato y tu valoración, por separado. Antes de que empiece, puedes cambiar la fecha, el lugar o los convocados, o cancelarla.",
+        },
+        {
           opcion: "Reuniones extraordinarias",
           que: "Apruebas o rechazas las reuniones adicionales que piden tus aprendices o sus coformadores. Al aprobarlas sale la citación con el enlace para todos; al rechazarlas, tu nota le llega al aprendiz.",
         },
@@ -388,6 +392,10 @@ export const ayudaMenu: Record<string, { icono: string; resumen: string }> = {
   "/formulario/instructor/certificacion": {
     icono: "🏁",
     resumen: "Avala la carta del empresario.",
+  },
+  "/formulario/instructor/sesiones-grupales": {
+    icono: "👥",
+    resumen: "Convoca a varios aprendices a una sola reunión de un momento.",
   },
   "/formulario/instructor/extraordinarias": {
     icono: "📅",

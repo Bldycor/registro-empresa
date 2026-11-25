@@ -29,6 +29,8 @@ export type RecordatorioReunion = {
   horario: HorarioReunion;
   videollamadaUrl: string;
   detalle: string | null;
+  // Sesión grupal presencial (25 nov 2026): el lugar, en vez del enlace.
+  lugar?: string | null;
   destinatarios: string[];
 };
 
@@ -66,6 +68,7 @@ export async function recordatoriosPendientes(ahora: Date): Promise<Recordatorio
         horaInicio: true,
         horaFin: true,
         videollamadaUrl: true,
+        sesionGrupal: { select: { modalidad: true, lugar: true } },
         user: { select: APRENDIZ_SELECT },
       },
     }),
@@ -90,6 +93,7 @@ export async function recordatoriosPendientes(ahora: Date): Promise<Recordatorio
         horaInicio: true,
         horaFin: true,
         videollamadaUrl: true,
+        sesionGrupal: { select: { modalidad: true, lugar: true } },
         user: { select: APRENDIZ_SELECT },
       },
     }),
@@ -138,10 +142,13 @@ export async function recordatoriosPendientes(ahora: Date): Promise<Recordatorio
         videollamadaUrl:
           r.videollamadaUrl ?? getVideoConferenceUrl(r.id, prefijoSalaReunion(r.tipo, r.esExtraordinario)),
         detalle: r.motivoExtraordinario,
+        lugar: r.sesionGrupal?.modalidad === "PRESENCIAL" ? (r.sesionGrupal.lugar ?? "el lugar acordado") : null,
+        // En una sesión grupal, el recordatorio va a cada aprendiz y su coformador; el instructor
+        // (y Coordinación en el Momento 1) no recibe uno por cada convocado.
         destinatarios: destinatariosReunion({
-          tipo: r.tipo,
+          tipo: r.sesionGrupal ? "EVALUACION" : r.tipo,
           aprendizEmail: r.user.email,
-          instructorEmail: r.user.ficha?.instructor?.email,
+          instructorEmail: r.sesionGrupal ? null : r.user.ficha?.instructor?.email,
           coformadorEmail: r.user.companyProfile?.correoCoformador,
         }),
       };

@@ -77,6 +77,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         avaladoPorId: user.id,
         fechaAval: new Date(),
         ...(cancelarReunion ? HORARIO_LIBERADO : {}),
+        // Si estaba en una sesión grupal, sale de ella; la sesión sigue para los demás.
+        sesionGrupalId: null,
       },
     });
     if (count === 0) return false;
