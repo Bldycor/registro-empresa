@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PersonalUpdateSchema, type PersonalUpdateInput } from "@/lib/validations";
+import { PersonalUpdateBaseSchema, type PersonalUpdateInput } from "@/lib/validations";
+import { SelectorMunicipio } from "@/components/selector-municipio";
 
 type PersonalData = {
   nombres: string;
@@ -15,6 +16,8 @@ type PersonalData = {
   email: string;
   celular: string;
   direccionResidencia: string;
+  departamento: string | null;
+  ciudad: string | null;
 };
 
 export function PersonalDataForm({
@@ -28,6 +31,8 @@ export function PersonalDataForm({
   const { update } = useSession();
   const [saved, setSaved] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [ubicacion, setUbicacion] = useState({ departamento: initialData.departamento ?? "", ciudad: initialData.ciudad ?? "" });
+  const [erroresUbicacion, setErroresUbicacion] = useState<{ departamento?: string; ciudad?: string }>({});
 
   const {
     register,
@@ -36,7 +41,7 @@ export function PersonalDataForm({
     setError,
     formState: { errors, isSubmitting },
   } = useForm<PersonalUpdateInput>({
-    resolver: zodResolver(PersonalUpdateSchema),
+    resolver: zodResolver(PersonalUpdateBaseSchema),
     defaultValues: {
       email: initialData.email,
       celular: initialData.celular,
@@ -55,17 +60,20 @@ export function PersonalDataForm({
   async function onSubmit(values: PersonalUpdateInput) {
     setSaved(false);
     setServerError(null);
+    setErroresUbicacion({});
 
     const res = await fetch("/api/account", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
+      body: JSON.stringify({ ...values, ...ubicacion }),
     });
 
     if (!res.ok) {
       const data = await res.json();
       if (data.error?.email) {
         setError("email", { message: data.error.email[0] });
+      } else if (data.error?.departamento || data.error?.ciudad) {
+        setErroresUbicacion({ departamento: data.error.departamento?.[0], ciudad: data.error.ciudad?.[0] });
       } else {
         setServerError("No se pudo actualizar la información.");
       }
@@ -84,7 +92,7 @@ export function PersonalDataForm({
       </h2>
       <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
         Los datos de identificación no se pueden modificar. Puedes actualizar tu correo,
-        celular y dirección de residencia.
+        celular, dirección, departamento y municipio de residencia.
       </p>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -109,6 +117,14 @@ export function PersonalDataForm({
         >
           <input {...register("direccionResidencia")} className={inputClass} />
         </Field>
+
+        <SelectorMunicipio
+          departamento={ubicacion.departamento}
+          ciudad={ubicacion.ciudad}
+          onChange={setUbicacion}
+          errores={erroresUbicacion}
+          claseCampo={inputClass}
+        />
 
         {serverError && <p className="text-sm text-red-600">{serverError}</p>}
         {saved && (

@@ -11,7 +11,8 @@ const COORDINADOR_SELECT = {
   email: true,
   celular: true,
   direccionResidencia: true,
-  comuna: true,
+  departamento: true,
+  ciudad: true,
   coordinacion: true,
   creadoPorId: true,
   creadoPor: { select: { id: true, nombres: true, apellidos: true } },
@@ -37,7 +38,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const { nombres, apellidos, cedula, email, celular, direccionResidencia, comuna, coordinacion } =
+  const { nombres, apellidos, cedula, email, celular, direccionResidencia, departamento, ciudad, coordinacion } =
     parsed.data;
 
   const duplicado = await prisma.user.findFirst({
@@ -61,7 +62,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const coordinador = await prisma.user.update({
     where: { id },
-    data: { nombres, apellidos, cedula, email, celular, direccionResidencia, comuna, coordinacion },
+    data: { nombres, apellidos, cedula, email, celular, direccionResidencia, departamento, ciudad, coordinacion },
     select: COORDINADOR_SELECT,
   });
 

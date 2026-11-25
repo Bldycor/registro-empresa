@@ -17,6 +17,8 @@ export default async function InstructorPerfilPage() {
       email: true,
       celular: true,
       direccionResidencia: true,
+      departamento: true,
+      ciudad: true,
       fichasAsignadas: { select: { codigo: true }, orderBy: { codigo: "asc" } },
     },
   });
@@ -45,6 +47,8 @@ export default async function InstructorPerfilPage() {
           email: user.email,
           celular: user.celular,
           direccionResidencia: user.direccionResidencia,
+          departamento: user.departamento,
+          ciudad: user.ciudad,
           codigoFicha,
         }}
         codigoFichaLabel="Fichas asignadas"

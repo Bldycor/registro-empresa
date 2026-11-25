@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { SelectorMunicipio } from "@/components/selector-municipio";
+import { AvisoDatos } from "@/components/proteccion-datos";
 import {
-  ComunaValues,
-  comunaLabel,
   AlternativaEtapaProductivaValues,
   alternativaEtapaProductivaLabel,
 } from "@/lib/validations";
@@ -19,10 +19,12 @@ type FormFields = {
   email: string;
   celular: string;
   direccionResidencia: string;
-  comuna: string;
+  departamento: string;
+  ciudad: string;
   fichaId: string;
   alternativaEtapaProductiva: string;
   password: string;
+  autorizaDatos: boolean;
 };
 
 const initialState: FormFields = {
@@ -32,10 +34,12 @@ const initialState: FormFields = {
   email: "",
   celular: "",
   direccionResidencia: "",
-  comuna: "",
+  departamento: "",
+  ciudad: "",
   fichaId: "",
   alternativaEtapaProductiva: "",
   password: "",
+  autorizaDatos: false,
 };
 
 export default function RegisterPage() {
@@ -137,34 +141,22 @@ export default function RegisterPage() {
             />
           </Field>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Dirección de residencia" error={errors.direccionResidencia?.[0]}>
-              <input
-                required
-                value={form.direccionResidencia}
-                onChange={(e) => update("direccionResidencia", e.target.value)}
-                className={inputClass}
-              />
-            </Field>
+          <Field label="Dirección de residencia" error={errors.direccionResidencia?.[0]}>
+            <input
+              required
+              value={form.direccionResidencia}
+              onChange={(e) => update("direccionResidencia", e.target.value)}
+              className={inputClass}
+            />
+          </Field>
 
-            <Field label="Comuna" error={errors.comuna?.[0]}>
-              <select
-                required
-                value={form.comuna}
-                onChange={(e) => update("comuna", e.target.value)}
-                className={inputClass}
-              >
-                <option value="" disabled>
-                  Selecciona tu comuna
-                </option>
-                {ComunaValues.map((comuna) => (
-                  <option key={comuna} value={comuna}>
-                    {comunaLabel[comuna]}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
+          <SelectorMunicipio
+            departamento={form.departamento}
+            ciudad={form.ciudad}
+            onChange={(v) => setForm((prev) => ({ ...prev, ...v }))}
+            errores={{ departamento: errors.departamento?.[0], ciudad: errors.ciudad?.[0] }}
+            claseCampo={inputClass}
+          />
 
           <Field label="Ficha" error={errors.fichaId?.[0]}>
             {fichas === null ? (
@@ -224,9 +216,27 @@ export default function RegisterPage() {
             />
           </Field>
 
+          <div className="flex flex-col gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+            <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={form.autorizaDatos}
+                onChange={(e) => update("autorizaDatos", e.target.checked)}
+                required
+              />
+              <span>
+                Autorizo al SENA a tratar mis datos personales para el seguimiento de mi etapa productiva, de
+                acuerdo con la Ley 1581 de 2012 y su política de protección de datos.
+              </span>
+            </label>
+            {errors.autorizaDatos && <p className="text-sm text-red-600">{errors.autorizaDatos[0]}</p>}
+            <AvisoDatos />
+          </div>
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !form.autorizaDatos}
             className="mt-2 rounded-md bg-sena px-4 py-2 text-sm font-medium text-white hover:bg-sena-oscuro disabled:opacity-50 dark:bg-sena dark:text-white dark:hover:bg-sena-oscuro"
           >
             {loading ? "Creando cuenta..." : "Crear cuenta"}

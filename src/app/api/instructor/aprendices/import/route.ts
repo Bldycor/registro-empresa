@@ -10,7 +10,7 @@ import { calcularFechasEtapaProductivaDesdeFicha } from "@/lib/etapa-productiva-
 // Importación masiva de aprendices desde una hoja de cálculo, solo en fichas asignadas al
 // instructor. Mismo patrón "solo crea" que fichas/instructores: si la cédula o el correo ya
 // existen (de cualquier rol), no se toca esa fila y se reporta aparte. La hoja real no trae
-// dirección de residencia ni comuna — quedan como "Sin especificar" / sin comuna, editables
+// dirección de residencia ni municipio — quedan como "Sin especificar" / sin municipio, editables
 // después desde el panel del coordinador/admin.
 export async function POST(request: Request) {
   const { user, response } = await requireApiUser(["INSTRUCTOR"]);

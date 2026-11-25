@@ -18,7 +18,8 @@ export default async function CoordinadorInstructoresPage() {
       email: true,
       celular: true,
       direccionResidencia: true,
-      comuna: true,
+      departamento: true,
+      ciudad: true,
       coordinacion: true,
       fichasAsignadas: {
         select: {

@@ -23,7 +23,8 @@ export async function GET() {
       email: true,
       celular: true,
       direccionResidencia: true,
-      comuna: true,
+      departamento: true,
+      ciudad: true,
       coordinacion: true,
       fichasAsignadas: {
         select: {
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { nombres, apellidos, cedula, email, celular, direccionResidencia, comuna, coordinacion } =
+  const { nombres, apellidos, cedula, email, celular, direccionResidencia, departamento, ciudad, coordinacion } =
     parsed.data;
 
   const existingUser = await prisma.user.findFirst({
@@ -105,7 +106,8 @@ export async function POST(request: Request) {
         email,
         celular,
         direccionResidencia,
-        comuna,
+        departamento,
+        ciudad,
         coordinacion,
         role: "INSTRUCTOR",
         passwordHash,
@@ -119,7 +121,8 @@ export async function POST(request: Request) {
         email: true,
         celular: true,
         direccionResidencia: true,
-        comuna: true,
+        departamento: true,
+        ciudad: true,
         coordinacion: true,
         creadoPorId: true,
         creadoPor: { select: { id: true, nombres: true, apellidos: true } },

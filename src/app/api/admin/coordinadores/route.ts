@@ -14,7 +14,8 @@ const COORDINADOR_SELECT = {
   email: true,
   celular: true,
   direccionResidencia: true,
-  comuna: true,
+  departamento: true,
+  ciudad: true,
   coordinacion: true,
   creadoPorId: true,
   creadoPor: { select: { id: true, nombres: true, apellidos: true } },
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const { nombres, apellidos, cedula, email, celular, direccionResidencia, comuna, coordinacion } =
+  const { nombres, apellidos, cedula, email, celular, direccionResidencia, departamento, ciudad, coordinacion } =
     parsed.data;
 
   const existingUser = await prisma.user.findFirst({
@@ -84,7 +85,8 @@ export async function POST(request: Request) {
         email,
         celular,
         direccionResidencia,
-        comuna,
+        departamento,
+        ciudad,
         coordinacion,
         role: "COORDINADOR",
         passwordHash,

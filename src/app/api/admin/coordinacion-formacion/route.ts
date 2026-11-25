@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
-  const { nombres, apellidos, cedula, email, celular, direccionResidencia, comuna } = parsed.data;
+  const { nombres, apellidos, cedula, email, celular, direccionResidencia, departamento, ciudad } = parsed.data;
 
   const existente = await prisma.user.findFirst({ where: { OR: [{ email }, { cedula }] } });
   if (existente) {
@@ -55,7 +55,8 @@ export async function POST(request: Request) {
       email,
       celular,
       direccionResidencia,
-      comuna,
+      departamento,
+      ciudad,
       role: "COORDINADOR_FORMACION",
       passwordHash: await bcrypt.hash(password, 10),
       creadoPorId: user.id,

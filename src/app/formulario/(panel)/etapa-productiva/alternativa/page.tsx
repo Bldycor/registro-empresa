@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth-guards";
 import { SeleccionAlternativaForm } from "@/components/seleccion-alternativa-form";
 import { InterrupcionEPForm } from "@/components/interrupcion-ep-form";
 import { AplazamientoEPForm } from "@/components/aplazamiento-ep-form";
-import { comunaLabel, alternativaEtapaProductivaLabel } from "@/lib/validations";
+import { alternativaEtapaProductivaLabel } from "@/lib/validations";
 import { diasPendientesEtapaProductiva } from "@/lib/etapa-productiva-fechas";
 import { formatoMomento } from "@/lib/plazos-institucionales";
 
@@ -20,7 +20,8 @@ export default async function AlternativaPage() {
         nombres: true,
         apellidos: true,
         cedula: true,
-        comuna: true,
+        departamento: true,
+        ciudad: true,
         estado: true,
         alternativaEtapaProductiva: true,
         fechaInicioEtapaProductiva: true,
@@ -98,7 +99,7 @@ export default async function AlternativaPage() {
         <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
           <Info label="Nombre" value={`${user.nombres} ${user.apellidos}`} />
           <Info label="Cédula" value={user.cedula} />
-          <Info label="Comuna" value={user.comuna ? comunaLabel[user.comuna] : "—"} />
+          <Info label="Municipio" value={user.ciudad ? `${user.ciudad}, ${user.departamento}` : "—"} />
           <Info label="Ficha" value={user.ficha?.codigo ?? "Sin asignar"} />
           <Info
             label="Instructor de seguimiento"

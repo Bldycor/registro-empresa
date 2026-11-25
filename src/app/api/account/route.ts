@@ -17,6 +17,8 @@ export async function GET() {
       email: true,
       celular: true,
       direccionResidencia: true,
+      departamento: true,
+      ciudad: true,
     },
   });
 
@@ -37,7 +39,7 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const { email, celular, direccionResidencia } = parsed.data;
+  const { email, celular, direccionResidencia, departamento, ciudad } = parsed.data;
 
   const existingEmail = await prisma.user.findUnique({ where: { email } });
   if (existingEmail && existingEmail.id !== sesion.id) {
@@ -49,7 +51,7 @@ export async function PATCH(request: Request) {
 
   const user = await prisma.user.update({
     where: { id: sesion.id },
-    data: { email, celular, direccionResidencia },
+    data: { email, celular, direccionResidencia, departamento, ciudad },
     select: {
       nombres: true,
       apellidos: true,
@@ -58,6 +60,8 @@ export async function PATCH(request: Request) {
       email: true,
       celular: true,
       direccionResidencia: true,
+      departamento: true,
+      ciudad: true,
     },
   });
 

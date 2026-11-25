@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ComunaValues, comunaLabel, type ComunaValue } from "@/lib/validations";
+import { SelectorMunicipio } from "@/components/selector-municipio";
+import { PrevencionDatosCreacion } from "@/components/proteccion-datos";
 
 // Cuentas de Coordinación de Formación (26 oct 2026): rol de solo consulta que crea y corrige
 // únicamente el administrador. Sin «coordinación» asignada: consulta todo el centro.
@@ -14,11 +15,12 @@ type Cuenta = {
   email: string;
   celular: string;
   direccionResidencia: string;
-  comuna: ComunaValue | null;
+  departamento: string | null;
+  ciudad: string | null;
   creadoPor: { nombres: string; apellidos: string } | null;
 };
 
-const VACIO = { nombres: "", apellidos: "", cedula: "", email: "", celular: "", direccionResidencia: "", comuna: "" };
+const VACIO = { nombres: "", apellidos: "", cedula: "", email: "", celular: "", direccionResidencia: "", departamento: "", ciudad: "" };
 type Campos = typeof VACIO;
 
 const inputClass =
@@ -47,7 +49,8 @@ export function AdminCoordinacionFormacionPanel({ iniciales }: { iniciales: Cuen
       email: c.email,
       celular: c.celular,
       direccionResidencia: c.direccionResidencia,
-      comuna: c.comuna ?? "",
+      departamento: c.departamento ?? "",
+      ciudad: c.ciudad ?? "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -143,18 +146,6 @@ export function AdminCoordinacionFormacionPanel({ iniciales }: { iniciales: Cuen
           <Campo etiqueta="Celular" error={errores.celular?.[0]}>
             <input required value={form.celular} onChange={(e) => cambiar("celular", e.target.value)} className={inputClass} />
           </Campo>
-          <Campo etiqueta="Comuna" error={errores.comuna?.[0]}>
-            <select required value={form.comuna} onChange={(e) => cambiar("comuna", e.target.value)} className={inputClass}>
-              <option value="" disabled>
-                Selecciona
-              </option>
-              {ComunaValues.map((c) => (
-                <option key={c} value={c}>
-                  {comunaLabel[c]}
-                </option>
-              ))}
-            </select>
-          </Campo>
         </div>
         <Campo etiqueta="Dirección de residencia" error={errores.direccionResidencia?.[0]}>
           <input
@@ -164,6 +155,14 @@ export function AdminCoordinacionFormacionPanel({ iniciales }: { iniciales: Cuen
             className={inputClass}
           />
         </Campo>
+        <SelectorMunicipio
+          departamento={form.departamento}
+          ciudad={form.ciudad}
+          onChange={(v) => setForm((prev) => ({ ...prev, ...v }))}
+          errores={{ departamento: errores.departamento?.[0], ciudad: errores.ciudad?.[0] }}
+          claseCampo={inputClass}
+        />
+        <PrevencionDatosCreacion />
 
         {errores._root && <p className="text-sm text-red-600">{errores._root[0]}</p>}
 

@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { RegisterAprendizSchema } from "@/lib/validations";
 import { sendWelcomeEmail } from "@/lib/mailer";
+import { registrarAuditoria } from "@/lib/auditoria";
+import { POLITICA_DATOS } from "@/lib/proteccion-datos";
 
 // Registro público de Aprendiz — el único autoregistro que queda. El ADMIN crea Coordinador
 // (/api/admin/coordinadores) y el Coordinador crea Instructor (/api/coordinador/instructores);
@@ -25,7 +27,8 @@ export async function POST(request: Request) {
     email,
     celular,
     direccionResidencia,
-    comuna,
+    departamento,
+    ciudad,
     fichaId,
     alternativaEtapaProductiva,
     password,
@@ -63,8 +66,9 @@ export async function POST(request: Request) {
 
   const passwordHash = await bcrypt.hash(password, 10);
 
+  let nuevoId: string;
   try {
-    await prisma.user.create({
+    ({ id: nuevoId } = await prisma.user.create({
       data: {
         nombres,
         apellidos,
@@ -72,13 +76,15 @@ export async function POST(request: Request) {
         email,
         celular,
         direccionResidencia,
-        comuna,
+        departamento,
+        ciudad,
         role: "APRENDIZ",
         fichaId,
         alternativaEtapaProductiva,
         passwordHash,
       },
-    });
+      select: { id: true },
+    }));
   } catch (error) {
     console.error("[api/register] Error al crear el usuario:", error);
     return NextResponse.json(
@@ -86,6 +92,16 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+
+  // Constancia de la autorización del tratamiento de datos (Ley 1581 de 2012; política del SENA,
+  // Acuerdo 13 de 2019: el responsable debe conservar prueba de la autorización).
+  await registrarAuditoria({
+    accion: "AUTORIZACION_DATOS",
+    entidad: "User",
+    entidadId: nuevoId,
+    detalle: { autoriza: true, politica: POLITICA_DATOS.map((p) => p.nombre) },
+    actor: { id: nuevoId, nombre: `${nombres} ${apellidos}`, rol: "APRENDIZ", ip: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null },
+  });
 
   // El correo de bienvenida no debe bloquear el registro: si el envío falla (SMTP
   // caído, etc.), la cuenta ya quedó creada y el usuario puede iniciar sesión igual;

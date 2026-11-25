@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { AvisoDatos } from "@/components/proteccion-datos";
 
 function LoginForm() {
   const router = useRouter();
@@ -184,6 +185,7 @@ function LoginForm() {
             Regístrate
           </Link>
           </p>
+          <AvisoDatos className="mt-6" />
         </div>
       </div>
     </div>

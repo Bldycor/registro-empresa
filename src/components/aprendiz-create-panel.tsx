@@ -1,11 +1,11 @@
 "use client";
 
+import { SelectorMunicipio } from "@/components/selector-municipio";
+import { PrevencionDatosCreacion } from "@/components/proteccion-datos";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { StatBadge } from "@/components/stat-badge";
 import {
-  ComunaValues,
-  comunaLabel,
   AlternativaEtapaProductivaValues,
   alternativaEtapaProductivaLabel,
 } from "@/lib/validations";
@@ -19,7 +19,8 @@ type FormFields = {
   email: string;
   celular: string;
   direccionResidencia: string;
-  comuna: string;
+  departamento: string;
+  ciudad: string;
   fichaId: string;
   alternativaEtapaProductiva: string;
 };
@@ -31,7 +32,8 @@ const initialState: FormFields = {
   email: "",
   celular: "",
   direccionResidencia: "",
-  comuna: "",
+  departamento: "",
+  ciudad: "",
   fichaId: "",
   alternativaEtapaProductiva: "",
 };
@@ -169,24 +171,15 @@ export function AprendizCreatePanel({
           <input required value={form.celular} onChange={(e) => update("celular", e.target.value)} className={inputClass} />
         </Field>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Dirección de residencia" error={errors.direccionResidencia?.[0]}>
-            <input
-              required
-              value={form.direccionResidencia}
-              onChange={(e) => update("direccionResidencia", e.target.value)}
-              className={inputClass}
-            />
-          </Field>
-          <Field label="Comuna" error={errors.comuna?.[0]}>
-            <select required value={form.comuna} onChange={(e) => update("comuna", e.target.value)} className={inputClass}>
-              <option value="" disabled>Selecciona la comuna</option>
-              {ComunaValues.map((c) => (
-                <option key={c} value={c}>{comunaLabel[c]}</option>
-              ))}
-            </select>
-          </Field>
-        </div>
+        <Field label="Dirección de residencia" error={errors.direccionResidencia?.[0]}>
+          <input
+            required
+            value={form.direccionResidencia}
+            onChange={(e) => update("direccionResidencia", e.target.value)}
+            className={inputClass}
+          />
+        </Field>
+        <SelectorMunicipio departamento={form.departamento} ciudad={form.ciudad} onChange={(v) => { update("departamento", v.departamento); update("ciudad", v.ciudad); }} errores={{ departamento: errors.departamento?.[0], ciudad: errors.ciudad?.[0] }} claseCampo={inputClass} />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Ficha" error={errors.fichaId?.[0]}>
@@ -225,6 +218,7 @@ export function AprendizCreatePanel({
 
         {errors._root && <p className="text-sm text-red-600">{errors._root[0]}</p>}
 
+        <PrevencionDatosCreacion />
         <button
           type="submit"
           disabled={loading || fichas.length === 0}
@@ -319,6 +313,7 @@ export function AprendizCreatePanel({
             )}
           </div>
         )}
+        <PrevencionDatosCreacion />
         <button
           type="submit"
           disabled={importLoading || importText.trim().length === 0}

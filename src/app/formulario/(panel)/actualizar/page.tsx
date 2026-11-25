@@ -21,6 +21,8 @@ export default async function ActualizarPage() {
         email: true,
         celular: true,
         direccionResidencia: true,
+        departamento: true,
+        ciudad: true,
         ficha: { select: { codigo: true } },
       },
     }),
@@ -44,6 +46,8 @@ export default async function ActualizarPage() {
           email: user.email,
           celular: user.celular,
           direccionResidencia: user.direccionResidencia,
+          departamento: user.departamento,
+          ciudad: user.ciudad,
           codigoFicha: user.ficha?.codigo ?? "Sin ficha asignada",
         }}
       />

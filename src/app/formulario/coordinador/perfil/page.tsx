@@ -21,6 +21,8 @@ export default async function CoordinadorPerfilPage() {
       email: true,
       celular: true,
       direccionResidencia: true,
+      departamento: true,
+      ciudad: true,
       coordinacion: true,
     },
   });
@@ -47,6 +49,8 @@ export default async function CoordinadorPerfilPage() {
           email: user.email,
           celular: user.celular,
           direccionResidencia: user.direccionResidencia,
+          departamento: user.departamento,
+          ciudad: user.ciudad,
           // Coordinación de Formación no tiene un área asignada: consulta todo el centro.
           codigoFicha: formacion
             ? "Coordinación de Formación"

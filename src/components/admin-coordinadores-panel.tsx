@@ -1,12 +1,11 @@
 "use client";
 
+import { SelectorMunicipio } from "@/components/selector-municipio";
+import { PrevencionDatosCreacion } from "@/components/proteccion-datos";
 import { useState } from "react";
 import {
-  ComunaValues,
-  comunaLabel,
   CoordinacionValues,
   coordinacionLabel,
-  type ComunaValue,
   type CoordinacionValue,
 } from "@/lib/validations";
 import { StatBadge } from "@/components/stat-badge";
@@ -21,7 +20,8 @@ type Coordinador = {
   email: string;
   celular: string;
   direccionResidencia: string;
-  comuna: ComunaValue | null;
+  departamento: string | null;
+  ciudad: string | null;
   coordinacion: CoordinacionValue | null;
   creadoPorId: string | null;
   creadoPor: CreadoPor | null;
@@ -34,7 +34,8 @@ type FormFields = {
   email: string;
   celular: string;
   direccionResidencia: string;
-  comuna: string;
+  departamento: string;
+  ciudad: string;
   coordinacion: string;
 };
 
@@ -45,7 +46,8 @@ const initialState: FormFields = {
   email: "",
   celular: "",
   direccionResidencia: "",
-  comuna: "",
+  departamento: "",
+  ciudad: "",
   coordinacion: "",
 };
 
@@ -94,7 +96,8 @@ export function AdminCoordinadoresPanel({
       email: coordinador.email,
       celular: coordinador.celular,
       direccionResidencia: coordinador.direccionResidencia,
-      comuna: coordinador.comuna ?? "",
+      departamento: coordinador.departamento ?? "",
+      ciudad: coordinador.ciudad ?? "",
       coordinacion: coordinador.coordinacion ?? "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -287,34 +290,15 @@ export function AdminCoordinadoresPanel({
           />
         </Field>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Dirección de residencia" error={errors.direccionResidencia?.[0]}>
-            <input
-              required
-              value={form.direccionResidencia}
-              onChange={(e) => update("direccionResidencia", e.target.value)}
-              className={inputClass}
-            />
-          </Field>
-
-          <Field label="Comuna" error={errors.comuna?.[0]}>
-            <select
-              required
-              value={form.comuna}
-              onChange={(e) => update("comuna", e.target.value)}
-              className={inputClass}
-            >
-              <option value="" disabled>
-                Selecciona la comuna
-              </option>
-              {ComunaValues.map((comuna) => (
-                <option key={comuna} value={comuna}>
-                  {comunaLabel[comuna]}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
+        <Field label="Dirección de residencia" error={errors.direccionResidencia?.[0]}>
+          <input
+            required
+            value={form.direccionResidencia}
+            onChange={(e) => update("direccionResidencia", e.target.value)}
+            className={inputClass}
+          />
+        </Field>
+        <SelectorMunicipio departamento={form.departamento} ciudad={form.ciudad} onChange={(v) => { update("departamento", v.departamento); update("ciudad", v.ciudad); }} errores={{ departamento: errors.departamento?.[0], ciudad: errors.ciudad?.[0] }} claseCampo={inputClass} />
 
         <Field label="Coordinación" error={errors.coordinacion?.[0]}>
           <select
@@ -336,6 +320,7 @@ export function AdminCoordinadoresPanel({
 
         {errors._root && <p className="text-sm text-red-600">{errors._root[0]}</p>}
 
+        <PrevencionDatosCreacion />
         <button
           type="submit"
           disabled={loading}
@@ -382,7 +367,7 @@ export function AdminCoordinadoresPanel({
         <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
           Pega filas con <strong>NOMBRES</strong>, <strong>APELLIDOS</strong>,{" "}
           <strong>CÉDULA</strong>, <strong>CORREO</strong>, <strong>CELULAR</strong>,{" "}
-          <strong>DIRECCIÓN</strong>, <strong>COMUNA</strong> y <strong>COORDINACIÓN</strong>{" "}
+          <strong>DIRECCIÓN</strong>, <strong>DEPARTAMENTO</strong>, <strong>MUNICIPIO</strong> y <strong>COORDINACIÓN</strong>{" "}
           (incluir el encabezado ayuda, pero no es obligatorio). Solo se crean cuentas nuevas —
           si la cédula o el correo ya existen en el sistema, esa fila no se modifica y queda
           listada como &quot;ya existía&quot;.
@@ -448,6 +433,7 @@ export function AdminCoordinadoresPanel({
             )}
           </div>
         )}
+        <PrevencionDatosCreacion />
         <button
           type="submit"
           disabled={importLoading || importText.trim().length === 0}

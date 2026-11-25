@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { requireApiUser } from "@/lib/auth-guards";
 // Mismo parser que la importación de instructores: idéntica forma de fila (nombres, apellidos,
-// cédula, correo, celular, dirección, comuna, coordinación), solo cambia el rol asignado.
+// cédula, correo, celular, dirección, departamento, municipio, coordinación), solo cambia el rol asignado.
 import { parseInstructorImportText } from "@/lib/instructor-import";
 import { generarPasswordTemporal } from "@/lib/temp-password";
 import { sendWelcomeEmail } from "@/lib/mailer";
@@ -67,7 +67,8 @@ export async function POST(request: Request) {
           email: fila.email,
           celular: fila.celular,
           direccionResidencia: fila.direccionResidencia,
-          comuna: fila.comuna,
+          departamento: fila.departamento,
+          ciudad: fila.ciudad,
           coordinacion: fila.coordinacion,
           role: "COORDINADOR",
           passwordHash,

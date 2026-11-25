@@ -7,6 +7,7 @@ export const CUENTA_FORMACION_SELECT = {
   email: true,
   celular: true,
   direccionResidencia: true,
-  comuna: true,
+  departamento: true,
+  ciudad: true,
   creadoPor: { select: { nombres: true, apellidos: true } },
 } as const;

@@ -1,47 +1,23 @@
 import { z } from "zod";
 import { toMinutes } from "@/lib/time";
 import { VARIABLES_PLANEACION } from "@/lib/concertacion-variables";
+import { DEPARTAMENTOS, MUNICIPIOS_POR_DEPARTAMENTO } from "@/lib/colombia";
 
-// Las 16 comunas oficiales de Medellín (enum `Comuna` de prisma/schema.prisma), con su nombre
-// legible para los desplegables. Reemplaza el antiguo campo de "barrio" en texto libre.
-export const ComunaValues = [
-  "POPULAR",
-  "SANTA_CRUZ",
-  "MANRIQUE",
-  "ARANJUEZ",
-  "CASTILLA",
-  "DOCE_DE_OCTUBRE",
-  "ROBLEDO",
-  "VILLA_HERMOSA",
-  "BUENOS_AIRES",
-  "LA_CANDELARIA",
-  "LAURELES_ESTADIO",
-  "LA_AMERICA",
-  "SAN_JAVIER",
-  "EL_POBLADO",
-  "GUAYABAL",
-  "BELEN",
-] as const;
-export type ComunaValue = (typeof ComunaValues)[number];
-
-export const comunaLabel: Record<ComunaValue, string> = {
-  POPULAR: "Popular",
-  SANTA_CRUZ: "Santa Cruz",
-  MANRIQUE: "Manrique",
-  ARANJUEZ: "Aranjuez",
-  CASTILLA: "Castilla",
-  DOCE_DE_OCTUBRE: "Doce de Octubre",
-  ROBLEDO: "Robledo",
-  VILLA_HERMOSA: "Villa Hermosa",
-  BUENOS_AIRES: "Buenos Aires",
-  LA_CANDELARIA: "La Candelaria",
-  LAURELES_ESTADIO: "Laureles-Estadio",
-  LA_AMERICA: "La América",
-  SAN_JAVIER: "San Javier",
-  EL_POBLADO: "El Poblado",
-  GUAYABAL: "Guayabal",
-  BELEN: "Belén",
-};
+// Departamento y municipio de residencia (25 nov 2026; reemplazan la comuna de Medellín). Siempre
+// de la lista oficial del DANE; el municipio se guarda en `User.ciudad`.
+export function municipioDeSuDepartamento(
+  d: { departamento?: string | null; ciudad?: string | null },
+  ctx: z.RefinementCtx,
+) {
+  if (!d.departamento && !d.ciudad) return;
+  if (!d.departamento || !(DEPARTAMENTOS as readonly string[]).includes(d.departamento)) {
+    ctx.addIssue({ code: "custom", path: ["departamento"], message: "Selecciona el departamento." });
+    return;
+  }
+  if (!d.ciudad || !(MUNICIPIOS_POR_DEPARTAMENTO[d.departamento] ?? []).some((m) => m.nombre === d.ciudad)) {
+    ctx.addIssue({ code: "custom", path: ["ciudad"], message: "Selecciona el municipio." });
+  }
+}
 
 // Áreas/departamentos del SENA (enum `Coordinacion`). Aplica a Instructor y Coordinador.
 export const CoordinacionValues = [
@@ -531,7 +507,8 @@ export const AprendizGestionSchema = z
     email: z.string().trim().email("Ingresa un correo válido.").optional(),
     celular: z.string().trim().min(7, "Ingresa un número de celular válido.").optional(),
     direccionResidencia: z.string().trim().min(5, "Ingresa la dirección de residencia.").optional(),
-    comuna: z.enum(ComunaValues).nullable().optional(),
+    departamento: z.string().trim().nullable().optional(),
+    ciudad: z.string().trim().nullable().optional(),
     estado: z.enum(EstadoAprendizValues).optional(),
     alternativaEtapaProductiva: z.enum(AlternativaEtapaProductivaValues).nullable().optional(),
     fichaId: z.string().trim().nullable().optional(),
@@ -550,7 +527,8 @@ export const AprendizGestionSchema = z
       !data.fechaFinEtapaProductiva ||
       data.fechaFinEtapaProductiva > data.fechaInicioEtapaProductiva,
     { message: "La fecha de fin debe ser posterior a la de inicio.", path: ["fechaFinEtapaProductiva"] },
-  );
+  )
+  .superRefine(municipioDeSuDepartamento);
 
 export type AprendizGestionInput = z.infer<typeof AprendizGestionSchema>;
 
@@ -604,7 +582,8 @@ const datosPersonalesBase = {
   email: z.string().trim().email("Ingresa un correo válido."),
   celular: z.string().trim().min(7, "Ingresa un número de celular válido."),
   direccionResidencia: z.string().trim().min(5, "Ingresa tu dirección de residencia."),
-  comuna: z.enum(ComunaValues, { message: "Selecciona tu comuna." }),
+  departamento: z.string().trim().min(1, "Selecciona el departamento."),
+  ciudad: z.string().trim().min(1, "Selecciona el municipio."),
 };
 
 // Registro público de Aprendiz (/register). El rol queda fijo en el route handler, no viaja
@@ -616,7 +595,10 @@ export const RegisterAprendizSchema = z.object({
     message: "Selecciona la alternativa de Etapa Productiva.",
   }),
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
-});
+  // Ley 1581 de 2012 y política del SENA (Acuerdo 13 de 2019): autorización previa, expresa e
+  // informada del tratamiento de datos. Queda constancia en la trazabilidad.
+  autorizaDatos: z.literal(true, { message: "Para registrarte debes autorizar el tratamiento de tus datos." }),
+}).superRefine(municipioDeSuDepartamento);
 
 export type RegisterAprendizInput = z.infer<typeof RegisterAprendizSchema>;
 
@@ -626,7 +608,7 @@ export type RegisterAprendizInput = z.infer<typeof RegisterAprendizSchema>;
 export const CreateInstructorSchema = z.object({
   ...datosPersonalesBase,
   coordinacion: z.enum(CoordinacionValues, { message: "Selecciona la coordinación." }),
-});
+}).superRefine(municipioDeSuDepartamento);
 
 export type CreateInstructorInput = z.infer<typeof CreateInstructorSchema>;
 
@@ -643,7 +625,7 @@ export const CreateAprendizSchema = z.object({
   alternativaEtapaProductiva: z.enum(AlternativaEtapaProductivaValues, {
     message: "Selecciona la alternativa de Etapa Productiva.",
   }),
-});
+}).superRefine(municipioDeSuDepartamento);
 
 export type CreateAprendizInput = z.infer<typeof CreateAprendizSchema>;
 
@@ -656,7 +638,7 @@ export type CreateCoordinadorInput = CreateInstructorInput;
 
 // Cuenta de Coordinación de Formación (26 oct 2026): solo consulta y sin área asignada —ve todo el
 // centro—, así que lleva los datos personales sin «coordinación». La crea únicamente el ADMIN.
-export const CreateCoordinacionFormacionSchema = z.object(datosPersonalesBase);
+export const CreateCoordinacionFormacionSchema = z.object(datosPersonalesBase).superRefine(municipioDeSuDepartamento);
 export type CreateCoordinacionFormacionInput = z.infer<typeof CreateCoordinacionFormacionSchema>;
 
 export const ProfileSchema = z.object({
@@ -676,13 +658,19 @@ export const ProfileSchema = z.object({
 
 export type ProfileInput = z.infer<typeof ProfileSchema>;
 
-export const PersonalUpdateSchema = z.object({
+// Lo que valida el formulario en el navegador; departamento y municipio van aparte (selector) y el
+// servidor los valida con `PersonalUpdateSchema`.
+export const PersonalUpdateBaseSchema = z.object({
   email: z.string().trim().email("Ingresa un correo válido."),
   celular: z.string().trim().min(7, "Ingresa un número de celular válido."),
   direccionResidencia: z.string().trim().min(5, "Ingresa tu dirección de residencia."),
 });
+export const PersonalUpdateSchema = PersonalUpdateBaseSchema.extend({
+  departamento: z.string().trim().min(1, "Selecciona el departamento."),
+  ciudad: z.string().trim().min(1, "Selecciona el municipio."),
+}).superRefine(municipioDeSuDepartamento);
 
-export type PersonalUpdateInput = z.infer<typeof PersonalUpdateSchema>;
+export type PersonalUpdateInput = z.infer<typeof PersonalUpdateBaseSchema>;
 
 // Recuperación de contraseña: el usuario se identifica con su cédula (dato de ingreso principal),
 // el enlace de restablecimiento se envía al correo que tiene registrado en la cuenta.

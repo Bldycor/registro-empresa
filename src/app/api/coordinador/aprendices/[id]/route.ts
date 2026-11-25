@@ -13,7 +13,8 @@ const APRENDIZ_SELECT = {
   email: true,
   celular: true,
   direccionResidencia: true,
-  comuna: true,
+  departamento: true,
+  ciudad: true,
   estado: true,
   alternativaEtapaProductiva: true,
   fichaId: true,
@@ -162,7 +163,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (g.email !== undefined) data.email = g.email;
   if (g.celular !== undefined) data.celular = g.celular;
   if (g.direccionResidencia !== undefined) data.direccionResidencia = g.direccionResidencia;
-  if (g.comuna !== undefined) data.comuna = g.comuna;
+  if (g.departamento !== undefined) data.departamento = g.departamento;
+  if (g.ciudad !== undefined) data.ciudad = g.ciudad;
   if (g.estado !== undefined) data.estado = g.estado;
   if (g.alternativaEtapaProductiva !== undefined) {
     data.alternativaEtapaProductiva = g.alternativaEtapaProductiva;

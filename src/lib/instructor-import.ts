@@ -1,13 +1,11 @@
-import {
-  ComunaValues,
-  CoordinacionValues,
-  type ComunaValue,
-  type CoordinacionValue,
-} from "@/lib/validations";
+import { CoordinacionValues, type CoordinacionValue } from "@/lib/validations";
+import { departamentoOficial, municipioOficial } from "@/lib/colombia";
 
 // Importador de instructores desde una hoja de cálculo (pegar texto separado por tabulaciones,
 // con o sin fila de encabezado — mismo mecanismo que src/lib/ficha-import.ts). Columnas: nombres,
-// apellidos, cédula, correo, celular, dirección de residencia, comuna, coordinación.
+// apellidos, cédula, correo, celular, dirección de residencia, departamento, municipio, coordinación.
+// Departamento y municipio se aceptan como los escriba la gente («antioquia», «medellin») y se
+// guardan con el nombre oficial del DANE (25 nov 2026; reemplazan la comuna).
 
 export type ParsedInstructorRow = {
   linea: number;
@@ -17,7 +15,8 @@ export type ParsedInstructorRow = {
   email: string;
   celular: string;
   direccionResidencia: string;
-  comuna: ComunaValue | null;
+  departamento: string | null;
+  ciudad: string | null;
   coordinacion: CoordinacionValue | null;
 };
 
@@ -43,7 +42,8 @@ type CampoInstructor =
   | "email"
   | "celular"
   | "direccionResidencia"
-  | "comuna"
+  | "departamento"
+  | "ciudad"
   | "coordinacion"
   | "ignorar";
 
@@ -60,7 +60,9 @@ const MAPA_ENCABEZADOS: Record<string, CampoInstructor> = {
   TELEFONO: "celular",
   DIRECCION: "direccionResidencia",
   DIRECCIONDERESIDENCIA: "direccionResidencia",
-  COMUNA: "comuna",
+  DEPARTAMENTO: "departamento",
+  MUNICIPIO: "ciudad",
+  CIUDAD: "ciudad",
   COORDINACION: "coordinacion",
 };
 
@@ -71,13 +73,10 @@ const ORDEN_SIN_ENCABEZADO: CampoInstructor[] = [
   "email",
   "celular",
   "direccionResidencia",
-  "comuna",
+  "departamento",
+  "ciudad",
   "coordinacion",
 ];
-
-const COMUNA_MAP: Record<string, ComunaValue> = Object.fromEntries(
-  ComunaValues.map((v) => [claveEncabezado(v), v])
-);
 
 const COORDINACION_MAP: Record<string, CoordinacionValue> = Object.fromEntries(
   CoordinacionValues.map((v) => [claveEncabezado(v), v])
@@ -91,28 +90,6 @@ COORDINACION_MAP[claveEncabezado("Gestión Administrativa y Documental")] =
 COORDINACION_MAP[claveEncabezado("Gestion Administrativa y Documental")] =
   "GESTION_ADMINISTRATIVA_DOCUMENTAL";
 
-// Alias de comuna con nombre legible (p. ej. "Laureles-Estadio", "Doce de Octubre").
-const COMUNA_LABELS: Record<ComunaValue, string> = {
-  POPULAR: "Popular",
-  SANTA_CRUZ: "Santa Cruz",
-  MANRIQUE: "Manrique",
-  ARANJUEZ: "Aranjuez",
-  CASTILLA: "Castilla",
-  DOCE_DE_OCTUBRE: "Doce de Octubre",
-  ROBLEDO: "Robledo",
-  VILLA_HERMOSA: "Villa Hermosa",
-  BUENOS_AIRES: "Buenos Aires",
-  LA_CANDELARIA: "La Candelaria",
-  LAURELES_ESTADIO: "Laureles-Estadio",
-  LA_AMERICA: "La América",
-  SAN_JAVIER: "San Javier",
-  EL_POBLADO: "El Poblado",
-  GUAYABAL: "Guayabal",
-  BELEN: "Belén",
-};
-for (const [valor, label] of Object.entries(COMUNA_LABELS)) {
-  COMUNA_MAP[claveEncabezado(label)] = valor as ComunaValue;
-}
 
 function normalizarCatalogo<T extends string>(
   crudo: string,
@@ -190,9 +167,20 @@ export function parseInstructorImportText(texto: string): InstructorImportResult
       continue;
     }
 
-    const comuna = normalizarCatalogo(valores.comuna ?? "", COMUNA_MAP);
-    if (!comuna.reconocido) {
-      errores.push({ linea: numeroLinea, motivo: `Comuna no reconocida: "${valores.comuna}".` });
+    // Departamento y municipio: opcionales en la hoja, pero si vienen deben ser del DANE.
+    const departamento = valores.departamento?.trim() ? departamentoOficial(valores.departamento) : null;
+    if (valores.departamento?.trim() && !departamento) {
+      errores.push({ linea: numeroLinea, motivo: `Departamento no reconocido: "${valores.departamento}".` });
+      continue;
+    }
+    const ciudad = valores.ciudad?.trim() ? (departamento ? municipioOficial(departamento, valores.ciudad) : null) : null;
+    if (valores.ciudad?.trim() && !ciudad) {
+      errores.push({
+        linea: numeroLinea,
+        motivo: departamento
+          ? `Municipio no reconocido en ${departamento}: "${valores.ciudad}".`
+          : `Para el municipio "${valores.ciudad}" falta el departamento.`,
+      });
       continue;
     }
 
@@ -213,7 +201,8 @@ export function parseInstructorImportText(texto: string): InstructorImportResult
       email,
       celular,
       direccionResidencia,
-      comuna: comuna.valor,
+      departamento,
+      ciudad,
       coordinacion: coordinacion.valor,
     });
   }

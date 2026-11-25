@@ -11,8 +11,8 @@ import { calcularFechasEtapaProductivaDesdeFicha } from "@/lib/etapa-productiva-
 // patrón "solo crea" que src/app/api/instructor/aprendices/import/route.ts, pero sin la
 // restricción de "ficha asignada al instructor": acá cualquier ficha existente es válida. Si la
 // cédula o el correo ya existen (de cualquier rol), no se toca esa fila y se reporta aparte. La
-// hoja real no trae dirección de residencia ni comuna — quedan como "Sin especificar" / sin
-// comuna, editables después desde este mismo panel.
+// hoja real no trae dirección de residencia ni municipio — quedan como "Sin especificar" / sin
+// municipio, editables después desde este mismo panel.
 export async function POST(request: Request) {
   const { user, response } = await requireApiUser(["COORDINADOR", "ADMIN"]);
   if (!user) return response;

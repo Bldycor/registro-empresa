@@ -1,20 +1,18 @@
 "use client";
 
+import { SelectorMunicipio } from "@/components/selector-municipio";
 import { useState } from "react";
 import { TOTAL_BITACORAS } from "@/lib/bitacora-fechas";
 import Link from "next/link";
 import { AprendizCreatePanel } from "@/components/aprendiz-create-panel";
 import { DatePickerField } from "@/components/date-picker-field";
 import {
-  ComunaValues,
-  comunaLabel,
   EstadoAprendizValues,
   estadoAprendizLabel,
   AlternativaEtapaProductivaValues,
   alternativaEtapaProductivaLabel,
   CoordinacionValues,
   coordinacionLabel,
-  type ComunaValue,
   type EstadoAprendizValue,
   type AlternativaEtapaProductivaValue,
   type CoordinacionValue,
@@ -44,7 +42,8 @@ type Aprendiz = {
   email: string;
   celular: string;
   direccionResidencia: string;
-  comuna: ComunaValue | null;
+  departamento: string | null;
+  ciudad: string | null;
   estado: EstadoAprendizValue;
   alternativaEtapaProductiva: AlternativaEtapaProductivaValue | null;
   fichaId: string | null;
@@ -71,7 +70,8 @@ type GestionForm = {
   email: string;
   celular: string;
   direccionResidencia: string;
-  comuna: string;
+  departamento: string;
+  ciudad: string;
   estado: EstadoAprendizValue;
   alternativaEtapaProductiva: string;
   fichaId: string;
@@ -96,7 +96,8 @@ function gestionVaciaDe(aprendiz: Aprendiz): GestionForm {
     email: aprendiz.email,
     celular: aprendiz.celular,
     direccionResidencia: aprendiz.direccionResidencia,
-    comuna: aprendiz.comuna ?? "",
+    departamento: aprendiz.departamento ?? "",
+    ciudad: aprendiz.ciudad ?? "",
     estado: aprendiz.estado,
     alternativaEtapaProductiva: aprendiz.alternativaEtapaProductiva ?? "",
     fichaId: aprendiz.fichaId ?? "",
@@ -219,7 +220,8 @@ export function CoordinadorAprendicesPanel({
         email: gestionForm.email,
         celular: gestionForm.celular,
         direccionResidencia: gestionForm.direccionResidencia,
-        comuna: gestionForm.comuna || null,
+        departamento: gestionForm.departamento || null,
+        ciudad: gestionForm.ciudad || null,
         estado: gestionForm.estado,
         alternativaEtapaProductiva: gestionForm.alternativaEtapaProductiva || null,
         fichaId: gestionForm.fichaId || null,
@@ -757,22 +759,16 @@ export function CoordinadorAprendicesPanel({
                         </label>
                       </div>
 
+                      <SelectorMunicipio
+                        departamento={gestionForm.departamento}
+                        ciudad={gestionForm.ciudad}
+                        onChange={(v) => setGestionForm((g) => (g ? { ...g, ...v } : g))}
+                        claseCampo={inputClass}
+                        claseEtiqueta="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400"
+                        requerido={false}
+                      />
+
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
-                          Comuna
-                          <select
-                            value={gestionForm.comuna}
-                            onChange={(e) => updateGestion("comuna", e.target.value)}
-                            className={inputClass}
-                          >
-                            <option value="">Sin definir</option>
-                            {ComunaValues.map((v) => (
-                              <option key={v} value={v}>
-                                {comunaLabel[v]}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
                         <label className="flex flex-col gap-1 text-xs text-zinc-600 dark:text-zinc-400">
                           Estado
                           <select
